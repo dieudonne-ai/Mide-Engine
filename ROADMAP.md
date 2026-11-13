@@ -113,7 +113,7 @@
   - Taille des modèles et durée limitées selon le profil matériel.
   - ✅ Critères : le modèle bat la baseline sur le jeu de démo ; tests de reproductibilité (seed).
 
-- [ ] **W3-03 — Évaluation + registre de modèles**
+- [x] **W3-03 — Évaluation + registre de modèles**
   - `automl/evaluator.py` : métriques (MAE/MAPE, AUC/F1…), importance des variables.
   - `automl/registry.py` : sauvegarde versionnée dans `~/.mide/models_trained/` + métadonnées.
   - `mide train --dataset X --target Y`, `mide models trained`.

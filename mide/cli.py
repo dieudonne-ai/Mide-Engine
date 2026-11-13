@@ -7,8 +7,15 @@ from pathlib import Path
 import typer
 
 from mide import __version__
+from mide.automl.evaluator import evaluate
+from mide.automl.registry import list_models as list_trained_models
+from mide.automl.registry import save_model
+from mide.automl.trainer import train as train_model
 from mide.config import Config, ConfigError, load_config
+from mide.connectors.base import is_url
 from mide.connectors.sources import add_source, list_sources, remove_source
+from mide.connectors.sql import SQLConnector
+from mide.connectors.tabular import TabularConnector
 from mide.hardware.profiler import profile_hardware
 from mide.ingestion.catalog import build_catalog
 from mide.llm.chat import ChatHistory
@@ -108,6 +115,23 @@ def models_list(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
         typer.echo(f"{info.profile}: {info.repo}/{info.file} [{state}]")
 
 
+@models_app.command("trained")
+def models_trained(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """List the models trained by `mide train`."""
+    cfg = load_config(config_dir)
+    records = list_trained_models(cfg.app_dir / "models_trained")
+    if not records:
+        typer.echo("No trained models. Use `mide train --dataset X --target Y`.")
+        return
+    for r in records:
+        m = r.metadata
+        score = m["metrics"].get(m["primary_metric"])
+        typer.echo(
+            f"{r.name} v{r.version} [{m['task']}] target={m['target']} "
+            f"{m['primary_metric']}={score:.4g} beats_baseline={m['beats_baseline']}"
+        )
+
+
 @models_app.command("pull")
 def models_pull(
     profile: str | None = typer.Option(None, help="Profile (default: detected)."),
@@ -184,6 +208,55 @@ def index_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     )
     for item, message in report.errors.items():
         typer.echo(f"[error] {item}: {message}")
+
+
+def _load_dataset(dataset: str, sources: list[str]):
+    """Read one authorized dataset, matched by full item name or file/table name."""
+    from mide.connectors.tabular import split_item
+
+    for source in sources:
+        conn = SQLConnector(source, sources) if is_url(source) else None
+        if conn is None:
+            if not Path(source).expanduser().exists():
+                continue
+            conn = TabularConnector(source, sources)
+        for item in conn.discover():
+            base = Path(split_item(item)[0]).stem if not is_url(source) else item
+            if dataset in (item, base, Path(item).name):
+                return item, conn.read(item)
+    raise ValueError(f"Dataset not found in authorized sources: {dataset}")
+
+
+@app.command("train")
+def train_command(
+    dataset: str = typer.Option(..., "--dataset", help="Dataset name (file stem or table)."),
+    target: str = typer.Option(..., "--target", help="Column to predict."),
+    date_column: str | None = typer.Option(None, "--date-column", help="Date column override."),
+    seed: int = typer.Option(42, "--seed"),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Train a model on an authorized dataset and save it in the registry."""
+    try:
+        cfg = load_config(config_dir)
+        _item, df = _load_dataset(dataset, list_sources(config_dir))
+        result = train_model(
+            df, target, profile=profile_hardware().profile, seed=seed, date_column=date_column
+        )
+        metrics = evaluate(result, df)
+        record = save_model(
+            result, cfg.app_dir / "models_trained", f"{dataset}-{target}", {"evaluation": metrics}
+        )
+    except Exception as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Task: {result.task.task.value} - {result.task.reason}")
+    typer.echo(f"Saved {record.name} v{record.version}")
+    for key, value in result.metrics.items():
+        typer.echo(f"  CV {key}: {value:.4g} (baseline {result.baseline_metrics[key]:.4g})")
+    verdict = "beats" if result.beats_baseline else "does NOT beat"
+    typer.echo(f"The model {verdict} the baseline.")
+    top = ", ".join(f"{k} ({v:.0%})" for k, v in list(result.feature_importance.items())[:5])
+    typer.echo(f"Top features: {top}")
 
 
 def _get_llm(cfg: Config) -> LLM:

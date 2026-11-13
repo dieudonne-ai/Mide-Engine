@@ -19,7 +19,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
-| S3 — Intelligence     | 2 / 9 | 🔄 en cours |
+| S3 — Intelligence     | 3 / 9 | 🔄 en cours |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
 ---
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W3-03 Evaluation + model registry
+- **Fait :** `automl/evaluator.py`: `evaluate(model, df)` (regression/time series: MAE, MAPE, RMSE, R2; classification: accuracy, macro-F1, AUC binary/OvR) and `feature_importance`. `automl/registry.py`: versioned save/load/list in `~/.mide/models_trained/<name>/vN/` (joblib model + `metadata.json` with task, target, CV metrics, baseline, top features). CLI: `mide train --dataset X --target Y` (authorized sources only) and `mide models trained`.
+- **Fichiers principaux :** `mide/automl/evaluator.py`, `mide/automl/registry.py`, `mide/cli.py`, `tests/test_registry.py`
+- **Tests :** 161 passés / 161 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-j3c5qa`, empilée sur W3-02)
+- **Décisions techniques :** joblib (bundled with scikit-learn) for persistence; model name = `<dataset>-<target>` slugified, version auto-incremented. Importance reuses LightGBM split importance from training.
+- **Problèmes / dette technique :** joblib files are only safe to load from the local registry (never from untrusted sources). `evaluate` on training data is optimistic; CV metrics are the honest ones. No `mide predict` command yet.
+- **Prochaine tâche :** W3-04 — Module ventes
 
 ### 2026-11-13 — W3-02 AutoML trainer
 - **Fait :** `automl/trainer.py`: `train(df, target, profile, seed, task, date_column)` returns a `TrainedModel` (predict, CV metrics, baseline metrics, `beats_baseline`, feature importance). Automatic preparation: identifier-like text columns dropped, categoricals encoded (unseen -> -1), date features (year/month/weekday/day-of-year/day/ordinal), NaN left to LightGBM. Time series are aggregated per period and validated with `TimeSeriesSplit`; other tasks use (Stratified)KFold. Baselines: mean (regression), majority class, last value (time series). Limits per hardware profile (trees, leaves, row cap, folds, threads).
