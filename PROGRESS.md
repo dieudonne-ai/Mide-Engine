@@ -19,7 +19,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
-| S3 — Intelligence     | 2 / 9 | 🔄 en cours |
+| S3 — Intelligence     | 3 / 9 | 🔄 en cours |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
 ---
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W3-03 Evaluation + model registry
+- **Fait :** `automl/evaluator.py` (MAE/MAPE, accuracy/weighted F1/AUC, normalized gain-based feature importance, `evaluate_model`), `automl/registry.py` (`ModelRegistry`: versioned `<name>/vN/{model.joblib,metadata.json}` in `~/.mide/models_trained/`, save/load/list/record). CLI: `mide train --dataset X --target Y` (reads only authorized sources, prints task, CV score vs baseline, top features) and `mide models trained`.
+- **Fichiers principaux :** `mide/automl/evaluator.py`, `mide/automl/registry.py`, `mide/cli.py`, `tests/test_registry.py`, `pyproject.toml`
+- **Tests :** 156 passés / 156 au total (`python -m pytest`) ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-22ydc0`)
+- **Décisions techniques :** `joblib` added as a base dependency (already pulled in by scikit-learn) to persist models. Names are slugified to prevent path traversal. `mide train` metrics are computed on the training data (in-sample); the honest estimate is the cross-validated score stored in the metadata.
+- **Problèmes / dette technique :** joblib files are pickles: only load models from `~/.mide/models_trained/`. `mide train` supports CSV/Excel items only (SQL tables later). Plain `pytest` fails collecting `tests.conftest` import in a fresh venv; `python -m pytest` works.
+- **Prochaine tâche :** W3-04 — Module ventes
 
 ### 2026-11-13 — W3-02 AutoML trainer
 - **Fait :** `automl/trainer.py` with `train_model(df, target, profile, seed, date_column)` returning a `TrainedModel` (pipeline, features, CV score, baseline score, `beats_baseline`, `predict`). Automatic preparation: ids/text-like columns dropped, date columns expanded (month/day of week/day of year), ordinal encoding with unseen-category handling, NaN passed to LightGBM. Cross-validation: KFold / StratifiedKFold, `TimeSeriesSplit` for series (lag 1/7 + rolling 7/28 features). Baselines: mean, majority class, previous value. Model size, rows and CV folds capped per hardware profile (`PROFILE_LIMITS`).

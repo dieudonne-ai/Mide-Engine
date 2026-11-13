@@ -7,8 +7,13 @@ from pathlib import Path
 import typer
 
 from mide import __version__
+from mide.automl.evaluator import evaluate_model, feature_importance
+from mide.automl.registry import ModelRegistry, model_name
+from mide.automl.trainer import train_model
 from mide.config import ConfigError, load_config
+from mide.connectors.base import is_url
 from mide.connectors.sources import add_source, list_sources, remove_source
+from mide.connectors.tabular import TabularConnector
 from mide.hardware.profiler import profile_hardware
 from mide.ingestion.catalog import build_catalog
 from mide.llm.downloader import DownloadError, download_model, list_models, model_path
@@ -258,6 +263,69 @@ def models_pull(
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
     typer.echo(f"Model ready: {path}")
+
+
+@models_app.command("trained")
+def models_trained(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """List the models trained by `mide train` (all versions)."""
+    cfg = _load_cfg(config_dir)
+    records = ModelRegistry(cfg.app_dir / "models_trained").list()
+    if not records:
+        typer.echo("No trained models. Use `mide train --dataset X --target Y`.")
+        return
+    for r in records:
+        verdict = "beats baseline" if r.beats_baseline else "does NOT beat baseline"
+        typer.echo(
+            f"{r.name} v{r.version} [{r.task}] target={r.target} "
+            f"{r.metric}={r.score:.4g} (baseline {r.baseline_score:.4g}, {verdict}) {r.created_at}"
+        )
+
+
+def _load_cfg(config_dir: Path | None):  # type: ignore[no-untyped-def]
+    try:
+        return load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+
+def _read_dataset(dataset: str, sources: list[str]):  # type: ignore[no-untyped-def]
+    """Read a dataset item from the authorized sources only."""
+    if is_url(dataset):
+        raise ValueError("Give a table as <sql_url>::<table> or a file path.")
+    path, _, _ = dataset.partition("::")
+    return TabularConnector(path, sources).read(dataset)
+
+
+@app.command()
+def train(
+    dataset: str = typer.Option(..., "--dataset", help="CSV/Excel item (path or path::sheet)."),
+    target: str = typer.Option(..., "--target", help="Column to predict."),
+    seed: int = typer.Option(42, "--seed", help="Random seed."),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Train a model on an authorized dataset and save it in the registry."""
+    cfg = _load_cfg(config_dir)
+    try:
+        df = _read_dataset(dataset, cfg.sources.sources)
+        profile = profile_hardware().profile
+        model = train_model(df, target, profile=profile, seed=seed)
+        metrics = evaluate_model(model, df)
+    except (PermissionError, ValueError, KeyError, FileNotFoundError) as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    registry = ModelRegistry(cfg.app_dir / "models_trained")
+    record = registry.save(
+        model, model_name(dataset, target), dataset, metrics, feature_importance(model)
+    )
+    typer.echo(f"Task: {model.task.task} ({model.task.reason})")
+    typer.echo(
+        f"CV {model.metric}: {model.score:.4g} vs baseline '{model.baseline_name}' "
+        f"{model.baseline_score:.4g} - {'OK' if model.beats_baseline else 'does not beat baseline'}"
+    )
+    top = ", ".join(f"{k} ({v:.0%})" for k, v in list(record.importance.items())[:5])
+    typer.echo(f"Top features: {top}")
+    typer.echo(f"Saved: {record.name} v{record.version}")
 
 
 @app.callback()
