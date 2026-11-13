@@ -107,7 +107,7 @@
     régression / classification / série temporelle.
   - ✅ Critères : tests sur les 3 cas avec le jeu de démo.
 
-- [ ] **W3-02 — Entraîneur AutoML**
+- [x] **W3-02 — Entraîneur AutoML**
   - `automl/trainer.py` : préparation automatique (encodage, valeurs manquantes, features de date),
     validation croisée (temporelle pour les séries), LightGBM + baseline simple.
   - Taille des modèles et durée limitées selon le profil matériel.

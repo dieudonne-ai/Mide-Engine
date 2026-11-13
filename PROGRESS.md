@@ -19,7 +19,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
-| S3 — Intelligence     | 1 / 9 | 🔄 en cours |
+| S3 — Intelligence     | 2 / 9 | 🔄 en cours |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
 ---
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W3-02 AutoML trainer
+- **Fait :** `automl/trainer.py` with `train_model(df, target, profile, seed, date_column)` returning a `TrainedModel` (pipeline, features, CV score, baseline score, `beats_baseline`, `predict`). Automatic preparation: ids/text-like columns dropped, date columns expanded (month/day of week/day of year), ordinal encoding with unseen-category handling, NaN passed to LightGBM. Cross-validation: KFold / StratifiedKFold, `TimeSeriesSplit` for series (lag 1/7 + rolling 7/28 features). Baselines: mean, majority class, previous value. Model size, rows and CV folds capped per hardware profile (`PROFILE_LIMITS`).
+- **Fichiers principaux :** `mide/automl/trainer.py`, `tests/test_trainer.py`, `pyproject.toml`
+- **Tests :** 148 passés / 148 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-uhrzm4`)
+- **Décisions techniques :** `scikit-learn` and `lightgbm` added as base dependencies (stack, CLAUDE.md §5). Trees scale with row count (`n_rows // 4`, capped by profile) and use strong regularisation because bigger models overfit the small demo series (729 days). Metrics: MAE (regression/series), accuracy (classification).
+- **Problèmes / dette technique :** time-series `predict` needs the target history in the input (no recursive multi-step forecast yet: W3-04). Time budget is enforced through model size, not a wall-clock timeout. Sandbox needed a venv with `pip install -e ".[dev]"`.
+- **Prochaine tâche :** W3-03 — Évaluation + registre de modèles
 
 ### 2026-11-13 — W3-01 Task type detection
 - **Fait :** `automl/task_detector.py` with `detect_task(df, target, date_column=None)` returning a `TaskInfo` (task, target, date column, reason). Classification for non-numeric/boolean/low-cardinality integer targets; time series for a numeric target with a date column where rows are ~one per period (or when `date_column` is given explicitly); regression otherwise. Clear `ValueError` for unknown target/date column or empty target.
