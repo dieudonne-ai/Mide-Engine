@@ -11,9 +11,13 @@ from mide.config import Config, ConfigError, load_config
 from mide.connectors.sources import add_source, list_sources, remove_source
 from mide.hardware.profiler import profile_hardware
 from mide.ingestion.catalog import build_catalog
-from mide.llm.downloader import DownloadError, download_model, list_models
+from mide.llm.downloader import DownloadError, download_model, list_models, model_path
+from mide.llm.prompts import build_rag_prompt, sources_footer
+from mide.llm.runtime import LLM, load_llm
 from mide.rag.embeddings import Embedder, load_embedder
 from mide.rag.indexer import index_sources
+from mide.rag.retriever import Retriever
+from mide.rag.store import VectorStore
 
 app = typer.Typer(help="MIDE Engine - local market intelligence engine.", no_args_is_help=True)
 
@@ -179,6 +183,45 @@ def index_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     )
     for item, message in report.errors.items():
         typer.echo(f"[error] {item}: {message}")
+
+
+def _get_llm(cfg: Config) -> LLM:
+    """Load the local LLM of the detected profile (patched in tests)."""
+    report = profile_hardware()
+    spec = cfg.models.profiles[report.profile].llm  # type: ignore[index]
+    path = model_path(cfg.app_dir / "models", spec)
+    if not path.exists():
+        raise DownloadError(f"Model not installed: run `mide models pull` ({path.name}).")
+    return load_llm(path, report)
+
+
+@app.command("ask")
+def ask_command(
+    question: str,
+    source: str | None = typer.Option(None, help="Restrict to one indexed source."),
+    top_k: int = typer.Option(5, "--top-k", "-k", min=1, help="Number of excerpts."),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Answer a question from the indexed data, citing the sources."""
+    try:
+        cfg = load_config(config_dir)
+        store = VectorStore(cfg.app_dir / "index")
+        if store.count() == 0:
+            typer.echo(
+                "Index vide. Lancez `mide index`." if cfg.language == "fr"
+                else "Empty index. Run `mide index`."
+            )
+            raise typer.Exit(1)
+        passages = Retriever(store, _get_embedder(cfg), top_k).retrieve(question, source=source)
+        prompt = build_rag_prompt(question, passages, cfg.language)
+        answer = _get_llm(cfg).generate(prompt, max_tokens=512, temperature=0.2)
+    except (ConfigError, DownloadError) as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(answer.strip())
+    footer = sources_footer(passages)
+    if footer:
+        typer.echo("\n" + footer)
 
 
 @app.callback()

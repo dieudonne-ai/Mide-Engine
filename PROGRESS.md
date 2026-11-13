@@ -18,7 +18,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | Semaine | Tâches terminées | Statut |
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
-| S2 — LLM & RAG        | 5 / 7 | 🚧 en cours |
+| S2 — LLM & RAG        | 6 / 7 | 🚧 en cours |
 | S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W2-06 Retriever + answers with sources
+- **Fait :** `rag/retriever.py` (`Retriever`: top-k, optional per-item filter, numbered `Passage` with human-readable citation: file, table, page, lines). `llm/prompts.py` (FR/EN RAG prompt with numbered excerpts, sources footer). `mide ask "question" [--source] [--top-k]`: retrieves, prompts the local LLM, prints the answer then the cited sources. Clear errors for an empty index or a missing model.
+- **Fichiers principaux :** `mide/rag/retriever.py`, `mide/llm/prompts.py`, `mide/cli.py`, `tests/test_retriever.py`
+- **Tests :** 130 passés / 130 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-5ei4dj`)
+- **Décisions techniques :** the sources footer is built from retrieved passages (not parsed from the LLM output), so sources are always listed even if the small model forgets the `[n]` markers. `--source` filters on the indexed item key (path or SQL URL).
+- **Problèmes / dette technique :** e5 `query:` prefix still not applied. Branch stacked on W2-05 (PR #16); work done on the session branch rather than `task/W2-06-*` because pushes are restricted to it.
+- **Prochaine tâche :** W2-07 — Mode conversation
 
 ### 2026-11-13 — W2-05 Vector index + incremental indexing
 - **Fait :** `rag/store.py` (`VectorStore`: persistent Chroma collection in `~/.mide/index/`, cosine, telemetry disabled, add/delete_item/query with optional item filter). `rag/indexer.py` (`index_sources`: documents chunked, tables/SQL tables summarized, only new or modified items re-embedded; vanished items and revoked sources pruned; per-item errors reported, not raised). `mide index` command.
