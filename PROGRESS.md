@@ -19,7 +19,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
-| S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
+| S3 — Intelligence     | 1 / 9 | 🔄 en cours |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
 ---
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W3-01 Task type detection
+- **Fait :** `automl/task_detector.py`: `detect_task(df, target, date_column=None)` returns a `TaskInfo` (task, reason, date column, frequency, number of classes). Non-numeric/boolean targets and integer targets with <= 10 values -> classification; continuous numeric target with a date column (>= 10 distinct dates) -> time series (frequency D/W/MS); otherwise regression. Clear errors for unknown target/date column or constant target.
+- **Fichiers principaux :** `mide/automl/task_detector.py`, `tests/test_task_detector.py`
+- **Tests :** 145 passés / 145 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-emrktx`, empilée sur W2-07 / PR #19)
+- **Décisions techniques :** thresholds are module constants. Date columns come from the existing profiler; an explicit `date_column` overrides. Time series is chosen whenever a date column exists, so a caller wanting plain regression on dated rows must pass the task explicitly later (trainer, W3-02).
+- **Problèmes / dette technique :** no `task` override parameter yet; a numeric column with few integer values (e.g. quantity 1-5) is treated as classification. Tests had to run in a venv (system python lacks deps). Work done on the session branch because pushes are restricted to it.
+- **Prochaine tâche :** W3-02 — Entraîneur AutoML
 
 ### 2026-11-13 — W2-07 Conversation mode
 - **Fait :** `llm/chat.py` (`ChatHistory`: keeps the last N turns within a character budget, cuts an oversized single turn instead of dropping it). `build_rag_prompt` accepts a rendered history (FR/EN "previous conversation" section). `mide chat [--source] [--top-k]`: interactive loop, fresh retrieval at each turn, sources listed after each answer, `exit`/`/clear` commands, EOF-safe.
