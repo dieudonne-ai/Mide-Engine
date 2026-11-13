@@ -17,7 +17,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 
 | Semaine | Tâches terminées | Statut |
 |---------|------------------|--------|
-| S1 — Fondations       | 2 / 9 | 🚧 en cours |
+| S1 — Fondations       | 3 / 9 | 🚧 en cours |
 | S2 — LLM & RAG        | 0 / 7 | ⏳ pas commencé |
 | S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W1-03 Hardware profiler
+- **Fait :** `mide/hardware/profiler.py` (RAM, CPU cores, OS, GPU via `nvidia-smi`, free disk, `choose_profile` per CLAUDE.md §3); `mide doctor` now prints "OK" plus the hardware report and chosen profile.
+- **Fichiers principaux :** `mide/hardware/profiler.py`, `mide/cli.py`, `tests/test_profiler.py`
+- **Tests :** 27 passés / 27 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/tender-pascal-1cbbpy`)
+- **Décisions techniques :** GPU detection uses `nvidia-smi` only (no torch import, keeps base install light); psutil/GPU mocked in tests. Boundary: RAM exactly 12 GB = `small`, > 12 = `medium`.
+- **Problèmes / dette technique :** only NVIDIA GPUs detected (no AMD/Apple Metal). The environment's `pytest` on PATH uses a different Python; run `/usr/bin/python3 -m pytest`.
+- **Prochaine tâche :** W1-04 — Connector interface + sources management
 
 ### 2026-11-13 — W1-02 Configuration
 - **Fait :** `mide/config.py` (pydantic, `load_config()`, `ConfigError` avec message clair), `mide/utils/paths.py` (`~/.mide` créé automatiquement, surchargeable via `MIDE_HOME`), `language: fr|en`, `config/models.yaml` rempli (4 profils), `sources.yaml` avec `sources: []`.
