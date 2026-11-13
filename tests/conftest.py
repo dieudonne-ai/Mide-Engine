@@ -28,3 +28,11 @@ def fake_llm():
     from mide.llm.runtime import FakeLLM
 
     return FakeLLM()
+
+
+@pytest.fixture
+def fake_embedder():
+    """A FakeEmbedder instance; never loads a real model."""
+    from mide.rag.embeddings import FakeEmbedder
+
+    return FakeEmbedder()

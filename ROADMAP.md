@@ -73,7 +73,7 @@
   - Faux LLM (`FakeLLM`) pour les tests.
   - ✅ Critères : tests avec FakeLLM ; paramètres adaptés au profil matériel.
 
-- [ ] **W2-03 — Embeddings**
+- [x] **W2-03 — Embeddings**
   - `rag/embeddings.py` : modèle multilingue choisi selon le profil, traitement par lots.
   - Faux embedder déterministe pour les tests.
   - ✅ Critères : tests de dimension et de déterminisme.

@@ -18,7 +18,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | Semaine | Tâches terminées | Statut |
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
-| S2 — LLM & RAG        | 2 / 7 | 🚧 en cours |
+| S2 — LLM & RAG        | 3 / 7 | 🚧 en cours |
 | S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W2-03 Embeddings
+- **Fait :** `rag/embeddings.py`: `Embedder` protocol, `SentenceTransformerEmbedder` (lazy import, injectable loader, batched, normalised vectors), `FakeEmbedder` (deterministic hashed bag-of-words, unit norm), `embedding_model_for_profile` (reads `models.yaml`), `load_embedder` with batch size per profile (tiny 8 → large 64). `fake_embedder` fixture in `tests/conftest.py`.
+- **Fichiers principaux :** `mide/rag/embeddings.py`, `tests/test_embeddings.py`, `pyproject.toml`
+- **Tests :** 108 passés / 108 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/tender-pascal-pcvwrb`)
+- **Décisions techniques :** `sentence-transformers` added as optional extra `[rag]` (pulls torch, heavy) and imported lazily so base install and tests stay light; model names stay in `config/models.yaml`.
+- **Problèmes / dette technique :** the real model path is only tested via a stub loader. Branch stacked on W2-02 (PR #11). e5 models expect `query:`/`passage:` prefixes; to handle in W2-05/W2-06.
+- **Prochaine tâche :** W2-04 — Chunking
 
 ### 2026-11-13 — W2-02 Local LLM runtime
 - **Fait :** `llm/runtime.py`: `LLM` protocol (`generate`, `stream`), `LlamaCppLLM` wrapper (lazy `llama_cpp` import, injectable loader), `params_for_hardware` (context per profile, threads = cores-1, GPU offload only if a GPU exists), `FakeLLM`, `load_llm`. `fake_llm` fixture in `tests/conftest.py`.

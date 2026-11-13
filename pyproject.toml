@@ -27,6 +27,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10", "types-PyYAML"]
 llm = ["llama-cpp-python>=0.2"]
+rag = ["sentence-transformers>=3"]
 finetune = ["torch", "transformers", "peft"]
 
 [project.scripts]
