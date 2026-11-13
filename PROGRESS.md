@@ -17,9 +17,9 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 
 | Semaine | Tâches terminées | Statut |
 |---------|------------------|--------|
-| S1 — Fondations       | 4 / 9 | 🚧 en cours |
-| S2 — LLM & RAG        | 0 / 7 | ⏳ pas commencé |
-| S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
+| S1 — Fondations       | 9 / 9 | ✅ terminé |
+| S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
+| S3 — Intelligence     | 4 / 9 | 🔄 en cours |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
 ---
@@ -38,6 +38,150 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W3-04 Sales module
+- **Fait :** `business/sales.py`: `forecast_sales` (30/60/90-day forecast: linear trend + weekday + yearly Fourier terms by least squares, anomalous days >3 sigma excluded from the fit, growth vs previous period), `product_ranking` (top/flop with revenue share), `sales_trend` (monthly totals, last-3-months and YoY growth, direction), `detect_seasonality` (monthly/weekday indices after detrending, peak/trough, yearly seasonality flag).
+- **Fichiers principaux :** `mide/business/sales.py`, `tests/test_sales.py`
+- **Tests :** 168 passés / 168 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-nu3qlz`, empilée sur W3-03 / PR #25)
+- **Décisions techniques :** numpy least squares instead of statsmodels/Prophet (no new dependency, fast on `tiny`). Column names default to `date`/`amount`/`product_id`, overridable. Partial last month ignored in trend.
+- **Problèmes / dette technique :** no prediction intervals; one yearly harmonic only; not yet wired into the CLI (planned with the agent, W3-08).
+- **Prochaine tâche :** W3-05 — Module clients
+
+### 2026-11-13 — W3-03 Evaluation + model registry
+- **Fait :** `automl/evaluator.py`: `evaluate(model, df)` (regression/time series: MAE, MAPE, RMSE, R2; classification: accuracy, macro-F1, AUC binary/OvR) and `feature_importance`. `automl/registry.py`: versioned save/load/list in `~/.mide/models_trained/<name>/vN/` (joblib model + `metadata.json` with task, target, CV metrics, baseline, top features). CLI: `mide train --dataset X --target Y` (authorized sources only) and `mide models trained`.
+- **Fichiers principaux :** `mide/automl/evaluator.py`, `mide/automl/registry.py`, `mide/cli.py`, `tests/test_registry.py`
+- **Tests :** 161 passés / 161 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-j3c5qa`, empilée sur W3-02)
+- **Décisions techniques :** joblib (bundled with scikit-learn) for persistence; model name = `<dataset>-<target>` slugified, version auto-incremented. Importance reuses LightGBM split importance from training.
+- **Problèmes / dette technique :** joblib files are only safe to load from the local registry (never from untrusted sources). `evaluate` on training data is optimistic; CV metrics are the honest ones. No `mide predict` command yet.
+- **Prochaine tâche :** W3-04 — Module ventes
+
+### 2026-11-13 — W3-02 AutoML trainer
+- **Fait :** `automl/trainer.py`: `train(df, target, profile, seed, task, date_column)` returns a `TrainedModel` (predict, CV metrics, baseline metrics, `beats_baseline`, feature importance). Automatic preparation: identifier-like text columns dropped, categoricals encoded (unseen -> -1), date features (year/month/weekday/day-of-year/day/ordinal), NaN left to LightGBM. Time series are aggregated per period and validated with `TimeSeriesSplit`; other tasks use (Stratified)KFold. Baselines: mean (regression), majority class, last value (time series). Limits per hardware profile (trees, leaves, row cap, folds, threads).
+- **Fichiers principaux :** `mide/automl/trainer.py`, `tests/test_trainer.py`, `pyproject.toml` (+ scikit-learn, lightgbm)
+- **Tests :** 154 passés / 154 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-0a1csg`, empilée sur W3-01 / PR #22)
+- **Décisions techniques :** `deterministic=True`, single seed -> reproducible metrics. `task` override added to `train` (answers W3-01 debt: plain regression on dated rows). Classification primary metric is accuracy (macro-F1 also reported). Models are fitted in CV then refit on all data.
+- **Problèmes / dette technique :** no hyperparameter search; no time budget enforcement beyond tree/row caps; time-series model has no lag features (trees cannot extrapolate trends). Tests run with `python -m pytest` in a venv.
+- **Prochaine tâche :** W3-03 — Évaluation + registre de modèles
+
+### 2026-11-13 — W3-01 Task type detection
+- **Fait :** `automl/task_detector.py`: `detect_task(df, target, date_column=None)` returns a `TaskInfo` (task, reason, date column, frequency, number of classes). Non-numeric/boolean targets and integer targets with <= 10 values -> classification; continuous numeric target with a date column (>= 10 distinct dates) -> time series (frequency D/W/MS); otherwise regression. Clear errors for unknown target/date column or constant target.
+- **Fichiers principaux :** `mide/automl/task_detector.py`, `tests/test_task_detector.py`
+- **Tests :** 145 passés / 145 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-emrktx`, empilée sur W2-07 / PR #19)
+- **Décisions techniques :** thresholds are module constants. Date columns come from the existing profiler; an explicit `date_column` overrides. Time series is chosen whenever a date column exists, so a caller wanting plain regression on dated rows must pass the task explicitly later (trainer, W3-02).
+- **Problèmes / dette technique :** no `task` override parameter yet; a numeric column with few integer values (e.g. quantity 1-5) is treated as classification. Tests had to run in a venv (system python lacks deps). Work done on the session branch because pushes are restricted to it.
+- **Prochaine tâche :** W3-02 — Entraîneur AutoML
+
+### 2026-11-13 — W2-07 Conversation mode
+- **Fait :** `llm/chat.py` (`ChatHistory`: keeps the last N turns within a character budget, cuts an oversized single turn instead of dropping it). `build_rag_prompt` accepts a rendered history (FR/EN "previous conversation" section). `mide chat [--source] [--top-k]`: interactive loop, fresh retrieval at each turn, sources listed after each answer, `exit`/`/clear` commands, EOF-safe.
+- **Fichiers principaux :** `mide/llm/chat.py`, `mide/llm/prompts.py`, `mide/cli.py`, `tests/test_chat.py`
+- **Tests :** 136 passés / 136 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-6vo1y7`, empilée sur W2-06 / PR #18)
+- **Décisions techniques :** defaults of 3 turns / 1500 chars keep the prompt within the `tiny` profile 2048-token context. Retrieval uses only the current question (no query rewriting with history) to stay simple and predictable; follow-up questions that rely on pronouns may retrieve poorly.
+- **Problèmes / dette technique :** no query rewriting for follow-ups; no streaming output yet (`LLM.stream` exists). Work done on the session branch because pushes are restricted to it.
+- **Prochaine tâche :** W3-01 — Détection du type de tâche
+
+### 2026-11-13 — W2-06 Retriever + answers with sources
+- **Fait :** `rag/retriever.py` (`Retriever`: top-k, optional per-item filter, numbered `Passage` with human-readable citation: file, table, page, lines). `llm/prompts.py` (FR/EN RAG prompt with numbered excerpts, sources footer). `mide ask "question" [--source] [--top-k]`: retrieves, prompts the local LLM, prints the answer then the cited sources. Clear errors for an empty index or a missing model.
+- **Fichiers principaux :** `mide/rag/retriever.py`, `mide/llm/prompts.py`, `mide/cli.py`, `tests/test_retriever.py`
+- **Tests :** 130 passés / 130 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-5ei4dj`)
+- **Décisions techniques :** the sources footer is built from retrieved passages (not parsed from the LLM output), so sources are always listed even if the small model forgets the `[n]` markers. `--source` filters on the indexed item key (path or SQL URL).
+- **Problèmes / dette technique :** e5 `query:` prefix still not applied. Branch stacked on W2-05 (PR #16); work done on the session branch rather than `task/W2-06-*` because pushes are restricted to it.
+- **Prochaine tâche :** W2-07 — Mode conversation
+
+### 2026-11-13 — W2-05 Vector index + incremental indexing
+- **Fait :** `rag/store.py` (`VectorStore`: persistent Chroma collection in `~/.mide/index/`, cosine, telemetry disabled, add/delete_item/query with optional item filter). `rag/indexer.py` (`index_sources`: documents chunked, tables/SQL tables summarized, only new or modified items re-embedded; vanished items and revoked sources pruned; per-item errors reported, not raised). `mide index` command.
+- **Fichiers principaux :** `mide/rag/store.py`, `mide/rag/indexer.py`, `mide/cli.py`, `tests/test_store.py`, `pyproject.toml`
+- **Tests :** 126 passés / 126 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `task/W2-05-vector-index`)
+- **Décisions techniques :** change detection = sha256, recomputed only when mtime/size changed (a touched file with identical content is not reindexed). `chromadb` added to core dependencies (listed in the CLAUDE.md stack). Indexing logic put in a new `indexer.py` to keep `store.py` a pure storage layer. Pruning removes chunks of revoked sources (consent principle).
+- **Problèmes / dette technique :** SQL table fingerprint = schema + row count + hash of the first 1000 rows, so changes deeper in a large table with equal row count are not detected. PDF page numbers not yet passed to the index (DocumentConnector returns joined text). Branch stacked on W2-04 (PR #14). Sandbox had no deps installed: used a venv.
+- **Prochaine tâche :** W2-06 — Retriever + réponses avec sources
+
+### 2026-11-13 — W2-04 Chunking
+- **Fait :** `rag/chunking.py`: `chunk_text` (size + overlap, cuts on whitespace, metadata source/chunk_index/line_start/line_end/page), `chunk_pages` (page numbers), `summarize_table` (schema chunk + statistics chunk built from `profile_dataframe`). `chunk_size` / `chunk_overlap` added to `config/default.yaml` and `GeneralConfig`.
+- **Fichiers principaux :** `mide/rag/chunking.py`, `tests/test_chunking.py`, `mide/config.py`, `config/default.yaml`
+- **Tests :** 117 passés / 117 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/tender-pascal-c2d17s`)
+- **Décisions techniques :** character-based sizes (no tokenizer dependency); table summaries are capped at 30 columns to stay small on tiny machines.
+- **Problèmes / dette technique :** `DocumentConnector.read` returns joined PDF text, so page numbers are only available via `chunk_pages` (to be wired in W2-05). Branch stacked on W2-03. Environment note: system `cryptography` was broken for Python 3.11 in the sandbox; reinstalled locally, no repo change.
+- **Prochaine tâche :** W2-05 — Index vectoriel + indexation incrémentale
+
+### 2026-11-13 — W2-03 Embeddings
+- **Fait :** `rag/embeddings.py`: `Embedder` protocol, `SentenceTransformerEmbedder` (lazy import, injectable loader, batched, normalised vectors), `FakeEmbedder` (deterministic hashed bag-of-words, unit norm), `embedding_model_for_profile` (reads `models.yaml`), `load_embedder` with batch size per profile (tiny 8 → large 64). `fake_embedder` fixture in `tests/conftest.py`.
+- **Fichiers principaux :** `mide/rag/embeddings.py`, `tests/test_embeddings.py`, `pyproject.toml`
+- **Tests :** 108 passés / 108 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/tender-pascal-pcvwrb`)
+- **Décisions techniques :** `sentence-transformers` added as optional extra `[rag]` (pulls torch, heavy) and imported lazily so base install and tests stay light; model names stay in `config/models.yaml`.
+- **Problèmes / dette technique :** the real model path is only tested via a stub loader. Branch stacked on W2-02 (PR #11). e5 models expect `query:`/`passage:` prefixes; to handle in W2-05/W2-06.
+- **Prochaine tâche :** W2-04 — Chunking
+
+### 2026-11-13 — W2-02 Local LLM runtime
+- **Fait :** `llm/runtime.py`: `LLM` protocol (`generate`, `stream`), `LlamaCppLLM` wrapper (lazy `llama_cpp` import, injectable loader), `params_for_hardware` (context per profile, threads = cores-1, GPU offload only if a GPU exists), `FakeLLM`, `load_llm`. `fake_llm` fixture in `tests/conftest.py`.
+- **Fichiers principaux :** `mide/llm/runtime.py`, `tests/test_runtime.py`, `pyproject.toml`
+- **Tests :** 97 passés / 97 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/tender-pascal-kem5g6`)
+- **Décisions techniques :** `llama-cpp-python` added as optional extra `[llm]` (compiles from source, heavy) and imported lazily so the base install and tests stay light; a clear error points to the extra. Stack unchanged otherwise.
+- **Problèmes / dette technique :** real llama.cpp path is only tested through a mocked loader. Branch stacked on W2-01 (PR #10).
+- **Prochaine tâche :** W2-03 — Embeddings
+
+### 2026-11-13 — W2-01 Model download and management
+- **Fait :** `llm/downloader.py` (`download_model`, `list_models`): stdlib `urllib` download from Hugging Face into `~/.mide/models/`, mandatory confirmation callback called before any byte is written, progress callback, `.part` file then atomic move, size check (Content-Length / expected) and optional SHA-256, cleanup on failure, path-traversal guard. CLI: `mide models list`, `mide models pull [--profile] [--yes]`.
+- **Fichiers principaux :** `mide/llm/downloader.py`, `mide/cli.py`, `tests/test_downloader.py`
+- **Tests :** 89 passés / 89 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/tender-pascal-unu180`)
+- **Décisions techniques :** no new dependency (urllib instead of huggingface_hub/requests); all downloads mocked via an injectable opener. Without `--yes`, `pull` asks interactively.
+- **Problèmes / dette technique :** `models.yaml` has no hash/size per model, so integrity relies on Content-Length unless hashes are added later. Branch stacked on W1-09 (PR #9). Tests run with `python3.13`.
+- **Prochaine tâche :** W2-02 — Runtime LLM local
+
+### 2026-11-13 — W1-09 Demo dataset
+- **Fait :** `scripts/make_demo_data.py` (`generate_demo_data(out_dir, seed)`): fictional SME with 2 years of sales (~14k orders), products, customers, monthly campaigns for 6 channels, 3 markdown documents (annual report, 2 meeting notes), and `anomalies.json`. Trend (+25%/yr), yearly seasonality (Dec peak, Aug dip), weekly pattern, 3 deliberate anomalies (2 drops, 1 spike), SMS as under-performing channel, P009 as flop product. Session-scoped `demo_data` fixture in `tests/conftest.py`.
+- **Fichiers principaux :** `scripts/make_demo_data.py`, `tests/test_demo_data.py`, `tests/conftest.py`
+- **Tests :** 81 passés / 81 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `task/W1-09-demo-data`)
+- **Décisions techniques :** fully seeded numpy generator, byte-identical output per seed. Test module loads the script by path since `scripts/` is not a package.
+- **Problèmes / dette technique :** branch stacked on W1-08 (PR #8). W1-08 tests still use an in-test table; could be switched to the demo data. Tests run with `python3.13` in this sandbox.
+- **Prochaine tâche :** W2-01 — Téléchargement et gestion des modèles
+
+### 2026-11-13 — W1-08 Catalog and data profiling
+- **Fait :** `ingestion/profiling.py` (column kind numeric/date/boolean/categorical/text, % missing, date detection incl. string dates, target candidates by FR/EN name keywords, ID columns excluded); `ingestion/catalog.py` (`build_catalog`: inventory of CSV/Excel sheets, SQL tables, documents across authorized sources only; unreadable items reported as errors, not fatal); `mide scan` command.
+- **Fichiers principaux :** `mide/ingestion/profiling.py`, `mide/ingestion/catalog.py`, `mide/cli.py`, `tests/test_ingestion.py`
+- **Tests :** 73 passés / 73 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `task/W1-08-catalog-profiling`)
+- **Décisions techniques :** profiling uses a sample of at most 5000 rows to bound memory; row counts come from connector metadata. Target candidates are name-based heuristics (keywords), refined later by the task detector (W3-01).
+- **Problèmes / dette technique :** the demo dataset (W1-09) does not exist yet, so tests use a synthetic in-test sales table; they should be switched to the demo data once W1-09 lands. Branch is stacked on W1-07 (PR #7). Tests run with `python3.13` in this sandbox.
+- **Prochaine tâche :** W1-09 — Jeu de données de démonstration
+
+### 2026-11-13 — W1-07 SQL connector
+- **Fait :** `connectors/sql.py` (`SQLConnector`): SQLAlchemy engine for SQLite/PostgreSQL/MySQL/SQL Server URLs, table discovery, schema + row count metadata, sample, chunked reads. Read-only enforced twice: statement validation (single SELECT/WITH only, comments/literals stripped) and SQLite `PRAGMA query_only`. Credentials via `${VAR}` placeholders in the URL, expanded only at connection time (the URL stored in `sources.yaml` holds no secret). URL must be an authorized source.
+- **Fichiers principaux :** `mide/connectors/sql.py`, `tests/test_sql.py`, `pyproject.toml` (added `SQLAlchemy`)
+- **Tests :** 66 passés / 66 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/tender-pascal-9f8ve5`)
+- **Décisions techniques :** keyword-based write blocking is conservative (e.g. a column named `copy` would be refused); the real guarantee for server databases is to use a read-only DB account. DB drivers (psycopg, pymysql, pyodbc) are not bundled to keep install light; users install the one they need.
+- **Problèmes / dette technique :** this branch is stacked on W1-06 (PR #6, not merged yet). Only SQLite is exercised in tests. In this sandbox `python` is 3.11 while deps are installed for `python3.13`.
+- **Prochaine tâche :** W1-08 — Catalogue et profilage des données
+
+### 2026-11-13 — W1-06 Document connectors (folders, TXT/MD, DOCX, PDF)
+- **Fait :** `connectors/files.py` (`DocumentConnector`): recursive walk of an authorized folder, extension filter, configurable max file size, TXT/MD (UTF-8 or Latin-1), DOCX (`python-docx`), PDF (`pypdf`); `read_all()` skips corrupted files with a log warning. `.txt` removed from the tabular connector (resolves W1-05 debt).
+- **Fichiers principaux :** `mide/connectors/files.py`, `mide/connectors/tabular.py`, `tests/test_files.py`, `pyproject.toml` (added `pypdf`, `python-docx`)
+- **Tests :** 51 passés / 51 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `task/W1-06-documents-connector`)
+- **Décisions techniques :** authorization is re-checked on every read; oversized files are skipped with a warning rather than failing the scan.
+- **Problèmes / dette technique :** the sandbox's system `cryptography` package was broken (missing `_cffi_backend`); fixed locally with `pip install --ignore-installed cryptography cffi`, not a repo issue. Max size is a constructor parameter; wiring it to `config.general.max_file_size_mb` is left for the ingestion step (W1-08).
+- **Prochaine tâche :** W1-07 — SQL connector
+
+### 2026-11-13 — W1-05 Tabular connector (CSV / Excel)
+- **Fait :** `connectors/tabular.py` (`TabularConnector`): CSV separator detection (`,` `;` tab `|`), encoding detection (UTF-8/BOM, else Latin-1), XLSX with every sheet exposed as `path::sheet`; authorization re-checked on every read.
+- **Fichiers principaux :** `mide/connectors/tabular.py`, `tests/test_tabular.py`, `pyproject.toml` (added `pandas`, `openpyxl`)
+- **Tests :** 44 passés / 44 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/tender-pascal-3xbahq`)
+- **Décisions techniques :** no `chardet` dependency (keeps install light): UTF-8 strict check with Latin-1 fallback is enough for FR/EN data. Files are never written to.
+- **Problèmes / dette technique :** `.txt` files are treated as CSV by this connector; W1-06 may need to carve them out for documents. Run tests with `python -m pytest`.
+- **Prochaine tâche :** W1-06 — Document connectors
 
 ### 2026-11-13 — W1-04 Connector interface + sources management
 - **Fait :** `connectors/base.py` (`BaseConnector` with `discover/read/metadata`, `is_authorized`/`ensure_authorized`, `SourceNotAuthorizedError`); `connectors/sources.py` (add/list/remove persisted in `sources.yaml`); CLI `mide sources add|list|remove` (`--config-dir` option for tests).

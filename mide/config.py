@@ -25,6 +25,8 @@ class _Strict(BaseModel):
 class GeneralConfig(_Strict):
     language: Literal["fr", "en"] = "fr"
     max_file_size_mb: int = Field(default=50, gt=0)
+    chunk_size: int = Field(default=800, gt=0)
+    chunk_overlap: int = Field(default=100, ge=0)
 
 
 class LLMSpec(_Strict):
