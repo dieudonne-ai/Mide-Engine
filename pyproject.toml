@@ -21,6 +21,7 @@ dependencies = [
     "openpyxl>=3.1",
     "pypdf>=4",
     "python-docx>=1",
+    "SQLAlchemy>=2",
 ]
 
 [project.optional-dependencies]

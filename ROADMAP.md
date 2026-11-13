@@ -38,7 +38,7 @@
   - Parcours récursif d'un dossier autorisé, filtrage par extension, taille max configurable.
   - ✅ Critères : tests sur petits fichiers de fixtures ; fichiers corrompus ignorés avec un log.
 
-- [ ] **W1-07 — Connecteur SQL**
+- [x] **W1-07 — Connecteur SQL**
   - SQLAlchemy : SQLite (tests), PostgreSQL, MySQL, SQL Server (via URL).
   - Lecture seule : découverte des tables, schéma, échantillon, lecture par chunks.
   - Identifiants via variables d'environnement.
