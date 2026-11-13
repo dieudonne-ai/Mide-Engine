@@ -78,7 +78,7 @@
   - Faux embedder déterministe pour les tests.
   - ✅ Critères : tests de dimension et de déterminisme.
 
-- [ ] **W2-04 — Chunking**
+- [x] **W2-04 — Chunking**
   - Découpage des documents (taille + chevauchement configurables).
   - Pour les tableaux : génération de résumés textuels (schéma + statistiques) indexables.
   - ✅ Critères : tests sur longueurs de chunks et métadonnées (source, page, ligne).

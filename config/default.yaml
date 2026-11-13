@@ -1,2 +1,4 @@
 language: fr          # fr | en
 max_file_size_mb: 50
+chunk_size: 800       # characters per chunk
+chunk_overlap: 100    # characters shared between consecutive chunks

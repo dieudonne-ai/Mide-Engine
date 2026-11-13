@@ -18,7 +18,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | Semaine | Tâches terminées | Statut |
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
-| S2 — LLM & RAG        | 3 / 7 | 🚧 en cours |
+| S2 — LLM & RAG        | 4 / 7 | 🚧 en cours |
 | S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W2-04 Chunking
+- **Fait :** `rag/chunking.py`: `chunk_text` (size + overlap, cuts on whitespace, metadata source/chunk_index/line_start/line_end/page), `chunk_pages` (page numbers), `summarize_table` (schema chunk + statistics chunk built from `profile_dataframe`). `chunk_size` / `chunk_overlap` added to `config/default.yaml` and `GeneralConfig`.
+- **Fichiers principaux :** `mide/rag/chunking.py`, `tests/test_chunking.py`, `mide/config.py`, `config/default.yaml`
+- **Tests :** 117 passés / 117 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/tender-pascal-c2d17s`)
+- **Décisions techniques :** character-based sizes (no tokenizer dependency); table summaries are capped at 30 columns to stay small on tiny machines.
+- **Problèmes / dette technique :** `DocumentConnector.read` returns joined PDF text, so page numbers are only available via `chunk_pages` (to be wired in W2-05). Branch stacked on W2-03. Environment note: system `cryptography` was broken for Python 3.11 in the sandbox; reinstalled locally, no repo change.
+- **Prochaine tâche :** W2-05 — Index vectoriel + indexation incrémentale
 
 ### 2026-11-13 — W2-03 Embeddings
 - **Fait :** `rag/embeddings.py`: `Embedder` protocol, `SentenceTransformerEmbedder` (lazy import, injectable loader, batched, normalised vectors), `FakeEmbedder` (deterministic hashed bag-of-words, unit norm), `embedding_model_for_profile` (reads `models.yaml`), `load_embedder` with batch size per profile (tiny 8 → large 64). `fake_embedder` fixture in `tests/conftest.py`.
