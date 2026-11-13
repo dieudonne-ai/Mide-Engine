@@ -42,7 +42,7 @@ Format de chaque entrée :
 ### 2026-11-13 — W2-06 Retriever + answers with sources
 - **Fait :** `rag/retriever.py` (`Retriever` top-k + source filter, `answer_question` returning text + numbered sources), `llm/prompts.py` (FR/EN grounded prompt with `[n]` citations, no-context message), `mide ask "question"` (`--source`, `--top-k`) which lists the cited sources after the answer.
 - **Fichiers principaux :** `mide/rag/retriever.py`, `mide/llm/prompts.py`, `mide/cli.py`, `tests/test_retriever.py`
-- **Tests :** 130 passés / 130 au total ; `ruff check .` OK
+- **Tests :** 131 passés / 131 au total ; `ruff check .` OK
 - **PR :** voir la PR vers `main`
 - **Décisions techniques :** if nothing is indexed, the LLM is not called and a clear message is returned (avoids hallucination). The cited sources are always listed by the code from the retrieved chunks, not trusted from the LLM output. Work done on the session branch `claude/clever-bell-5y0jak` (stacked on W2-05).
 - **Problèmes / dette technique :** `mide ask` loads models on each call (fine until `mide chat`, W2-07). CLI path with a real model is not tested (no downloads in tests).
