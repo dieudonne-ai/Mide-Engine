@@ -67,7 +67,7 @@
   - `mide models list`, `mide models pull`.
   - ✅ Critères : tests avec téléchargement mocké ; aucun téléchargement sans confirmation.
 
-- [ ] **W2-02 — Runtime LLM local**
+- [x] **W2-02 — Runtime LLM local**
   - `llm/runtime.py` : wrapper `llama-cpp-python` (contexte, threads selon CPU, offload GPU si dispo).
   - Interface `LLM.generate(prompt, max_tokens, temperature)` + version streaming.
   - Faux LLM (`FakeLLM`) pour les tests.

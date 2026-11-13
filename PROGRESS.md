@@ -18,7 +18,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | Semaine | Tâches terminées | Statut |
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
-| S2 — LLM & RAG        | 1 / 7 | 🚧 en cours |
+| S2 — LLM & RAG        | 2 / 7 | 🚧 en cours |
 | S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W2-02 Local LLM runtime
+- **Fait :** `llm/runtime.py`: `LLM` protocol (`generate`, `stream`), `LlamaCppLLM` wrapper (lazy `llama_cpp` import, injectable loader), `params_for_hardware` (context per profile, threads = cores-1, GPU offload only if a GPU exists), `FakeLLM`, `load_llm`. `fake_llm` fixture in `tests/conftest.py`.
+- **Fichiers principaux :** `mide/llm/runtime.py`, `tests/test_runtime.py`, `pyproject.toml`
+- **Tests :** 97 passés / 97 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/tender-pascal-kem5g6`)
+- **Décisions techniques :** `llama-cpp-python` added as optional extra `[llm]` (compiles from source, heavy) and imported lazily so the base install and tests stay light; a clear error points to the extra. Stack unchanged otherwise.
+- **Problèmes / dette technique :** real llama.cpp path is only tested through a mocked loader. Branch stacked on W2-01 (PR #10).
+- **Prochaine tâche :** W2-03 — Embeddings
 
 ### 2026-11-13 — W2-01 Model download and management
 - **Fait :** `llm/downloader.py` (`download_model`, `list_models`): stdlib `urllib` download from Hugging Face into `~/.mide/models/`, mandatory confirmation callback called before any byte is written, progress callback, `.part` file then atomic move, size check (Content-Length / expected) and optional SHA-256, cleanup on failure, path-traversal guard. CLI: `mide models list`, `mide models pull [--profile] [--yes]`.

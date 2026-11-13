@@ -20,3 +20,11 @@ def demo_data(tmp_path_factory):
     """Deterministic demo dataset (seed 42) shared by tests."""
     module = _load_demo_module()
     return module.generate_demo_data(tmp_path_factory.mktemp("demo"), seed=42)
+
+
+@pytest.fixture
+def fake_llm():
+    """A FakeLLM instance; never loads a real model."""
+    from mide.llm.runtime import FakeLLM
+
+    return FakeLLM()
