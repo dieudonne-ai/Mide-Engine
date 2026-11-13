@@ -7,9 +7,11 @@ from pathlib import Path
 import typer
 
 from mide import __version__
+from mide.config import ConfigError, load_config
 from mide.connectors.sources import add_source, list_sources, remove_source
 from mide.hardware.profiler import profile_hardware
 from mide.ingestion.catalog import build_catalog
+from mide.llm.downloader import DownloadError, download_model, list_models
 
 app = typer.Typer(help="MIDE Engine - local market intelligence engine.", no_args_is_help=True)
 
@@ -23,7 +25,9 @@ def _version_callback(value: bool) -> None:
 sources_app = typer.Typer(help="Manage authorized data sources.", no_args_is_help=True)
 app.add_typer(sources_app, name="sources")
 
-CONFIG_DIR_OPTION = typer.Option(None, "--config-dir", help="Config folder (default: repo config/).")
+CONFIG_DIR_OPTION = typer.Option(
+    None, "--config-dir", help="Config folder (default: repo config/)."
+)
 
 
 @sources_app.command("add")
@@ -74,6 +78,67 @@ def scan(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
                 typer.echo(f"    date columns: {', '.join(entry.profile.date_columns)}")
             if entry.profile.target_candidates:
                 typer.echo(f"    target candidates: {', '.join(entry.profile.target_candidates)}")
+
+
+models_app = typer.Typer(help="Manage local LLM weights.", no_args_is_help=True)
+app.add_typer(models_app, name="models")
+
+
+def _fmt_size(size: int | None) -> str:
+    return "?" if size is None else f"{size / 1e9:.2f} GB"
+
+
+@models_app.command("list")
+def models_list(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """List the models of each hardware profile and whether they are installed."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    for info in list_models(cfg.models.profiles, cfg.app_dir / "models"):
+        state = "installed" if info.installed else "not installed"
+        typer.echo(f"{info.profile}: {info.repo}/{info.file} [{state}]")
+
+
+@models_app.command("pull")
+def models_pull(
+    profile: str | None = typer.Option(None, help="Profile (default: detected)."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Confirm the download."),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Download the model of a profile (asks for confirmation first)."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    name = profile or profile_hardware().profile
+    models = cfg.models.profiles.get(name)  # type: ignore[call-overload]
+    if models is None:
+        typer.echo(f"Error: no model configured for profile '{name}'.", err=True)
+        raise typer.Exit(1)
+
+    def confirm(url: str, size: int | None) -> bool:
+        if yes:
+            return True
+        return typer.confirm(f"Download {url} ({_fmt_size(size)}) from the internet?")
+
+    last = {"pct": -1}
+
+    def progress(done: int, total: int | None) -> None:
+        if total:
+            pct = done * 100 // total
+            if pct // 10 != last["pct"] // 10:
+                typer.echo(f"  {pct}%")
+            last["pct"] = pct
+
+    try:
+        path = download_model(models.llm, cfg.app_dir / "models", confirm, progress=progress)
+    except DownloadError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Model ready: {path}")
 
 
 @app.callback()

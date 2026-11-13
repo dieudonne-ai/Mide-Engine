@@ -61,7 +61,7 @@
 
 ## Semaine 2 — Cerveau langage et mémoire (RAG)
 
-- [ ] **W2-01 — Téléchargement et gestion des modèles**
+- [x] **W2-01 — Téléchargement et gestion des modèles**
   - `llm/downloader.py` : télécharge le modèle GGUF du profil (depuis `models.yaml`)
     dans `~/.mide/models/`, avec confirmation, barre de progression, vérification de taille/hash.
   - `mide models list`, `mide models pull`.
