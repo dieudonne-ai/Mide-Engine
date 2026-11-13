@@ -17,7 +17,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 
 | Semaine | Tâches terminées | Statut |
 |---------|------------------|--------|
-| S1 — Fondations       | 3 / 9 | 🚧 en cours |
+| S1 — Fondations       | 4 / 9 | 🚧 en cours |
 | S2 — LLM & RAG        | 0 / 7 | ⏳ pas commencé |
 | S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W1-04 Connector interface + sources management
+- **Fait :** `connectors/base.py` (`BaseConnector` with `discover/read/metadata`, `is_authorized`/`ensure_authorized`, `SourceNotAuthorizedError`); `connectors/sources.py` (add/list/remove persisted in `sources.yaml`); CLI `mide sources add|list|remove` (`--config-dir` option for tests).
+- **Fichiers principaux :** `mide/connectors/base.py`, `mide/connectors/sources.py`, `mide/cli.py`, `tests/test_connectors_base.py`
+- **Tests :** 35 passés / 35 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/tender-pascal-44v6yu`)
+- **Décisions techniques :** paths are resolved (symlinks, `..`) before the authorization check, so escapes are refused; a folder source authorizes its contents only (not sibling folders with the same prefix); SQL URLs must match exactly; URLs containing an inline password are rejected (credentials must come from env vars, per CLAUDE.md).
+- **Problèmes / dette technique :** `sources.yaml` rewrite drops user comments except the header. The routine's branch is `claude/...` instead of `task/W1-04-...` (imposed by the environment).
+- **Prochaine tâche :** W1-05 — Tabular connector (CSV / Excel)
 
 ### 2026-11-13 — W1-03 Hardware profiler
 - **Fait :** `mide/hardware/profiler.py` (RAM, CPU cores, OS, GPU via `nvidia-smi`, free disk, `choose_profile` per CLAUDE.md §3); `mide doctor` now prints "OK" plus the hardware report and chosen profile.
