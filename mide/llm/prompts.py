@@ -19,8 +19,10 @@ _SYSTEM = {
     ),
 }
 _LABELS = {
-    "fr": {"excerpts": "Extraits", "question": "Question", "answer": "Réponse", "none": "(aucun extrait)"},
-    "en": {"excerpts": "Excerpts", "question": "Question", "answer": "Answer", "none": "(no excerpt)"},
+    "fr": {"excerpts": "Extraits", "question": "Question", "answer": "Réponse", "none": "(aucun extrait)",
+           "history": "Conversation précédente"},
+    "en": {"excerpts": "Excerpts", "question": "Question", "answer": "Answer", "none": "(no excerpt)",
+           "history": "Previous conversation"},
 }
 
 
@@ -33,13 +35,16 @@ def format_passages(passages: Sequence[Passage]) -> str:
     return "\n\n".join(f"[{p.number}] ({p.citation})\n{p.text}" for p in passages)
 
 
-def build_rag_prompt(question: str, passages: Sequence[Passage], language: str = "fr") -> str:
-    """Build the full prompt sent to the LLM."""
+def build_rag_prompt(
+    question: str, passages: Sequence[Passage], language: str = "fr", history: str = ""
+) -> str:
+    """Build the full prompt sent to the LLM (``history`` = rendered previous turns)."""
     lang = _lang(language)
     labels = _LABELS[lang]
     context = format_passages(passages) or labels["none"]
+    past = f"{labels['history']}:\n{history}\n\n" if history else ""
     return (
-        f"{_SYSTEM[lang]}\n\n{labels['excerpts']}:\n{context}\n\n"
+        f"{_SYSTEM[lang]}\n\n{labels['excerpts']}:\n{context}\n\n{past}"
         f"{labels['question']}: {question}\n{labels['answer']}:"
     )
 

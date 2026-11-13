@@ -18,7 +18,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | Semaine | Tâches terminées | Statut |
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
-| S2 — LLM & RAG        | 6 / 7 | 🚧 en cours |
+| S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
 | S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W2-07 Conversation mode
+- **Fait :** `llm/chat.py` (`ChatHistory`: keeps the last N turns within a character budget, cuts an oversized single turn instead of dropping it). `build_rag_prompt` accepts a rendered history (FR/EN "previous conversation" section). `mide chat [--source] [--top-k]`: interactive loop, fresh retrieval at each turn, sources listed after each answer, `exit`/`/clear` commands, EOF-safe.
+- **Fichiers principaux :** `mide/llm/chat.py`, `mide/llm/prompts.py`, `mide/cli.py`, `tests/test_chat.py`
+- **Tests :** 136 passés / 136 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-6vo1y7`, empilée sur W2-06 / PR #18)
+- **Décisions techniques :** defaults of 3 turns / 1500 chars keep the prompt within the `tiny` profile 2048-token context. Retrieval uses only the current question (no query rewriting with history) to stay simple and predictable; follow-up questions that rely on pronouns may retrieve poorly.
+- **Problèmes / dette technique :** no query rewriting for follow-ups; no streaming output yet (`LLM.stream` exists). Work done on the session branch because pushes are restricted to it.
+- **Prochaine tâche :** W3-01 — Détection du type de tâche
 
 ### 2026-11-13 — W2-06 Retriever + answers with sources
 - **Fait :** `rag/retriever.py` (`Retriever`: top-k, optional per-item filter, numbered `Passage` with human-readable citation: file, table, page, lines). `llm/prompts.py` (FR/EN RAG prompt with numbered excerpts, sources footer). `mide ask "question" [--source] [--top-k]`: retrieves, prompts the local LLM, prints the answer then the cited sources. Clear errors for an empty index or a missing model.

@@ -11,6 +11,7 @@ from mide.config import Config, ConfigError, load_config
 from mide.connectors.sources import add_source, list_sources, remove_source
 from mide.hardware.profiler import profile_hardware
 from mide.ingestion.catalog import build_catalog
+from mide.llm.chat import ChatHistory
 from mide.llm.downloader import DownloadError, download_model, list_models, model_path
 from mide.llm.prompts import build_rag_prompt, sources_footer
 from mide.llm.runtime import LLM, load_llm
@@ -222,6 +223,55 @@ def ask_command(
     footer = sources_footer(passages)
     if footer:
         typer.echo("\n" + footer)
+
+
+@app.command("chat")
+def chat_command(
+    source: str | None = typer.Option(None, help="Restrict to one indexed source."),
+    top_k: int = typer.Option(5, "--top-k", "-k", min=1, help="Number of excerpts."),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Interactive conversation over the indexed data (type `exit` to quit)."""
+    try:
+        cfg = load_config(config_dir)
+        store = VectorStore(cfg.app_dir / "index")
+        if store.count() == 0:
+            typer.echo(
+                "Index vide. Lancez `mide index`." if cfg.language == "fr"
+                else "Empty index. Run `mide index`."
+            )
+            raise typer.Exit(1)
+        retriever = Retriever(store, _get_embedder(cfg), top_k)
+        llm = _get_llm(cfg)
+    except (ConfigError, DownloadError) as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    history = ChatHistory()
+    typer.echo(
+        "Posez vos questions (`exit` pour quitter, `/clear` pour oublier)."
+        if cfg.language == "fr"
+        else "Ask your questions (`exit` to quit, `/clear` to forget)."
+    )
+    while True:
+        try:
+            question = input("> ").strip()
+        except EOFError:
+            break
+        if question.lower() in {"exit", "quit", "/exit", "/quit"}:
+            break
+        if question == "/clear":
+            history.clear()
+            continue
+        if not question:
+            continue
+        passages = retriever.retrieve(question, source=source)
+        prompt = build_rag_prompt(question, passages, cfg.language, history.render(cfg.language))
+        answer = llm.generate(prompt, max_tokens=512, temperature=0.2).strip()
+        history.add(question, answer)
+        typer.echo(answer)
+        footer = sources_footer(passages)
+        if footer:
+            typer.echo("\n" + footer)
 
 
 @app.callback()
