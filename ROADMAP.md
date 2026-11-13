@@ -102,7 +102,7 @@
 
 ## Semaine 3 — Intelligence business (entraînement automatique)
 
-- [ ] **W3-01 — Détection du type de tâche**
+- [x] **W3-01 — Détection du type de tâche**
   - `automl/task_detector.py` : pour un dataset + une cible, déterminer
     régression / classification / série temporelle.
   - ✅ Critères : tests sur les 3 cas avec le jeu de démo.

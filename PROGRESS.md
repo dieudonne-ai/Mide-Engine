@@ -19,7 +19,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
-| S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
+| S3 — Intelligence     | 1 / 9 | 🔄 en cours |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
 ---
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W3-01 Task type detection
+- **Fait :** `automl/task_detector.py` with `detect_task(df, target, date_column=None)` returning a `TaskInfo` (task, target, date column, reason). Classification for non-numeric/boolean/low-cardinality integer targets; time series for a numeric target with a date column where rows are ~one per period (or when `date_column` is given explicitly); regression otherwise. Clear `ValueError` for unknown target/date column or empty target.
+- **Fichiers principaux :** `mide/automl/task_detector.py`, `tests/test_task_detector.py`
+- **Tests :** 140 passés / 140 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-cwmwoi`)
+- **Décisions techniques :** transactional data (many rows per date, e.g. demo sales) is regression; callers aggregate by date first (or pass `date_column`) to get a time series. Thresholds are module constants.
+- **Problèmes / dette technique :** a daily-aggregation helper will be needed in W3-02/W3-04. Demo script emits a pandas `dayofweek` deprecation warning (harmless).
+- **Prochaine tâche :** W3-02 — Entraîneur AutoML
 
 ### 2026-11-13 — W2-07 Chat mode
 - **Fait :** `mide chat` interactive loop (`exit`/`quit`/EOF to leave, `/reset` clears history, `--max-turns`, `--top-k`). `ChatSession` in `rag/retriever.py` keeps only the last `max_turns` turns; history is injected in the prompt (`History:` / `Historique:` block). Model loading factored into `_load_models` shared with `mide ask`.
