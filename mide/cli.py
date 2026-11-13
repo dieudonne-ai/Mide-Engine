@@ -9,6 +9,7 @@ import typer
 from mide import __version__
 from mide.connectors.sources import add_source, list_sources, remove_source
 from mide.hardware.profiler import profile_hardware
+from mide.ingestion.catalog import build_catalog
 
 app = typer.Typer(help="MIDE Engine - local market intelligence engine.", no_args_is_help=True)
 
@@ -53,6 +54,26 @@ def sources_remove(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> 
         typer.echo(f"Error: source not listed: {source}", err=True)
         raise typer.Exit(1)
     typer.echo(f"Source removed: {source}")
+
+
+@app.command()
+def scan(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """Show the catalog of datasets found in the authorized sources."""
+    sources = list_sources(config_dir)
+    if not sources:
+        typer.echo("No authorized sources. Use `mide sources add`.")
+        return
+    for entry in build_catalog(sources):
+        if entry.error:
+            typer.echo(f"[error] {entry.item}: {entry.error}")
+            continue
+        size = "" if entry.rows is None else f" - {entry.rows} rows x {entry.n_columns} cols"
+        typer.echo(f"[{entry.kind}] {entry.item}{size}")
+        if entry.profile:
+            if entry.profile.date_columns:
+                typer.echo(f"    date columns: {', '.join(entry.profile.date_columns)}")
+            if entry.profile.target_candidates:
+                typer.echo(f"    target candidates: {', '.join(entry.profile.target_candidates)}")
 
 
 @app.callback()

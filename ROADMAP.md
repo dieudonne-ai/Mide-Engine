@@ -44,7 +44,7 @@
   - Identifiants via variables d'environnement.
   - ✅ Critères : tests sur une base SQLite de fixtures ; toute requête d'écriture est bloquée.
 
-- [ ] **W1-08 — Catalogue et profilage des données**
+- [x] **W1-08 — Catalogue et profilage des données**
   - `ingestion/catalog.py` : inventaire de tous les datasets (source, type, lignes, colonnes).
   - `ingestion/profiling.py` : types de colonnes, % de valeurs manquantes, colonnes date,
     colonnes numériques candidates comme cible (ventes, montant, quantité…).
