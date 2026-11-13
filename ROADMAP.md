@@ -12,7 +12,7 @@
   - CLI Typer minimale : `mide --version`, `mide doctor` (affiche « OK »).
   - ✅ Critères : `pip install -e .` fonctionne, `mide --version` répond, `pytest` passe.
 
-- [ ] **W1-02 — Configuration**
+- [x] **W1-02 — Configuration**
   - `config.py` avec pydantic : charge `config/default.yaml`, `models.yaml`, `sources.yaml`.
   - Dossier de l'app `~/.mide/` créé automatiquement (`utils/paths.py`).
   - Paramètre `language: fr|en`.

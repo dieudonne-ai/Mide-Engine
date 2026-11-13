@@ -1,1 +1,2 @@
+# Authorized data sources. Nothing outside this list is ever read.
 sources: []
