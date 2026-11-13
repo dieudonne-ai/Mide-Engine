@@ -18,7 +18,7 @@
   - Paramètre `language: fr|en`.
   - ✅ Critères : config invalide → erreur claire ; tests sur chargement et valeurs par défaut.
 
-- [ ] **W1-03 — Profiler matériel**
+- [x] **W1-03 — Profiler matériel**
   - `hardware/profiler.py` : RAM, cœurs CPU, OS, GPU (nom + VRAM si dispo), espace disque libre.
   - Choix du profil `tiny|small|medium|large` selon le tableau de `CLAUDE.md` §3.
   - `mide doctor` affiche le rapport matériel et le profil choisi.
