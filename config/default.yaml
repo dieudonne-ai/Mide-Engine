@@ -1,0 +1,2 @@
+language: fr          # fr | en
+max_file_size_mb: 50
