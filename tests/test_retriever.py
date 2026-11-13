@@ -61,3 +61,46 @@ def test_ask_cli_without_model(tmp_path, monkeypatch):
     result = CliRunner().invoke(app, ["ask", "hello"])
     assert result.exit_code == 1
     assert "model not installed" in result.output
+
+
+def test_chat_history_is_truncated_and_used_in_prompt(retriever):
+    from mide.rag.retriever import ChatSession
+
+    prompts: list[str] = []
+    llm = FakeLLM(lambda p: prompts.append(p) or f"answer {len(prompts)}")
+    session = ChatSession(retriever, llm, "en", max_turns=2)
+    for i in range(4):
+        session.ask(f"marketing budget question {i}")
+    assert len(session.history) == 2
+    assert [q for q, _ in session.history] == [
+        "marketing budget question 2", "marketing budget question 3"
+    ]
+    assert "marketing budget question 2" in prompts[-1]
+    assert "marketing budget question 0" not in prompts[-1]
+    assert "History:" not in prompts[0]
+    session.reset()
+    assert session.history == []
+
+
+def test_chat_command_loop(retriever):
+    from mide.rag.retriever import ChatSession
+
+    session = ChatSession(retriever, FakeLLM(lambda p: "Budget is 5000 [1]."), "en")
+    result = CliRunner().invoke(_chat_app(session), input="marketing budget\n/reset\nexit\n")
+    assert "Budget is 5000" in result.output
+    assert "Sources" in result.output
+    assert session.history == []
+
+
+def _chat_app(session):
+    import typer
+
+    from mide.cli import run_chat
+
+    test_app = typer.Typer()
+
+    @test_app.command()
+    def go() -> None:
+        run_chat(session)
+
+    return test_app

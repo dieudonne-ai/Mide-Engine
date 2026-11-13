@@ -16,7 +16,7 @@ from mide.llm.prompts import SOURCES_LABEL
 from mide.llm.runtime import load_llm
 from mide.rag.embeddings import load_embedder
 from mide.rag.indexer import index_sources
-from mide.rag.retriever import Retriever, answer_question
+from mide.rag.retriever import ChatSession, Retriever, answer_question
 from mide.rag.store import VectorStore
 
 app = typer.Typer(help="MIDE Engine - local market intelligence engine.", no_args_is_help=True)
@@ -120,6 +120,21 @@ def index(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
         typer.echo(f"[error] {item}: {err}")
 
 
+def _load_models(cfg):  # type: ignore[no-untyped-def]
+    """Load the embedder and LLM for this machine's profile, or exit with a clear error."""
+    report = profile_hardware()
+    models = cfg.models.profiles.get(report.profile)
+    path = model_path(cfg.app_dir / "models", models.llm) if models else None
+    if path is None or not path.is_file():
+        typer.echo("Error: model not installed. Run `mide models pull`.", err=True)
+        raise typer.Exit(1)
+    try:
+        return load_embedder(cfg, report.profile), load_llm(path, report)
+    except Exception as exc:  # missing optional dependency or model
+        typer.echo(f"Error: cannot load the models: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+
 @app.command()
 def ask(
     question: str = typer.Argument(..., help="Question to ask about your indexed data."),
@@ -133,18 +148,7 @@ def ask(
     except ConfigError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
-    report = profile_hardware()
-    models = cfg.models.profiles.get(report.profile)  # type: ignore[call-overload]
-    path = model_path(cfg.app_dir / "models", models.llm) if models else None
-    if path is None or not path.is_file():
-        typer.echo("Error: model not installed. Run `mide models pull`.", err=True)
-        raise typer.Exit(1)
-    try:
-        embedder = load_embedder(cfg, report.profile)
-        llm = load_llm(path, report)
-    except Exception as exc:  # missing optional dependency or model
-        typer.echo(f"Error: cannot load the models: {exc}", err=True)
-        raise typer.Exit(1) from exc
+    embedder, llm = _load_models(cfg)
     retriever = Retriever(VectorStore(cfg.app_dir / "index"), embedder, k=top_k)
     answer = answer_question(question, retriever, llm, cfg.language, source=source)
     typer.echo(answer.text)
@@ -156,6 +160,47 @@ def ask(
 
 models_app = typer.Typer(help="Manage local LLM weights.", no_args_is_help=True)
 app.add_typer(models_app, name="models")
+
+
+@app.command()
+def chat(
+    top_k: int = typer.Option(5, "--top-k", min=1, help="Number of excerpts retrieved."),
+    max_turns: int = typer.Option(4, "--max-turns", min=1, help="Turns kept as history."),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Interactive conversation over the indexed data (type `exit` to quit)."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    embedder, llm = _load_models(cfg)
+    retriever = Retriever(VectorStore(cfg.app_dir / "index"), embedder, k=top_k)
+    run_chat(ChatSession(retriever, llm, cfg.language, max_turns))
+
+
+def run_chat(session: ChatSession) -> None:
+    """Read questions from stdin until `exit`/`quit`/EOF; `/reset` clears the history."""
+    label = SOURCES_LABEL.get(session.language, "Sources")
+    while True:
+        try:
+            question = typer.prompt(">", prompt_suffix=" ", default="", show_default=False)
+        except (EOFError, typer.Abort):
+            break
+        question = question.strip()
+        if question.lower() in {"exit", "quit"}:
+            break
+        if question == "/reset":
+            session.reset()
+            continue
+        if not question:
+            continue
+        answer = session.ask(question)
+        typer.echo(answer.text)
+        if answer.sources:
+            typer.echo(f"\n{label}:")
+            for line in answer.sources:
+                typer.echo(f"  {line}")
 
 
 def _fmt_size(size: int | None) -> str:

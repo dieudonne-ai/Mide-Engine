@@ -94,7 +94,7 @@
   - Prompts dans `llm/prompts.py`, FR/EN.
   - ✅ Critères : test bout-en-bout avec FakeLLM/FakeEmbedder ; les sources sont citées.
 
-- [ ] **W2-07 — Mode conversation**
+- [x] **W2-07 — Mode conversation**
   - `mide chat` : boucle interactive avec historique court.
   - ✅ Critères : test de la gestion d'historique (troncature).
 

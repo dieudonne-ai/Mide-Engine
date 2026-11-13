@@ -40,9 +40,31 @@ def format_source(metadata: dict) -> str:
     return label
 
 
-def build_rag_prompt(question: str, passages: Sequence[tuple[str, dict]], language: str) -> str:
+HISTORY_LABEL = {"fr": "Historique", "en": "History"}
+ROLE_LABEL = {"fr": ("Utilisateur", "Assistant"), "en": ("User", "Assistant")}
+
+
+def format_history(turns: Sequence[tuple[str, str]], language: str) -> str:
+    """Render ``(question, answer)`` turns as a short transcript."""
+    user, assistant = ROLE_LABEL[_lang(language)]
+    return "\n".join(f"{user}: {q}\n{assistant}: {a}" for q, a in turns)
+
+
+def build_rag_prompt(
+    question: str,
+    passages: Sequence[tuple[str, dict]],
+    language: str,
+    history: Sequence[tuple[str, str]] = (),
+) -> str:
     """Build a prompt with numbered excerpts so the model can cite ``[n]``."""
     lang = _lang(language)
+    if history:
+        hist = f"{HISTORY_LABEL[lang]}:\n{format_history(history, lang)}\n\n"
+        blocks = [f"[{i}] ({format_source(m)})\n{t}" for i, (t, m) in enumerate(passages, 1)]
+        return (
+            f"{SYSTEM[lang]}\n\n{CONTEXT_LABEL[lang]}:\n" + "\n\n".join(blocks)
+            + f"\n\n{hist}{QUESTION_LABEL[lang]}: {question}\n{ANSWER_LABEL[lang]}:"
+        )
     blocks = [f"[{i}] ({format_source(meta)})\n{text}" for i, (text, meta) in enumerate(passages, 1)]
     return (
         f"{SYSTEM[lang]}\n\n{CONTEXT_LABEL[lang]}:\n" + "\n\n".join(blocks)

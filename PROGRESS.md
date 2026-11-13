@@ -18,7 +18,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | Semaine | Tâches terminées | Statut |
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
-| S2 — LLM & RAG        | 6 / 7 | 🚧 en cours |
+| S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
 | S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W2-07 Chat mode
+- **Fait :** `mide chat` interactive loop (`exit`/`quit`/EOF to leave, `/reset` clears history, `--max-turns`, `--top-k`). `ChatSession` in `rag/retriever.py` keeps only the last `max_turns` turns; history is injected in the prompt (`History:` / `Historique:` block). Model loading factored into `_load_models` shared with `mide ask`.
+- **Fichiers principaux :** `mide/rag/retriever.py`, `mide/llm/prompts.py`, `mide/cli.py`, `tests/test_retriever.py`
+- **Tests :** 133 passés / 133 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `task/W2-07-chat`)
+- **Décisions techniques :** retrieval uses the current question only (no query rewriting from history) to keep it simple and cheap on small machines.
+- **Problèmes / dette technique :** follow-up questions like "and last year?" may retrieve poorly. Sandbox needed a venv with `pip install -e ".[dev]"` and `python -m pytest` (bare `pytest` fails on `tests` import); no repo change.
+- **Prochaine tâche :** W3-01 — Détection du type de tâche
 
 ### 2026-11-13 — W2-06 Retriever + answers with sources
 - **Fait :** `rag/retriever.py` (`Retriever` top-k + source filter, `answer_question` returning text + numbered sources), `llm/prompts.py` (FR/EN grounded prompt with `[n]` citations, no-context message), `mide ask "question"` (`--source`, `--top-k`) which lists the cited sources after the answer.
