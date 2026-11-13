@@ -12,6 +12,9 @@ from mide.connectors.sources import add_source, list_sources, remove_source
 from mide.hardware.profiler import profile_hardware
 from mide.ingestion.catalog import build_catalog
 from mide.llm.downloader import DownloadError, download_model, list_models
+from mide.rag.embeddings import load_embedder
+from mide.rag.indexer import index_sources
+from mide.rag.store import VectorStore
 
 app = typer.Typer(help="MIDE Engine - local market intelligence engine.", no_args_is_help=True)
 
@@ -78,6 +81,40 @@ def scan(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
                 typer.echo(f"    date columns: {', '.join(entry.profile.date_columns)}")
             if entry.profile.target_candidates:
                 typer.echo(f"    target candidates: {', '.join(entry.profile.target_candidates)}")
+
+
+@app.command()
+def index(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """Index authorized sources (only new or modified items are processed)."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if not cfg.sources.sources:
+        typer.echo("No authorized sources. Use `mide sources add`.")
+        return
+    try:
+        embedder = load_embedder(cfg, profile_hardware().profile)
+    except Exception as exc:  # missing optional dependency or model
+        typer.echo(f"Error: cannot load the embedding model: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    store = VectorStore(cfg.app_dir / "index")
+    report = index_sources(
+        cfg.sources.sources,
+        store,
+        embedder,
+        cfg.app_dir / "index" / "manifest.json",
+        cfg.general.chunk_size,
+        cfg.general.chunk_overlap,
+        cfg.general.max_file_size_mb,
+    )
+    typer.echo(
+        f"Indexed {len(report.indexed_items)} item(s), {report.new_chunks} new chunk(s); "
+        f"{len(report.skipped_items)} unchanged, {len(report.removed_items)} removed."
+    )
+    for item, err in report.errors.items():
+        typer.echo(f"[error] {item}: {err}")
 
 
 models_app = typer.Typer(help="Manage local LLM weights.", no_args_is_help=True)

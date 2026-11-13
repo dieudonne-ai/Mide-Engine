@@ -22,6 +22,7 @@ dependencies = [
     "pypdf>=4",
     "python-docx>=1",
     "SQLAlchemy>=2",
+    "chromadb>=0.5",
 ]
 
 [project.optional-dependencies]
