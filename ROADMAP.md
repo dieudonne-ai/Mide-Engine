@@ -88,7 +88,7 @@
   - `mide index` : n'indexe que les fichiers nouveaux ou modifiés (hash + date).
   - ✅ Critères : test : réindexation sans changement → 0 nouveau chunk.
 
-- [ ] **W2-06 — Retriever + réponses avec sources**
+- [x] **W2-06 — Retriever + réponses avec sources**
   - `rag/retriever.py` : top-k + filtrage par source.
   - `mide ask "question"` : RAG + LLM, réponse avec citations des sources.
   - Prompts dans `llm/prompts.py`, FR/EN.

@@ -11,9 +11,12 @@ from mide.config import ConfigError, load_config
 from mide.connectors.sources import add_source, list_sources, remove_source
 from mide.hardware.profiler import profile_hardware
 from mide.ingestion.catalog import build_catalog
-from mide.llm.downloader import DownloadError, download_model, list_models
+from mide.llm.downloader import DownloadError, download_model, list_models, model_path
+from mide.llm.prompts import SOURCES_LABEL
+from mide.llm.runtime import load_llm
 from mide.rag.embeddings import load_embedder
 from mide.rag.indexer import index_sources
+from mide.rag.retriever import Retriever, answer_question
 from mide.rag.store import VectorStore
 
 app = typer.Typer(help="MIDE Engine - local market intelligence engine.", no_args_is_help=True)
@@ -115,6 +118,40 @@ def index(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     )
     for item, err in report.errors.items():
         typer.echo(f"[error] {item}: {err}")
+
+
+@app.command()
+def ask(
+    question: str = typer.Argument(..., help="Question to ask about your indexed data."),
+    source: str | None = typer.Option(None, help="Restrict retrieval to one source."),
+    top_k: int = typer.Option(5, "--top-k", min=1, help="Number of excerpts retrieved."),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Answer a question from the indexed data, citing the sources."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    report = profile_hardware()
+    models = cfg.models.profiles.get(report.profile)  # type: ignore[call-overload]
+    path = model_path(cfg.app_dir / "models", models.llm) if models else None
+    if path is None or not path.is_file():
+        typer.echo("Error: model not installed. Run `mide models pull`.", err=True)
+        raise typer.Exit(1)
+    try:
+        embedder = load_embedder(cfg, report.profile)
+        llm = load_llm(path, report)
+    except Exception as exc:  # missing optional dependency or model
+        typer.echo(f"Error: cannot load the models: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    retriever = Retriever(VectorStore(cfg.app_dir / "index"), embedder, k=top_k)
+    answer = answer_question(question, retriever, llm, cfg.language, source=source)
+    typer.echo(answer.text)
+    if answer.sources:
+        typer.echo(f"\n{SOURCES_LABEL.get(cfg.language, 'Sources')}:")
+        for line in answer.sources:
+            typer.echo(f"  {line}")
 
 
 models_app = typer.Typer(help="Manage local LLM weights.", no_args_is_help=True)
