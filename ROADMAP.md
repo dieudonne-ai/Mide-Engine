@@ -119,7 +119,7 @@
   - `mide train --dataset X --target Y`, `mide models trained`.
   - ✅ Critères : tests de sauvegarde/chargement.
 
-- [ ] **W3-04 — Module ventes**
+- [x] **W3-04 — Module ventes**
   - `business/sales.py` : prévision 30/60/90 jours, top/flop produits, tendances, saisonnalité.
   - ✅ Critères : sur le jeu de démo, détecte la saisonnalité générée.
 

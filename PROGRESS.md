@@ -19,7 +19,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
-| S3 — Intelligence     | 3 / 9 | 🔄 en cours |
+| S3 — Intelligence     | 4 / 9 | 🔄 en cours |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
 ---
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W3-04 Sales module
+- **Fait :** `business/sales.py`: `forecast_sales` (30/60/90-day forecast: linear trend + weekday + yearly Fourier terms by least squares, anomalous days >3 sigma excluded from the fit, growth vs previous period), `product_ranking` (top/flop with revenue share), `sales_trend` (monthly totals, last-3-months and YoY growth, direction), `detect_seasonality` (monthly/weekday indices after detrending, peak/trough, yearly seasonality flag).
+- **Fichiers principaux :** `mide/business/sales.py`, `tests/test_sales.py`
+- **Tests :** 168 passés / 168 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-nu3qlz`, empilée sur W3-03 / PR #25)
+- **Décisions techniques :** numpy least squares instead of statsmodels/Prophet (no new dependency, fast on `tiny`). Column names default to `date`/`amount`/`product_id`, overridable. Partial last month ignored in trend.
+- **Problèmes / dette technique :** no prediction intervals; one yearly harmonic only; not yet wired into the CLI (planned with the agent, W3-08).
+- **Prochaine tâche :** W3-05 — Module clients
 
 ### 2026-11-13 — W3-03 Evaluation + model registry
 - **Fait :** `automl/evaluator.py`: `evaluate(model, df)` (regression/time series: MAE, MAPE, RMSE, R2; classification: accuracy, macro-F1, AUC binary/OvR) and `feature_importance`. `automl/registry.py`: versioned save/load/list in `~/.mide/models_trained/<name>/vN/` (joblib model + `metadata.json` with task, target, CV metrics, baseline, top features). CLI: `mide train --dataset X --target Y` (authorized sources only) and `mide models trained`.
