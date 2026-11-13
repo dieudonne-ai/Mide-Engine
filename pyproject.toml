@@ -17,10 +17,18 @@ dependencies = [
     "pydantic>=2",
     "pyyaml>=6",
     "psutil>=5.9",
+    "pandas>=2",
+    "openpyxl>=3.1",
+    "pypdf>=4",
+    "python-docx>=1",
+    "SQLAlchemy>=2",
+    "chromadb>=0.5",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10", "types-PyYAML"]
+llm = ["llama-cpp-python>=0.2"]
+rag = ["sentence-transformers>=3"]
 finetune = ["torch", "transformers", "peft"]
 
 [project.scripts]
