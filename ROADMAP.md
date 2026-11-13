@@ -30,7 +30,7 @@
   - Les sources sont enregistrées dans `sources.yaml`. Rien n'est lu sans y figurer.
   - ✅ Critères : test vérifiant qu'un fichier hors source autorisée est refusé.
 
-- [ ] **W1-05 — Connecteur tabulaire (CSV / Excel)**
+- [x] **W1-05 — Connecteur tabulaire (CSV / Excel)**
   - Lecture CSV (détection séparateur/encodage) et XLSX (toutes les feuilles).
   - ✅ Critères : tests sur fixtures CSV `,` et `;`, UTF-8 et Latin-1, Excel multi-feuilles.
 
