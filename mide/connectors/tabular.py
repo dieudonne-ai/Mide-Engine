@@ -10,7 +10,7 @@ import pandas as pd
 
 from mide.connectors.base import BaseConnector, ensure_authorized
 
-CSV_EXTENSIONS = {".csv", ".tsv", ".txt"}
+CSV_EXTENSIONS = {".csv", ".tsv"}
 EXCEL_EXTENSIONS = {".xlsx", ".xlsm"}
 SUPPORTED_EXTENSIONS = CSV_EXTENSIONS | EXCEL_EXTENSIONS
 SEPARATORS = [",", ";", "\t", "|"]

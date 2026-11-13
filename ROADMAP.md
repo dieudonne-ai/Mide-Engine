@@ -34,7 +34,7 @@
   - Lecture CSV (détection séparateur/encodage) et XLSX (toutes les feuilles).
   - ✅ Critères : tests sur fixtures CSV `,` et `;`, UTF-8 et Latin-1, Excel multi-feuilles.
 
-- [ ] **W1-06 — Connecteurs documents (dossiers, TXT/MD, DOCX, PDF)**
+- [x] **W1-06 — Connecteurs documents (dossiers, TXT/MD, DOCX, PDF)**
   - Parcours récursif d'un dossier autorisé, filtrage par extension, taille max configurable.
   - ✅ Critères : tests sur petits fichiers de fixtures ; fichiers corrompus ignorés avec un log.
 
