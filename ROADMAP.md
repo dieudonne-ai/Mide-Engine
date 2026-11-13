@@ -83,7 +83,7 @@
   - Pour les tableaux : génération de résumés textuels (schéma + statistiques) indexables.
   - ✅ Critères : tests sur longueurs de chunks et métadonnées (source, page, ligne).
 
-- [ ] **W2-05 — Index vectoriel + indexation incrémentale**
+- [x] **W2-05 — Index vectoriel + indexation incrémentale**
   - `rag/store.py` (ChromaDB persistant dans `~/.mide/index/`).
   - `mide index` : n'indexe que les fichiers nouveaux ou modifiés (hash + date).
   - ✅ Critères : test : réindexation sans changement → 0 nouveau chunk.

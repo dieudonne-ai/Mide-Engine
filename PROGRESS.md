@@ -18,7 +18,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | Semaine | Tâches terminées | Statut |
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
-| S2 — LLM & RAG        | 4 / 7 | 🚧 en cours |
+| S2 — LLM & RAG        | 5 / 7 | 🚧 en cours |
 | S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W2-05 Vector index + incremental indexing
+- **Fait :** `rag/store.py` (`VectorStore`: persistent Chroma collection in `~/.mide/index/`, cosine, telemetry disabled, add/delete_item/query with optional item filter). `rag/indexer.py` (`index_sources`: documents chunked, tables/SQL tables summarized, only new or modified items re-embedded; vanished items and revoked sources pruned; per-item errors reported, not raised). `mide index` command.
+- **Fichiers principaux :** `mide/rag/store.py`, `mide/rag/indexer.py`, `mide/cli.py`, `tests/test_store.py`, `pyproject.toml`
+- **Tests :** 126 passés / 126 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `task/W2-05-vector-index`)
+- **Décisions techniques :** change detection = sha256, recomputed only when mtime/size changed (a touched file with identical content is not reindexed). `chromadb` added to core dependencies (listed in the CLAUDE.md stack). Indexing logic put in a new `indexer.py` to keep `store.py` a pure storage layer. Pruning removes chunks of revoked sources (consent principle).
+- **Problèmes / dette technique :** SQL table fingerprint = schema + row count + hash of the first 1000 rows, so changes deeper in a large table with equal row count are not detected. PDF page numbers not yet passed to the index (DocumentConnector returns joined text). Branch stacked on W2-04 (PR #14). Sandbox had no deps installed: used a venv.
+- **Prochaine tâche :** W2-06 — Retriever + réponses avec sources
 
 ### 2026-11-13 — W2-04 Chunking
 - **Fait :** `rag/chunking.py`: `chunk_text` (size + overlap, cuts on whitespace, metadata source/chunk_index/line_start/line_end/page), `chunk_pages` (page numbers), `summarize_table` (schema chunk + statistics chunk built from `profile_dataframe`). `chunk_size` / `chunk_overlap` added to `config/default.yaml` and `GeneralConfig`.

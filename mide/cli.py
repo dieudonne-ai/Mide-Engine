@@ -7,11 +7,13 @@ from pathlib import Path
 import typer
 
 from mide import __version__
-from mide.config import ConfigError, load_config
+from mide.config import Config, ConfigError, load_config
 from mide.connectors.sources import add_source, list_sources, remove_source
 from mide.hardware.profiler import profile_hardware
 from mide.ingestion.catalog import build_catalog
 from mide.llm.downloader import DownloadError, download_model, list_models
+from mide.rag.embeddings import Embedder, load_embedder
+from mide.rag.indexer import index_sources
 
 app = typer.Typer(help="MIDE Engine - local market intelligence engine.", no_args_is_help=True)
 
@@ -139,6 +141,44 @@ def models_pull(
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
     typer.echo(f"Model ready: {path}")
+
+
+def _get_embedder(cfg: Config) -> Embedder:
+    """Load the embedder of the detected hardware profile (patched in tests)."""
+    return load_embedder(cfg, profile_hardware().profile)
+
+
+@app.command("index")
+def index_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """Index the authorized sources (only new or modified files are processed)."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    sources = list_sources(config_dir)
+    if not sources:
+        typer.echo("No authorized sources. Use `mide sources add`.")
+        return
+    try:
+        report = index_sources(
+            sources,
+            cfg.app_dir / "index",
+            _get_embedder(cfg),
+            cfg.general.chunk_size,
+            cfg.general.chunk_overlap,
+            cfg.general.max_file_size_mb,
+        )
+    except Exception as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(
+        f"Indexed: {len(report.new_items)} new, {len(report.updated_items)} updated, "
+        f"{len(report.unchanged_items)} unchanged, {len(report.removed_items)} removed "
+        f"({report.new_chunks} new chunks)."
+    )
+    for item, message in report.errors.items():
+        typer.echo(f"[error] {item}: {message}")
 
 
 @app.callback()
