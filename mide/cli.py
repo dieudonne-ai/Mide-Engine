@@ -7,8 +7,22 @@ from pathlib import Path
 import typer
 
 from mide import __version__
+from mide.automl.evaluator import evaluate_model, feature_importance
+from mide.automl.registry import ModelRegistry, model_name
+from mide.automl.trainer import train_model
+from mide.config import ConfigError, load_config
+from mide.connectors.base import is_url
 from mide.connectors.sources import add_source, list_sources, remove_source
+from mide.connectors.tabular import TabularConnector
 from mide.hardware.profiler import profile_hardware
+from mide.ingestion.catalog import build_catalog
+from mide.llm.downloader import DownloadError, download_model, list_models, model_path
+from mide.llm.prompts import SOURCES_LABEL
+from mide.llm.runtime import load_llm
+from mide.rag.embeddings import load_embedder
+from mide.rag.indexer import index_sources
+from mide.rag.retriever import ChatSession, Retriever, answer_question
+from mide.rag.store import VectorStore
 
 app = typer.Typer(help="MIDE Engine - local market intelligence engine.", no_args_is_help=True)
 
@@ -22,7 +36,9 @@ def _version_callback(value: bool) -> None:
 sources_app = typer.Typer(help="Manage authorized data sources.", no_args_is_help=True)
 app.add_typer(sources_app, name="sources")
 
-CONFIG_DIR_OPTION = typer.Option(None, "--config-dir", help="Config folder (default: repo config/).")
+CONFIG_DIR_OPTION = typer.Option(
+    None, "--config-dir", help="Config folder (default: repo config/)."
+)
 
 
 @sources_app.command("add")
@@ -53,6 +69,263 @@ def sources_remove(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> 
         typer.echo(f"Error: source not listed: {source}", err=True)
         raise typer.Exit(1)
     typer.echo(f"Source removed: {source}")
+
+
+@app.command()
+def scan(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """Show the catalog of datasets found in the authorized sources."""
+    sources = list_sources(config_dir)
+    if not sources:
+        typer.echo("No authorized sources. Use `mide sources add`.")
+        return
+    for entry in build_catalog(sources):
+        if entry.error:
+            typer.echo(f"[error] {entry.item}: {entry.error}")
+            continue
+        size = "" if entry.rows is None else f" - {entry.rows} rows x {entry.n_columns} cols"
+        typer.echo(f"[{entry.kind}] {entry.item}{size}")
+        if entry.profile:
+            if entry.profile.date_columns:
+                typer.echo(f"    date columns: {', '.join(entry.profile.date_columns)}")
+            if entry.profile.target_candidates:
+                typer.echo(f"    target candidates: {', '.join(entry.profile.target_candidates)}")
+
+
+@app.command()
+def index(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """Index authorized sources (only new or modified items are processed)."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if not cfg.sources.sources:
+        typer.echo("No authorized sources. Use `mide sources add`.")
+        return
+    try:
+        embedder = load_embedder(cfg, profile_hardware().profile)
+    except Exception as exc:  # missing optional dependency or model
+        typer.echo(f"Error: cannot load the embedding model: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    store = VectorStore(cfg.app_dir / "index")
+    report = index_sources(
+        cfg.sources.sources,
+        store,
+        embedder,
+        cfg.app_dir / "index" / "manifest.json",
+        cfg.general.chunk_size,
+        cfg.general.chunk_overlap,
+        cfg.general.max_file_size_mb,
+    )
+    typer.echo(
+        f"Indexed {len(report.indexed_items)} item(s), {report.new_chunks} new chunk(s); "
+        f"{len(report.skipped_items)} unchanged, {len(report.removed_items)} removed."
+    )
+    for item, err in report.errors.items():
+        typer.echo(f"[error] {item}: {err}")
+
+
+def _load_models(cfg):  # type: ignore[no-untyped-def]
+    """Load the embedder and LLM for this machine's profile, or exit with a clear error."""
+    report = profile_hardware()
+    models = cfg.models.profiles.get(report.profile)
+    path = model_path(cfg.app_dir / "models", models.llm) if models else None
+    if path is None or not path.is_file():
+        typer.echo("Error: model not installed. Run `mide models pull`.", err=True)
+        raise typer.Exit(1)
+    try:
+        return load_embedder(cfg, report.profile), load_llm(path, report)
+    except Exception as exc:  # missing optional dependency or model
+        typer.echo(f"Error: cannot load the models: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+
+@app.command()
+def ask(
+    question: str = typer.Argument(..., help="Question to ask about your indexed data."),
+    source: str | None = typer.Option(None, help="Restrict retrieval to one source."),
+    top_k: int = typer.Option(5, "--top-k", min=1, help="Number of excerpts retrieved."),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Answer a question from the indexed data, citing the sources."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    embedder, llm = _load_models(cfg)
+    retriever = Retriever(VectorStore(cfg.app_dir / "index"), embedder, k=top_k)
+    answer = answer_question(question, retriever, llm, cfg.language, source=source)
+    typer.echo(answer.text)
+    if answer.sources:
+        typer.echo(f"\n{SOURCES_LABEL.get(cfg.language, 'Sources')}:")
+        for line in answer.sources:
+            typer.echo(f"  {line}")
+
+
+models_app = typer.Typer(help="Manage local LLM weights.", no_args_is_help=True)
+app.add_typer(models_app, name="models")
+
+
+@app.command()
+def chat(
+    top_k: int = typer.Option(5, "--top-k", min=1, help="Number of excerpts retrieved."),
+    max_turns: int = typer.Option(4, "--max-turns", min=1, help="Turns kept as history."),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Interactive conversation over the indexed data (type `exit` to quit)."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    embedder, llm = _load_models(cfg)
+    retriever = Retriever(VectorStore(cfg.app_dir / "index"), embedder, k=top_k)
+    run_chat(ChatSession(retriever, llm, cfg.language, max_turns))
+
+
+def run_chat(session: ChatSession) -> None:
+    """Read questions from stdin until `exit`/`quit`/EOF; `/reset` clears the history."""
+    label = SOURCES_LABEL.get(session.language, "Sources")
+    while True:
+        try:
+            question = typer.prompt(">", prompt_suffix=" ", default="", show_default=False)
+        except (EOFError, typer.Abort):
+            break
+        question = question.strip()
+        if question.lower() in {"exit", "quit"}:
+            break
+        if question == "/reset":
+            session.reset()
+            continue
+        if not question:
+            continue
+        answer = session.ask(question)
+        typer.echo(answer.text)
+        if answer.sources:
+            typer.echo(f"\n{label}:")
+            for line in answer.sources:
+                typer.echo(f"  {line}")
+
+
+def _fmt_size(size: int | None) -> str:
+    return "?" if size is None else f"{size / 1e9:.2f} GB"
+
+
+@models_app.command("list")
+def models_list(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """List the models of each hardware profile and whether they are installed."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    for info in list_models(cfg.models.profiles, cfg.app_dir / "models"):
+        state = "installed" if info.installed else "not installed"
+        typer.echo(f"{info.profile}: {info.repo}/{info.file} [{state}]")
+
+
+@models_app.command("pull")
+def models_pull(
+    profile: str | None = typer.Option(None, help="Profile (default: detected)."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Confirm the download."),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Download the model of a profile (asks for confirmation first)."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    name = profile or profile_hardware().profile
+    models = cfg.models.profiles.get(name)  # type: ignore[call-overload]
+    if models is None:
+        typer.echo(f"Error: no model configured for profile '{name}'.", err=True)
+        raise typer.Exit(1)
+
+    def confirm(url: str, size: int | None) -> bool:
+        if yes:
+            return True
+        return typer.confirm(f"Download {url} ({_fmt_size(size)}) from the internet?")
+
+    last = {"pct": -1}
+
+    def progress(done: int, total: int | None) -> None:
+        if total:
+            pct = done * 100 // total
+            if pct // 10 != last["pct"] // 10:
+                typer.echo(f"  {pct}%")
+            last["pct"] = pct
+
+    try:
+        path = download_model(models.llm, cfg.app_dir / "models", confirm, progress=progress)
+    except DownloadError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Model ready: {path}")
+
+
+@models_app.command("trained")
+def models_trained(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """List the models trained by `mide train` (all versions)."""
+    cfg = _load_cfg(config_dir)
+    records = ModelRegistry(cfg.app_dir / "models_trained").list()
+    if not records:
+        typer.echo("No trained models. Use `mide train --dataset X --target Y`.")
+        return
+    for r in records:
+        verdict = "beats baseline" if r.beats_baseline else "does NOT beat baseline"
+        typer.echo(
+            f"{r.name} v{r.version} [{r.task}] target={r.target} "
+            f"{r.metric}={r.score:.4g} (baseline {r.baseline_score:.4g}, {verdict}) {r.created_at}"
+        )
+
+
+def _load_cfg(config_dir: Path | None):  # type: ignore[no-untyped-def]
+    try:
+        return load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+
+def _read_dataset(dataset: str, sources: list[str]):  # type: ignore[no-untyped-def]
+    """Read a dataset item from the authorized sources only."""
+    if is_url(dataset):
+        raise ValueError("Give a table as <sql_url>::<table> or a file path.")
+    path, _, _ = dataset.partition("::")
+    return TabularConnector(path, sources).read(dataset)
+
+
+@app.command()
+def train(
+    dataset: str = typer.Option(..., "--dataset", help="CSV/Excel item (path or path::sheet)."),
+    target: str = typer.Option(..., "--target", help="Column to predict."),
+    seed: int = typer.Option(42, "--seed", help="Random seed."),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Train a model on an authorized dataset and save it in the registry."""
+    cfg = _load_cfg(config_dir)
+    try:
+        df = _read_dataset(dataset, cfg.sources.sources)
+        profile = profile_hardware().profile
+        model = train_model(df, target, profile=profile, seed=seed)
+        metrics = evaluate_model(model, df)
+    except (PermissionError, ValueError, KeyError, FileNotFoundError) as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    registry = ModelRegistry(cfg.app_dir / "models_trained")
+    record = registry.save(
+        model, model_name(dataset, target), dataset, metrics, feature_importance(model)
+    )
+    typer.echo(f"Task: {model.task.task} ({model.task.reason})")
+    typer.echo(
+        f"CV {model.metric}: {model.score:.4g} vs baseline '{model.baseline_name}' "
+        f"{model.baseline_score:.4g} - {'OK' if model.beats_baseline else 'does not beat baseline'}"
+    )
+    top = ", ".join(f"{k} ({v:.0%})" for k, v in list(record.importance.items())[:5])
+    typer.echo(f"Top features: {top}")
+    typer.echo(f"Saved: {record.name} v{record.version}")
 
 
 @app.callback()
