@@ -51,7 +51,7 @@
   - Commande `mide scan` qui affiche le catalogue.
   - ✅ Critères : tests sur le jeu de démo ; détection correcte des colonnes date et montant.
 
-- [ ] **W1-09 — Jeu de données de démonstration**
+- [x] **W1-09 — Jeu de données de démonstration**
   - `scripts/make_demo_data.py` : génère une PME fictive (ventes 2 ans, produits, clients,
     campagnes marketing par canal, quelques documents texte : rapports, notes de réunion).
   - Saisonnalité et tendances réalistes, quelques anomalies volontaires.

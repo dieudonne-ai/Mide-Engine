@@ -17,7 +17,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 
 | Semaine | Tâches terminées | Statut |
 |---------|------------------|--------|
-| S1 — Fondations       | 8 / 9 | 🚧 en cours |
+| S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 0 / 7 | ⏳ pas commencé |
 | S3 — Intelligence     | 0 / 9 | ⏳ pas commencé |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-13 — W1-09 Demo dataset
+- **Fait :** `scripts/make_demo_data.py` (`generate_demo_data(out_dir, seed)`): fictional SME with 2 years of sales (~14k orders), products, customers, monthly campaigns for 6 channels, 3 markdown documents (annual report, 2 meeting notes), and `anomalies.json`. Trend (+25%/yr), yearly seasonality (Dec peak, Aug dip), weekly pattern, 3 deliberate anomalies (2 drops, 1 spike), SMS as under-performing channel, P009 as flop product. Session-scoped `demo_data` fixture in `tests/conftest.py`.
+- **Fichiers principaux :** `scripts/make_demo_data.py`, `tests/test_demo_data.py`, `tests/conftest.py`
+- **Tests :** 81 passés / 81 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `task/W1-09-demo-data`)
+- **Décisions techniques :** fully seeded numpy generator, byte-identical output per seed. Test module loads the script by path since `scripts/` is not a package.
+- **Problèmes / dette technique :** branch stacked on W1-08 (PR #8). W1-08 tests still use an in-test table; could be switched to the demo data. Tests run with `python3.13` in this sandbox.
+- **Prochaine tâche :** W2-01 — Téléchargement et gestion des modèles
 
 ### 2026-11-13 — W1-08 Catalog and data profiling
 - **Fait :** `ingestion/profiling.py` (column kind numeric/date/boolean/categorical/text, % missing, date detection incl. string dates, target candidates by FR/EN name keywords, ID columns excluded); `ingestion/catalog.py` (`build_catalog`: inventory of CSV/Excel sheets, SQL tables, documents across authorized sources only; unreadable items reported as errors, not fatal); `mide scan` command.
