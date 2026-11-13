@@ -7,7 +7,7 @@
 
 ## Semaine 1 — Fondations, matériel et connecteurs
 
-- [ ] **W1-01 — Squelette du projet**
+- [x] **W1-01 — Squelette du projet**
   - `pyproject.toml`, arborescence de `CLAUDE.md` §4, `ruff`, `pytest`, `conftest.py`.
   - CLI Typer minimale : `mide --version`, `mide doctor` (affiche « OK »).
   - ✅ Critères : `pip install -e .` fonctionne, `mide --version` répond, `pytest` passe.

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mide-engine"
+version = "0.1.0"
+description = "MIDE Engine - local, lightweight, adaptive market intelligence decision engine."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+# Heavy dependencies (llama-cpp-python, chromadb, lightgbm...) are added by the
+# tasks that need them, to keep the install light.
+dependencies = [
+    "typer>=0.12",
+    "rich>=13",
+    "pydantic>=2",
+    "pyyaml>=6",
+    "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10", "types-PyYAML"]
+finetune = ["torch", "transformers", "peft"]
+
+[project.scripts]
+mide = "mide.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["mide*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+ignore_missing_imports = true
