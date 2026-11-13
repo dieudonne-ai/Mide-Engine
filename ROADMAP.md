@@ -24,34 +24,34 @@
   - `mide doctor` affiche le rapport matériel et le profil choisi.
   - ✅ Critères : tests avec valeurs simulées (mock `psutil`) pour chaque profil.
 
-- [ ] **W1-04 — Interface connecteur + gestion des sources**
+- [x] **W1-04 — Interface connecteur + gestion des sources**
   - `connectors/base.py` : `BaseConnector` (`discover()`, `read()`, `metadata()`).
   - `mide sources add <chemin|url_sql>`, `mide sources list`, `mide sources remove`.
   - Les sources sont enregistrées dans `sources.yaml`. Rien n'est lu sans y figurer.
   - ✅ Critères : test vérifiant qu'un fichier hors source autorisée est refusé.
 
-- [ ] **W1-05 — Connecteur tabulaire (CSV / Excel)**
+- [x] **W1-05 — Connecteur tabulaire (CSV / Excel)**
   - Lecture CSV (détection séparateur/encodage) et XLSX (toutes les feuilles).
   - ✅ Critères : tests sur fixtures CSV `,` et `;`, UTF-8 et Latin-1, Excel multi-feuilles.
 
-- [ ] **W1-06 — Connecteurs documents (dossiers, TXT/MD, DOCX, PDF)**
+- [x] **W1-06 — Connecteurs documents (dossiers, TXT/MD, DOCX, PDF)**
   - Parcours récursif d'un dossier autorisé, filtrage par extension, taille max configurable.
   - ✅ Critères : tests sur petits fichiers de fixtures ; fichiers corrompus ignorés avec un log.
 
-- [ ] **W1-07 — Connecteur SQL**
+- [x] **W1-07 — Connecteur SQL**
   - SQLAlchemy : SQLite (tests), PostgreSQL, MySQL, SQL Server (via URL).
   - Lecture seule : découverte des tables, schéma, échantillon, lecture par chunks.
   - Identifiants via variables d'environnement.
   - ✅ Critères : tests sur une base SQLite de fixtures ; toute requête d'écriture est bloquée.
 
-- [ ] **W1-08 — Catalogue et profilage des données**
+- [x] **W1-08 — Catalogue et profilage des données**
   - `ingestion/catalog.py` : inventaire de tous les datasets (source, type, lignes, colonnes).
   - `ingestion/profiling.py` : types de colonnes, % de valeurs manquantes, colonnes date,
     colonnes numériques candidates comme cible (ventes, montant, quantité…).
   - Commande `mide scan` qui affiche le catalogue.
   - ✅ Critères : tests sur le jeu de démo ; détection correcte des colonnes date et montant.
 
-- [ ] **W1-09 — Jeu de données de démonstration**
+- [x] **W1-09 — Jeu de données de démonstration**
   - `scripts/make_demo_data.py` : génère une PME fictive (ventes 2 ans, produits, clients,
     campagnes marketing par canal, quelques documents texte : rapports, notes de réunion).
   - Saisonnalité et tendances réalistes, quelques anomalies volontaires.
@@ -61,34 +61,34 @@
 
 ## Semaine 2 — Cerveau langage et mémoire (RAG)
 
-- [ ] **W2-01 — Téléchargement et gestion des modèles**
+- [x] **W2-01 — Téléchargement et gestion des modèles**
   - `llm/downloader.py` : télécharge le modèle GGUF du profil (depuis `models.yaml`)
     dans `~/.mide/models/`, avec confirmation, barre de progression, vérification de taille/hash.
   - `mide models list`, `mide models pull`.
   - ✅ Critères : tests avec téléchargement mocké ; aucun téléchargement sans confirmation.
 
-- [ ] **W2-02 — Runtime LLM local**
+- [x] **W2-02 — Runtime LLM local**
   - `llm/runtime.py` : wrapper `llama-cpp-python` (contexte, threads selon CPU, offload GPU si dispo).
   - Interface `LLM.generate(prompt, max_tokens, temperature)` + version streaming.
   - Faux LLM (`FakeLLM`) pour les tests.
   - ✅ Critères : tests avec FakeLLM ; paramètres adaptés au profil matériel.
 
-- [ ] **W2-03 — Embeddings**
+- [x] **W2-03 — Embeddings**
   - `rag/embeddings.py` : modèle multilingue choisi selon le profil, traitement par lots.
   - Faux embedder déterministe pour les tests.
   - ✅ Critères : tests de dimension et de déterminisme.
 
-- [ ] **W2-04 — Chunking**
+- [x] **W2-04 — Chunking**
   - Découpage des documents (taille + chevauchement configurables).
   - Pour les tableaux : génération de résumés textuels (schéma + statistiques) indexables.
   - ✅ Critères : tests sur longueurs de chunks et métadonnées (source, page, ligne).
 
-- [ ] **W2-05 — Index vectoriel + indexation incrémentale**
+- [x] **W2-05 — Index vectoriel + indexation incrémentale**
   - `rag/store.py` (ChromaDB persistant dans `~/.mide/index/`).
   - `mide index` : n'indexe que les fichiers nouveaux ou modifiés (hash + date).
   - ✅ Critères : test : réindexation sans changement → 0 nouveau chunk.
 
-- [ ] **W2-06 — Retriever + réponses avec sources**
+- [x] **W2-06 — Retriever + réponses avec sources**
   - `rag/retriever.py` : top-k + filtrage par source.
   - `mide ask "question"` : RAG + LLM, réponse avec citations des sources.
   - Prompts dans `llm/prompts.py`, FR/EN.
