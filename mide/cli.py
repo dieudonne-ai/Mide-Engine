@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 from mide import __version__
+from mide.connectors.sources import add_source, list_sources, remove_source
 from mide.hardware.profiler import profile_hardware
 
 app = typer.Typer(help="MIDE Engine - local market intelligence engine.", no_args_is_help=True)
@@ -14,6 +17,42 @@ def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"mide {__version__}")
         raise typer.Exit()
+
+
+sources_app = typer.Typer(help="Manage authorized data sources.", no_args_is_help=True)
+app.add_typer(sources_app, name="sources")
+
+CONFIG_DIR_OPTION = typer.Option(None, "--config-dir", help="Config folder (default: repo config/).")
+
+
+@sources_app.command("add")
+def sources_add(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """Authorize a folder, file or SQL URL."""
+    try:
+        value = add_source(source, config_dir)
+    except (FileNotFoundError, ValueError) as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Source added: {value}")
+
+
+@sources_app.command("list")
+def sources_list(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """List authorized sources."""
+    sources = list_sources(config_dir)
+    if not sources:
+        typer.echo("No authorized sources.")
+    for src in sources:
+        typer.echo(src)
+
+
+@sources_app.command("remove")
+def sources_remove(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """Revoke an authorized source."""
+    if not remove_source(source, config_dir):
+        typer.echo(f"Error: source not listed: {source}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"Source removed: {source}")
 
 
 @app.callback()

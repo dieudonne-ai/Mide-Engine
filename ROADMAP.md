@@ -24,7 +24,7 @@
   - `mide doctor` affiche le rapport matériel et le profil choisi.
   - ✅ Critères : tests avec valeurs simulées (mock `psutil`) pour chaque profil.
 
-- [ ] **W1-04 — Interface connecteur + gestion des sources**
+- [x] **W1-04 — Interface connecteur + gestion des sources**
   - `connectors/base.py` : `BaseConnector` (`discover()`, `read()`, `metadata()`).
   - `mide sources add <chemin|url_sql>`, `mide sources list`, `mide sources remove`.
   - Les sources sont enregistrées dans `sources.yaml`. Rien n'est lu sans y figurer.
