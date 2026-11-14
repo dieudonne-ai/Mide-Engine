@@ -123,7 +123,7 @@
   - `business/sales.py` : prévision 30/60/90 jours, top/flop produits, tendances, saisonnalité.
   - ✅ Critères : sur le jeu de démo, détecte la saisonnalité générée.
 
-- [ ] **W3-05 — Module clients**
+- [x] **W3-05 — Module clients**
   - `business/customers.py` : segmentation RFM, score de risque de churn.
   - ✅ Critères : segments cohérents sur le jeu de démo ; tests.
 

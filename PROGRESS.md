@@ -19,7 +19,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
-| S3 — Intelligence     | 4 / 9 | 🔄 en cours |
+| S3 — Intelligence     | 5 / 9 | 🔄 en cours |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
 ---
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W3-05 Customers module
+- **Fait :** `business/customers.py`: `customer_table` (recency, frequency, monetary, typical purchase gap per customer), `rfm_segments` (1-5 rank-quantile scores + named segments: Champions, Loyal, New / promising, At risk, Hibernating, Needs attention), `segment_summary` (customers, revenue, revenue share per segment), `churn_risk` (risk in [0,1] from silence relative to each customer's own purchase rhythm; `ChurnReport` with high-risk customers and revenue at risk).
+- **Fichiers principaux :** `mide/business/customers.py`, `tests/test_customers.py`
+- **Tests :** 174 passés / 174 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-nu241q`)
+- **Décisions techniques :** rank-based quantiles (robust to ties/skew) instead of `qcut`; churn is a transparent heuristic (risk = 1 - 0.5^(recency/(3 x typical gap))), not a trained model, so it works on any dataset and stays explainable. Single-order customers use the population median gap.
+- **Problèmes / dette technique :** heuristic not validated against real churn labels; not yet wired into the CLI (planned with the agent, W3-08). Pre-existing pandas deprecation warnings in `scripts/make_demo_data.py`.
+- **Prochaine tâche :** W3-06 — Module marketing
 
 ### 2026-11-13 — W3-04 Sales module
 - **Fait :** `business/sales.py`: `forecast_sales` (30/60/90-day forecast: linear trend + weekday + yearly Fourier terms by least squares, anomalous days >3 sigma excluded from the fit, growth vs previous period), `product_ranking` (top/flop with revenue share), `sales_trend` (monthly totals, last-3-months and YoY growth, direction), `detect_seasonality` (monthly/weekday indices after detrending, peak/trough, yearly seasonality flag).
