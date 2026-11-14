@@ -189,7 +189,7 @@
     limites, FAQ confidentialité.
   - ✅ Critères : un nouvel utilisateur peut faire la démo en suivant le README.
 
-- [ ] **W4-08 — Démo finale**
+- [x] **W4-08 — Démo finale**
   - Script `scripts/demo.sh` : génère les données, indexe, entraîne, pose 5 questions business,
     produit le rapport.
   - ✅ Critères : la démo tourne de bout en bout sans intervention.

@@ -20,7 +20,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
 | S3 — Intelligence     | 9 / 9 | ✅ terminé |
-| S4 — Produit          | 7 / 8 | 🔄 en cours |
+| S4 — Produit          | 8 / 8 | ✅ terminé |
 
 ---
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W4-08 Final demo
+- **Fait :** `scripts/demo.sh` runs data generation, consent, scan, index, train, 5 business questions and the weekly report in an isolated workspace (own `MIDE_HOME` and config copy). Index and `ask` steps are optional and never stop the demo (no model/rag extra on small setups).
+- **Fichiers principaux :** `scripts/demo.sh`, `tests/test_demo_script.py`, `README.md`
+- **Tests :** 258 passed, 2 skipped
+- **PR :** task/W4-08-final-demo -> main
+- **Décisions techniques :** `ask` is skipped (with a message) when the LLM is not pulled, since tests/demo must never download weights without confirmation.
+- **Problèmes / dette technique :** `ask` answers in the demo need `mide models pull` first. Roadmap complete.
+- **Prochaine tâche :** none (backlog needs validation)
 
 ### 2026-11-14 — W4-07 Documentation
 - **Fait :** Full bilingual `README.md` (EN + FR): installation (scripts, pip, Docker), demo quick start, adding sources, command table, configuration, architecture, limits, privacy FAQ. Demo steps were run end to end (sources add, scan, train `sales`/`amount`, report); `ask`/`chat` need the LLM weights (`mide models pull`), documented.
