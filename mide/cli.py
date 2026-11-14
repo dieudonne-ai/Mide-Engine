@@ -31,6 +31,7 @@ from mide.rag.embeddings import Embedder, load_embedder
 from mide.rag.indexer import index_sources
 from mide.rag.retriever import Retriever
 from mide.rag.store import VectorStore
+from mide.utils.privacy import build_privacy_report
 
 logger = logging.getLogger(__name__)
 app = typer.Typer(help="MIDE Engine - local market intelligence engine.", no_args_is_help=True)
@@ -293,9 +294,9 @@ def _load_all_datasets(sources: list[str]) -> dict:
                 try:
                     frames[item] = conn.read(item)
                 except Exception as exc:  # noqa: BLE001 - unreadable item: skip it
-                    logger.debug("Skipping %s: %s", item, exc)
+                    logger.debug("Skipping %s: %s", item, type(exc).__name__)
         except Exception as exc:  # noqa: BLE001 - unreachable source: skip it
-            logger.debug("Skipping source %s: %s", type(exc).__name__, exc)
+            logger.debug("Skipping a source: %s", type(exc).__name__)
     return frames
 
 
@@ -530,6 +531,17 @@ def main(
     ),
 ) -> None:
     """MIDE Engine command line."""
+
+
+@app.command("privacy")
+def privacy_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """Show what MIDE reads, what it stores locally, and its network policy."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(build_privacy_report(cfg, config_dir).to_text(cfg.language))
 
 
 @app.command()

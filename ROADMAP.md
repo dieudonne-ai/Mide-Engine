@@ -174,7 +174,7 @@
     gestion des erreurs utilisateur avec messages clairs (FR/EN).
   - ✅ Critères : jeu de démo traité entièrement avec < 4 Go RAM (hors LLM).
 
-- [ ] **W4-05 — Sécurité et confidentialité**
+- [x] **W4-05 — Sécurité et confidentialité**
   - Audit : aucun appel réseau hors téléchargement de modèle, sources respectées,
     mode lecture seule SQL, aucune donnée en log en clair.
   - `mide privacy` affiche ce qui est lu et stocké.
