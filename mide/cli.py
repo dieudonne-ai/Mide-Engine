@@ -24,6 +24,7 @@ from mide.hardware.profiler import profile_hardware
 from mide.ingestion.catalog import build_catalog
 from mide.llm.chat import ChatHistory
 from mide.llm.downloader import DownloadError, download_model, list_models, model_path
+from mide.llm.lora import finetune, load_documents, peft_trainer, unavailable_reason
 from mide.llm.prompts import build_rag_prompt, sources_footer
 from mide.llm.runtime import LLM, load_llm
 from mide.rag.embeddings import Embedder, load_embedder
@@ -497,6 +498,29 @@ def chat_command(
         footer = sources_footer(passages)
         if footer:
             typer.echo("\n" + footer)
+
+
+@app.command("finetune")
+def finetune_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """Optional LoRA fine-tuning on company documents (GPU only; otherwise RAG is used)."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    hw = profile_hardware()
+    spec = cfg.models.profiles.get(hw.profile)  # type: ignore[call-overload]
+    allows = bool(spec and spec.lora)
+    reason = unavailable_reason(hw, allows, cfg.language)
+    if reason:
+        typer.echo(reason)
+        return
+    docs = load_documents(list_sources(config_dir), cfg.general.max_file_size_mb)
+    llm = _get_llm(cfg)
+    base = spec.llm.repo.replace("-GGUF", "")  # type: ignore[union-attr]
+    res = finetune(hw, allows, docs, llm, cfg.app_dir / "lora", peft_trainer(base),
+                   lambda holdout, adapter: 0.0, cfg.language)
+    typer.echo(res.message)
 
 
 @app.callback()

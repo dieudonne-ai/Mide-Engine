@@ -162,7 +162,7 @@
   - `mide report` : génère un rapport Markdown/HTML (KPIs, prévisions, alertes, 3 actions prioritaires).
   - ✅ Critères : rapport généré sur le jeu de démo, testé.
 
-- [ ] **W4-03 — Fine-tuning LoRA optionnel**
+- [x] **W4-03 — Fine-tuning LoRA optionnel**
   - `llm/lora.py` : uniquement si profil `medium`/`large` avec GPU.
   - Génère un petit dataset Q/R à partir des documents de l'entreprise, entraîne un adaptateur LoRA,
     évalue avant/après, n'active l'adaptateur que s'il améliore les résultats.

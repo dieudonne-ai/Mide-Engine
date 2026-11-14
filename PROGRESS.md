@@ -20,7 +20,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
 | S3 — Intelligence     | 9 / 9 | ✅ terminé |
-| S4 — Produit          | 2 / 8 | 🔄 en cours |
+| S4 — Produit          | 3 / 8 | 🔄 en cours |
 
 ---
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W4-03 Optional LoRA fine-tuning
+- **Fait :** `mide/llm/lora.py`: availability check (GPU + medium/large profile + `[finetune]` extra, FR/EN message "fine-tuning unavailable, RAG is used"), Q/A dataset generation from authorized documents with the local LLM, deterministic train/held-out split, injectable trainer/scorer, before/after evaluation (adapter activated only if the held-out score improves), PEFT trainer (lazy imports). New command `mide finetune`.
+- **Fichiers principaux :** `mide/llm/lora.py`, `mide/cli.py`, `tests/test_lora.py`
+- **Tests :** 228 passés ; `ruff check .` OK. Unavailable path, activation, rejection and not-enough-data are covered with fakes (no torch, no model).
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-zc2npq`, empilée sur W4-02)
+- **Décisions techniques :** trainer and scorer are injected so the pipeline is testable without GPU; the adapter is only recorded in `~/.mide/lora/active_adapter.json` when it wins.
+- **Problèmes / dette technique :** the real PEFT trainer is untested (needs GPU, `# pragma: no cover`). The CLI scorer is a placeholder returning 0.0, so `mide finetune` never activates an adapter yet: a real scorer (answer overlap on held-out questions with the adapter loaded in llama.cpp) is still to write. The runtime does not load the active adapter yet.
+- **Prochaine tâche :** W4-04 — Performance et robustesse
 
 ### 2026-11-14 — W4-02 Weekly report
 - **Fait :** `mide/report.py` (`build_report`, `render_markdown`, `render_html`) and `mide report [--format md|html] [--output FILE]`. Sections: key indicators, forecasts, alerts (anomalies, churn, underperforming channels), 3 priority actions each with its source figures. FR/EN following `language`.
