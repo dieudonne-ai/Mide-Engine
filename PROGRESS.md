@@ -20,7 +20,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
 | S3 — Intelligence     | 9 / 9 | ✅ terminé |
-| S4 — Produit          | 4 / 8 | 🔄 en cours |
+| S4 — Produit          | 5 / 8 | 🔄 en cours |
 
 ---
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W4-05 Security and privacy
+- **Fait :** Audit of network use, source consent, SQL read-only mode and logging. New `mide privacy` command (`mide/utils/privacy.py`): lists authorized sources (database credentials masked), local storage folders with sizes, network and read-only policy (FR/EN). Log lines in `cli.py` and the indexer now carry the exception type only, never its message (which can contain row data). Test that blocks all socket access during `mide ask`.
+- **Fichiers principaux :** `mide/utils/privacy.py`, `mide/cli.py`, `mide/rag/indexer.py`, `tests/test_privacy.py`
+- **Tests :** 239 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK.
+- **PR :** voir la PR vers `main` (branche `task/W4-05-security-privacy`)
+- **Décisions techniques :** the network test patches `socket` (connect, create_connection, getaddrinfo); SQL read-only was already enforced (W2/W3, `tests/test_sql.py`).
+- **Problèmes / dette technique :** `report.errors[item] = str(exc)` in the indexer is shown to the user, not logged; kept as is.
+- **Prochaine tâche :** W4-06 — Packaging
 
 ### 2026-11-14 — W4-04 Performance and robustness
 - **Fait :** `TabularConnector.read_chunks()` (chunked CSV reading); `metadata()` now counts rows in chunks instead of loading the whole file (the catalog previously read each file twice in full). `mide/utils/errors.py`: bilingual FR/EN friendly messages (missing file, permission, encoding, empty/malformed file, out of memory, network) and `run_safely`; the console script is now `mide.cli:run`, which prints a clear error instead of a traceback. `mide/utils/perf.py`: `measure()` (time + peak memory).

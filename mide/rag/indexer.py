@@ -111,7 +111,7 @@ def index_sources(
             chunks: list[Chunk] = build()
             vectors = _embed_chunks(chunks, embedder)
         except Exception as exc:  # noqa: BLE001 - one bad item must not stop indexing
-            logger.warning("Cannot index %s: %s", item, exc)
+            logger.warning("Cannot index %s: %s", item, type(exc).__name__)
             report.errors[item] = str(exc)
             if previous:
                 new_manifest[item] = previous
