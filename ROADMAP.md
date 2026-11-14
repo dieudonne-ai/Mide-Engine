@@ -180,7 +180,7 @@
   - `mide privacy` affiche ce qui est lu et stocké.
   - ✅ Critères : test bloquant tout accès réseau pendant `mide ask`.
 
-- [ ] **W4-06 — Packaging**
+- [x] **W4-06 — Packaging**
   - Dockerfile + installation `pip install mide-engine` ; script d'installation Windows/Linux.
   - ✅ Critères : `docker build` OK ; démarrage avec le jeu de démo documenté.
 

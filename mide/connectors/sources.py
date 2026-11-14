@@ -6,14 +6,16 @@ from pathlib import Path
 
 import yaml
 
-from mide.config import DEFAULT_CONFIG_DIR, ConfigError, SourcesConfig
+from mide.config import DEFAULT_CONFIG_DIR, ConfigError, SourcesConfig, seed_default_config
 from mide.connectors.base import is_url, normalize_source
 
 HEADER = "# Authorized data sources. Nothing outside this list is ever read.\n"
 
 
 def _sources_file(config_dir: Path | None) -> Path:
-    return (Path(config_dir) if config_dir else DEFAULT_CONFIG_DIR) / "sources.yaml"
+    cdir = Path(config_dir) if config_dir else DEFAULT_CONFIG_DIR
+    seed_default_config(cdir)
+    return cdir / "sources.yaml"
 
 
 def list_sources(config_dir: Path | None = None) -> list[str]:

@@ -10,7 +10,14 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from mide.utils.paths import app_dir
 
-DEFAULT_CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+_REPO_CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+PACKAGED_DEFAULTS_DIR = Path(__file__).resolve().parent / "_defaults"
+CONFIG_FILES = ("default.yaml", "models.yaml", "sources.yaml")
+# Source checkout: use the repo ``config/`` folder. Installed package (pip/Docker wheel):
+# use ``<app dir>/config``, seeded from the defaults shipped inside the package.
+DEFAULT_CONFIG_DIR = (
+    _REPO_CONFIG_DIR if _REPO_CONFIG_DIR.is_dir() else app_dir(create=False) / "config"
+)
 PROFILE_NAMES = ("tiny", "small", "medium", "large")
 
 
@@ -83,9 +90,21 @@ def _validate(model: type[BaseModel], data: dict[str, Any], path: Path) -> Any:
         raise ConfigError(f"Invalid configuration in {path}: {details}") from exc
 
 
+def seed_default_config(config_dir: Path) -> None:
+    """Copy the packaged default config files into ``config_dir`` if they are missing."""
+    if config_dir != DEFAULT_CONFIG_DIR or config_dir == _REPO_CONFIG_DIR:
+        return
+    config_dir.mkdir(parents=True, exist_ok=True)
+    for name in CONFIG_FILES:
+        target = config_dir / name
+        if not target.exists():
+            target.write_bytes((PACKAGED_DEFAULTS_DIR / name).read_bytes())
+
+
 def load_config(config_dir: Path | None = None, create_app_dir: bool = True) -> Config:
     """Load ``default.yaml``, ``models.yaml`` and ``sources.yaml`` from ``config_dir``."""
     cdir = Path(config_dir) if config_dir else DEFAULT_CONFIG_DIR
+    seed_default_config(cdir)
     parts = {}
     for key, model in (
         ("general", GeneralConfig),

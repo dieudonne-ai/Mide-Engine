@@ -9,7 +9,7 @@
 
 _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond directement sous chaque question.)_
 
-- Aucune pour l'instant.
+- W4-06: Docker daemon unavailable in the agent sandbox, so `docker build` was not verified. Could you run `docker build -t mide-engine . && docker run --rm mide-engine demo` and confirm?
 
 ---
 
@@ -20,7 +20,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
 | S3 — Intelligence     | 9 / 9 | ✅ terminé |
-| S4 — Produit          | 5 / 8 | 🔄 en cours |
+| S4 — Produit          | 6 / 8 | 🔄 en cours |
 
 ---
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W4-06 Packaging
+- **Fait :** `Dockerfile` (+ `.dockerignore`, `scripts/docker-entrypoint.sh`; `docker run ... mide-engine demo` generates the demo data, authorizes it, scans and reports), `scripts/install.sh` (Linux/macOS) and `scripts/install.ps1` (Windows) creating a venv in `~/.mide/venv`. `pip install` of the wheel now works outside a checkout: default YAML files are shipped in `mide/_defaults/` and seeded into `<MIDE_HOME>/config` on first use (the repo `config/` is still used in a source checkout).
+- **Fichiers principaux :** `Dockerfile`, `scripts/install.*`, `mide/config.py`, `mide/connectors/sources.py`, `mide/_defaults/`, `tests/test_packaging.py`
+- **Tests :** 246 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK. Wheel installed in a clean venv and demo data scanned with `mide sources add` / `mide scan`.
+- **PR :** voir la PR vers `main` (branche `task/W4-06-packaging`)
+- **Décisions techniques :** duplicated the three config files in `mide/_defaults/` (a test enforces they stay identical to `config/`) rather than moving `config/`, to keep the documented layout.
+- **Problèmes / dette technique :** `docker build` could NOT be run here (no Docker daemon in the sandbox) — the acceptance criterion "docker build OK" is unverified; please run `docker build -t mide-engine .` locally. Demo script emits pandas 4 deprecation warnings (`dayofyear`, `dayofweek`).
+- **Prochaine tâche :** W4-07 — Documentation
 
 ### 2026-11-14 — W4-05 Security and privacy
 - **Fait :** Audit of network use, source consent, SQL read-only mode and logging. New `mide privacy` command (`mide/utils/privacy.py`): lists authorized sources (database credentials masked), local storage folders with sizes, network and read-only policy (FR/EN). Log lines in `cli.py` and the indexer now carry the exception type only, never its message (which can contain row data). Test that blocks all socket access during `mide ask`.
