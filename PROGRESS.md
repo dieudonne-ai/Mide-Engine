@@ -20,7 +20,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
 | S3 — Intelligence     | 9 / 9 | ✅ terminé |
-| S4 — Produit          | 1 / 8 | 🔄 en cours |
+| S4 — Produit          | 2 / 8 | 🔄 en cours |
 
 ---
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W4-02 Weekly report
+- **Fait :** `mide/report.py` (`build_report`, `render_markdown`, `render_html`) and `mide report [--format md|html] [--output FILE]`. Sections: key indicators, forecasts, alerts (anomalies, churn, underperforming channels), 3 priority actions each with its source figures. FR/EN following `language`.
+- **Fichiers principaux :** `mide/report.py`, `mide/cli.py`, `tests/test_report.py`
+- **Tests :** 211 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-ttl1l9`, empilée sur W4-01)
+- **Décisions techniques :** the report is fully deterministic (reuses the decision-agent findings, no LLM call) so it works on `tiny` machines and needs no model download; HTML output is escaped.
+- **Problèmes / dette technique :** action ranking is rule-based (churn > marketing > anomaly > trend). Not yet exposed in the dashboard.
+- **Prochaine tâche :** W4-03 — Fine-tuning LoRA optionnel
 
 ### 2026-11-14 — W4-01 Streamlit dashboard
 - **Fait :** `app/dashboard.py` with 7 pages (Home KPIs/anomalies, Sales, Customers, Marketing, Ask a question, Data sources add/remove, Hardware & models) and `mide ui` (launches Streamlit with usage stats disabled, `--config-dir` forwarded via `MIDE_CONFIG_DIR`). Data logic lives in `mide/dashboard_data.py` (no Streamlit import, unit-tested). The body of `mide ask` was extracted into `cli.ask_answer()` so CLI and dashboard share it.

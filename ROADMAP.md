@@ -158,7 +158,7 @@
   - `mide ui` lance le dashboard.
   - ✅ Critères : se lance sans erreur sur le jeu de démo.
 
-- [ ] **W4-02 — Rapport hebdomadaire**
+- [x] **W4-02 — Rapport hebdomadaire**
   - `mide report` : génère un rapport Markdown/HTML (KPIs, prévisions, alertes, 3 actions prioritaires).
   - ✅ Critères : rapport généré sur le jeu de démo, testé.
 

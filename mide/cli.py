@@ -379,6 +379,33 @@ def ui_command(
     raise typer.Exit(subprocess.call(cmd, env=env))
 
 
+REPORT_FORMAT_OPTION = typer.Option("md", "--format", help="md or html.")
+REPORT_OUTPUT_OPTION = typer.Option(None, "--output", "-o", help="Output file (default: stdout).")
+
+
+@app.command("report")
+def report_command(
+    fmt: str = REPORT_FORMAT_OPTION,
+    output: Path | None = REPORT_OUTPUT_OPTION,
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Generate the weekly report (KPIs, forecasts, alerts, 3 priority actions)."""
+    from mide.report import build_report, render_html, render_markdown
+
+    if fmt not in ("md", "html"):
+        typer.echo("Format must be 'md' or 'html'.", err=True)
+        raise typer.Exit(2)
+    cfg = load_config(config_dir)
+    tables = detect_tables(_load_all_datasets(list_sources(config_dir)))
+    report = build_report(tables, cfg.language)
+    text = render_html(report) if fmt == "html" else render_markdown(report)
+    if output is None:
+        typer.echo(text)
+    else:
+        output.write_text(text, encoding="utf-8")
+        typer.echo(f"Report written: {output}")
+
+
 @app.command("auto")
 def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     """Scan, index incrementally, retrain changed models (kept only if better), report."""
