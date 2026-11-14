@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import typer
 
 from mide import __version__
+from mide.agent.decision import detect_tables, recommend, run_modules
+from mide.agent.router import route_question
+from mide.automl.auto import AutoReport, fingerprint, retrain_if_changed
 from mide.automl.evaluator import evaluate
 from mide.automl.registry import list_models as list_trained_models
 from mide.automl.registry import save_model
@@ -20,6 +24,7 @@ from mide.hardware.profiler import profile_hardware
 from mide.ingestion.catalog import build_catalog
 from mide.llm.chat import ChatHistory
 from mide.llm.downloader import DownloadError, download_model, list_models, model_path
+from mide.llm.lora import finetune, load_documents, peft_trainer, unavailable_reason
 from mide.llm.prompts import build_rag_prompt, sources_footer
 from mide.llm.runtime import LLM, load_llm
 from mide.rag.embeddings import Embedder, load_embedder
@@ -27,6 +32,7 @@ from mide.rag.indexer import index_sources
 from mide.rag.retriever import Retriever
 from mide.rag.store import VectorStore
 
+logger = logging.getLogger(__name__)
 app = typer.Typer(help="MIDE Engine - local market intelligence engine.", no_args_is_help=True)
 
 
@@ -244,7 +250,10 @@ def train_command(
         )
         metrics = evaluate(result, df)
         record = save_model(
-            result, cfg.app_dir / "models_trained", f"{dataset}-{target}", {"evaluation": metrics}
+            result,
+            cfg.app_dir / "models_trained",
+            f"{dataset}-{target}",
+            {"evaluation": metrics, "dataset": dataset, "data_hash": fingerprint(df)},
         )
     except Exception as exc:
         typer.echo(f"Error: {exc}", err=True)
@@ -269,6 +278,60 @@ def _get_llm(cfg: Config) -> LLM:
     return load_llm(path, report)
 
 
+def _load_all_datasets(sources: list[str]) -> dict:
+    """Read every tabular dataset of the authorized sources (read-only)."""
+    frames: dict = {}
+    for source in sources:
+        try:
+            if is_url(source):
+                conn = SQLConnector(source, sources)
+            elif Path(source).expanduser().exists():
+                conn = TabularConnector(source, sources)
+            else:
+                continue
+            for item in conn.discover():
+                try:
+                    frames[item] = conn.read(item)
+                except Exception as exc:  # noqa: BLE001 - unreadable item: skip it
+                    logger.debug("Skipping %s: %s", item, exc)
+        except Exception as exc:  # noqa: BLE001 - unreachable source: skip it
+            logger.debug("Skipping source %s: %s", type(exc).__name__, exc)
+    return frames
+
+
+class EmptyIndexError(Exception):
+    """The vector index is empty and no business data can answer."""
+
+
+def ask_answer(question: str, config_dir: Path | None = None, source: str | None = None,
+               top_k: int = 5) -> tuple[str, str, str]:
+    """Answer a question; returns (answer, figures used, sources footer)."""
+    cfg = load_config(config_dir)
+    route = route_question(question)
+    passages: list = []
+    findings: list = []
+    if route.modules:
+        findings = run_modules(route.modules, detect_tables(_load_all_datasets(list_sources(config_dir))))
+        if not findings and not route.use_rag:
+            route.use_rag = True  # no usable business data: fall back to documents
+    if route.use_rag:
+        store = VectorStore(cfg.app_dir / "index")
+        if store.count() == 0 and not findings:
+            raise EmptyIndexError(
+                "Index vide. Lancez `mide index`." if cfg.language == "fr"
+                else "Empty index. Run `mide index`.")
+        if store.count() > 0:
+            passages = Retriever(store, _get_embedder(cfg), top_k).retrieve(question, source=source)
+    llm = _get_llm(cfg)
+    if findings:
+        rec = recommend(question, findings, llm, passages, cfg.language)
+        answer, used = rec.text, rec.data_used(cfg.language)
+    else:
+        prompt = build_rag_prompt(question, passages, cfg.language)
+        answer, used = llm.generate(prompt, max_tokens=512, temperature=0.2), ""
+    return answer.strip(), used, sources_footer(passages)
+
+
 @app.command("ask")
 def ask_command(
     question: str,
@@ -276,26 +339,116 @@ def ask_command(
     top_k: int = typer.Option(5, "--top-k", "-k", min=1, help="Number of excerpts."),
     config_dir: Path | None = CONFIG_DIR_OPTION,
 ) -> None:
-    """Answer a question from the indexed data, citing the sources."""
+    """Answer a question: documents (RAG), business modules, or both (agent)."""
     try:
-        cfg = load_config(config_dir)
-        store = VectorStore(cfg.app_dir / "index")
-        if store.count() == 0:
-            typer.echo(
-                "Index vide. Lancez `mide index`." if cfg.language == "fr"
-                else "Empty index. Run `mide index`."
-            )
-            raise typer.Exit(1)
-        passages = Retriever(store, _get_embedder(cfg), top_k).retrieve(question, source=source)
-        prompt = build_rag_prompt(question, passages, cfg.language)
-        answer = _get_llm(cfg).generate(prompt, max_tokens=512, temperature=0.2)
-    except (ConfigError, DownloadError) as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        answer, used, footer = ask_answer(question, config_dir, source, top_k)
+    except (ConfigError, DownloadError, EmptyIndexError) as exc:
+        typer.echo(f"Error: {exc}" if not isinstance(exc, EmptyIndexError) else str(exc), err=True)
         raise typer.Exit(1) from exc
-    typer.echo(answer.strip())
-    footer = sources_footer(passages)
+    typer.echo(answer)
+    if used:
+        typer.echo("\n" + used)
     if footer:
         typer.echo("\n" + footer)
+
+
+@app.command("ui")
+def ui_command(
+    port: int = typer.Option(8501, help="Port of the dashboard."),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Launch the Streamlit dashboard (needs `pip install mide-engine[ui]`)."""
+    import importlib.util
+    import os
+    import subprocess
+    import sys
+
+    from mide.dashboard_data import CONFIG_ENV
+
+    if importlib.util.find_spec("streamlit") is None:
+        typer.echo("Streamlit is not installed: pip install 'mide-engine[ui]'", err=True)
+        raise typer.Exit(1)
+    script = Path(__file__).resolve().parent.parent / "app" / "dashboard.py"
+    if not script.exists():
+        typer.echo(f"Dashboard not found: {script}", err=True)
+        raise typer.Exit(1)
+    env = dict(os.environ)
+    if config_dir is not None:
+        env[CONFIG_ENV] = str(config_dir.resolve())
+    cmd = [sys.executable, "-m", "streamlit", "run", str(script), "--server.port", str(port),
+           "--browser.gatherUsageStats", "false"]
+    raise typer.Exit(subprocess.call(cmd, env=env))
+
+
+REPORT_FORMAT_OPTION = typer.Option("md", "--format", help="md or html.")
+REPORT_OUTPUT_OPTION = typer.Option(None, "--output", "-o", help="Output file (default: stdout).")
+
+
+@app.command("report")
+def report_command(
+    fmt: str = REPORT_FORMAT_OPTION,
+    output: Path | None = REPORT_OUTPUT_OPTION,
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Generate the weekly report (KPIs, forecasts, alerts, 3 priority actions)."""
+    from mide.report import build_report, render_html, render_markdown
+
+    if fmt not in ("md", "html"):
+        typer.echo("Format must be 'md' or 'html'.", err=True)
+        raise typer.Exit(2)
+    cfg = load_config(config_dir)
+    tables = detect_tables(_load_all_datasets(list_sources(config_dir)))
+    report = build_report(tables, cfg.language)
+    text = render_html(report) if fmt == "html" else render_markdown(report)
+    if output is None:
+        typer.echo(text)
+    else:
+        output.write_text(text, encoding="utf-8")
+        typer.echo(f"Report written: {output}")
+
+
+@app.command("auto")
+def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """Scan, index incrementally, retrain changed models (kept only if better), report."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    sources = list_sources(config_dir)
+    if not sources:
+        typer.echo("No authorized sources. Use `mide sources add`.")
+        return
+    report = AutoReport(n_datasets=len(build_catalog(sources)))
+    try:
+        idx = index_sources(
+            sources,
+            cfg.app_dir / "index",
+            _get_embedder(cfg),
+            cfg.general.chunk_size,
+            cfg.general.chunk_overlap,
+            cfg.general.max_file_size_mb,
+        )
+        report.index_summary = (
+            f"{len(idx.new_items)} new, {len(idx.updated_items)} updated, "
+            f"{len(idx.unchanged_items)} unchanged, {len(idx.removed_items)} removed"
+        )
+        report.outcomes = retrain_if_changed(
+            _load_all_datasets(sources),
+            cfg.app_dir / "models_trained",
+            cfg.app_dir / "auto_state.json",
+            profile=profile_hardware().profile,
+        )
+    except Exception as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Scan: {report.n_datasets} datasets/documents.")
+    typer.echo(f"Index: {report.index_summary}.")
+    if not report.outcomes:
+        typer.echo("No trained models. Use `mide train --dataset X --target Y`.")
+    for o in report.outcomes:
+        scores = "" if o.new_score is None else f" ({o.old_score:.4g} -> {o.new_score:.4g})"
+        typer.echo(f"Model {o.name}: {o.status}{scores} {o.detail}".rstrip())
 
 
 @app.command("chat")
@@ -347,6 +500,29 @@ def chat_command(
             typer.echo("\n" + footer)
 
 
+@app.command("finetune")
+def finetune_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """Optional LoRA fine-tuning on company documents (GPU only; otherwise RAG is used)."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    hw = profile_hardware()
+    spec = cfg.models.profiles.get(hw.profile)  # type: ignore[call-overload]
+    allows = bool(spec and spec.lora)
+    reason = unavailable_reason(hw, allows, cfg.language)
+    if reason:
+        typer.echo(reason)
+        return
+    docs = load_documents(list_sources(config_dir), cfg.general.max_file_size_mb)
+    llm = _get_llm(cfg)
+    base = spec.llm.repo.replace("-GGUF", "")  # type: ignore[union-attr]
+    res = finetune(hw, allows, docs, llm, cfg.app_dir / "lora", peft_trainer(base),
+                   lambda holdout, adapter: 0.0, cfg.language)
+    typer.echo(res.message)
+
+
 @app.callback()
 def main(
     version: bool = typer.Option(
@@ -370,5 +546,16 @@ def doctor() -> None:
     typer.echo(f"Profile: {report.profile}")
 
 
+def run() -> None:
+    """Console entry point: runs the CLI and turns unexpected errors into clear messages."""
+    from mide.utils.errors import run_safely
+
+    try:
+        language = load_config().language
+    except Exception:  # noqa: BLE001 - config may be what is broken
+        language = "fr"
+    raise SystemExit(run_safely(app, language))
+
+
 if __name__ == "__main__":
-    app()
+    run()

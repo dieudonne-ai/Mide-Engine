@@ -19,8 +19,8 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
-| S3 — Intelligence     | 4 / 9 | 🔄 en cours |
-| S4 — Produit          | 0 / 8 | ⏳ pas commencé |
+| S3 — Intelligence     | 9 / 9 | ✅ terminé |
+| S4 — Produit          | 4 / 8 | 🔄 en cours |
 
 ---
 
@@ -38,6 +38,87 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W4-04 Performance and robustness
+- **Fait :** `TabularConnector.read_chunks()` (chunked CSV reading); `metadata()` now counts rows in chunks instead of loading the whole file (the catalog previously read each file twice in full). `mide/utils/errors.py`: bilingual FR/EN friendly messages (missing file, permission, encoding, empty/malformed file, out of memory, network) and `run_safely`; the console script is now `mide.cli:run`, which prints a clear error instead of a traceback. `mide/utils/perf.py`: `measure()` (time + peak memory).
+- **Fichiers principaux :** `mide/connectors/tabular.py`, `mide/utils/errors.py`, `mide/utils/perf.py`, `mide/cli.py`, `tests/test_robustness.py`
+- **Tests :** 234 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK. Demo dataset catalog peak allocation is asserted far below the 4 GB budget; chunked metadata uses less memory than a full read.
+- **PR :** voir la PR vers `main` (branche `task/W4-04-performance-robustness`)
+- **Décisions techniques :** memory measured with `tracemalloc` (Python allocations) to stay portable; Excel cannot be streamed by pandas, so it is read once then sliced.
+- **Problèmes / dette technique :** other modules (trainer, indexer) still load full DataFrames; only the tabular connector/catalog path is chunked. `tests/test_files.py` still uncollectable here (env `cryptography` issue).
+- **Prochaine tâche :** W4-05 — Sécurité et confidentialité
+
+### 2026-11-14 — W4-03 Optional LoRA fine-tuning
+- **Fait :** `mide/llm/lora.py`: availability check (GPU + medium/large profile + `[finetune]` extra, FR/EN message "fine-tuning unavailable, RAG is used"), Q/A dataset generation from authorized documents with the local LLM, deterministic train/held-out split, injectable trainer/scorer, before/after evaluation (adapter activated only if the held-out score improves), PEFT trainer (lazy imports). New command `mide finetune`.
+- **Fichiers principaux :** `mide/llm/lora.py`, `mide/cli.py`, `tests/test_lora.py`
+- **Tests :** 228 passés ; `ruff check .` OK. Unavailable path, activation, rejection and not-enough-data are covered with fakes (no torch, no model).
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-zc2npq`, empilée sur W4-02)
+- **Décisions techniques :** trainer and scorer are injected so the pipeline is testable without GPU; the adapter is only recorded in `~/.mide/lora/active_adapter.json` when it wins.
+- **Problèmes / dette technique :** the real PEFT trainer is untested (needs GPU, `# pragma: no cover`). The CLI scorer is a placeholder returning 0.0, so `mide finetune` never activates an adapter yet: a real scorer (answer overlap on held-out questions with the adapter loaded in llama.cpp) is still to write. The runtime does not load the active adapter yet.
+- **Prochaine tâche :** W4-04 — Performance et robustesse
+
+### 2026-11-14 — W4-02 Weekly report
+- **Fait :** `mide/report.py` (`build_report`, `render_markdown`, `render_html`) and `mide report [--format md|html] [--output FILE]`. Sections: key indicators, forecasts, alerts (anomalies, churn, underperforming channels), 3 priority actions each with its source figures. FR/EN following `language`.
+- **Fichiers principaux :** `mide/report.py`, `mide/cli.py`, `tests/test_report.py`
+- **Tests :** 211 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-ttl1l9`, empilée sur W4-01)
+- **Décisions techniques :** the report is fully deterministic (reuses the decision-agent findings, no LLM call) so it works on `tiny` machines and needs no model download; HTML output is escaped.
+- **Problèmes / dette technique :** action ranking is rule-based (churn > marketing > anomaly > trend). Not yet exposed in the dashboard.
+- **Prochaine tâche :** W4-03 — Fine-tuning LoRA optionnel
+
+### 2026-11-14 — W4-01 Streamlit dashboard
+- **Fait :** `app/dashboard.py` with 7 pages (Home KPIs/anomalies, Sales, Customers, Marketing, Ask a question, Data sources add/remove, Hardware & models) and `mide ui` (launches Streamlit with usage stats disabled, `--config-dir` forwarded via `MIDE_CONFIG_DIR`). Data logic lives in `mide/dashboard_data.py` (no Streamlit import, unit-tested). The body of `mide ask` was extracted into `cli.ask_answer()` so CLI and dashboard share it.
+- **Fichiers principaux :** `app/dashboard.py`, `mide/dashboard_data.py`, `mide/cli.py`, `pyproject.toml` (new extra `[ui]`), `tests/test_dashboard.py`
+- **Tests :** 206 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK. Pages are exercised with `streamlit.testing.AppTest` on the demo data and on an empty config.
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-wjbujy`, empilée sur W3-09)
+- **Décisions techniques :** Streamlit is an optional extra (`pip install mide-engine[ui]`) to keep the base install light; the dashboard only reads authorized sources and caches the load (refresh button / source edits invalidate it).
+- **Problèmes / dette technique :** `app/` is not part of the installed Python package, so `mide ui` works from a repo checkout only (packaging is W4-06). In this sandbox pytest needs `/usr/bin/python3 -m pip install -e ".[dev,ui]"` first.
+- **Prochaine tâche :** W4-02 — Rapport hebdomadaire
+
+### 2026-11-14 — W3-09 Scheduled auto-learning
+- **Fait :** `automl/auto.py` (`retrain_if_changed`, `fingerprint`, `AutoReport`) and `mide auto`: scan -> incremental indexing -> retrain registered models only when their dataset content changed -> promote the new version only if it beats the previous one on its primary metric, otherwise keep the old one -> report. `mide train` now stores `dataset` and `data_hash` in the model metadata.
+- **Fichiers principaux :** `mide/automl/auto.py`, `mide/cli.py`, `tests/test_auto.py`, `tests/test_cli.py`
+- **Tests :** 199 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-pnu5qf`, empilée sur W3-08)
+- **Décisions techniques :** only models already trained via `mide train` are retrained (no automatic target guessing); data fingerprint = pandas row hash, stored in `~/.mide/auto_state.json` so a rejected candidate is not retrained on every run; one failing model is reported and does not stop the run.
+- **Problèmes / dette technique :** scheduling itself is left to cron/Task Scheduler calling `mide auto`. Metric comparison is on the training CV score of the primary metric (not a held-out set). Use `/usr/bin/python3` for pytest in this sandbox.
+- **Prochaine tâche :** W4-01 — Dashboard Streamlit
+
+### 2026-11-14 — W3-08 Decision agent
+- **Fait :** `agent/router.py` (`route_question`: FR/EN keyword routing to RAG, business modules, or both), `agent/decision.py` (`detect_tables`, `run_modules` -> `Finding`s with figures, `build_decision_prompt`, `recommend`; `Recommendation.data_used()` always appends the source figures, independent of LLM output). `mide ask` now uses the agent; pure document questions behave as before.
+- **Fichiers principaux :** `mide/agent/router.py`, `mide/agent/decision.py`, `mide/cli.py`, `tests/test_agent.py`
+- **Tests :** 194 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-5yr9v3`, empilée sur W3-07)
+- **Décisions techniques :** keyword router (no LLM call, deterministic, works on `tiny`); business-only questions skip the index so they work without `mide index`; if no usable business table is found, falls back to RAG. Sales/campaign tables are detected by column names.
+- **Problèmes / dette technique :** keyword lists are coarse (no semantic routing). `mide chat` still RAG-only. Sandbox needed `python -m pip install -e ".[dev]"` (PATH `pytest` used another Python).
+- **Prochaine tâche :** W3-09 — Auto-apprentissage planifié
+
+### 2026-11-14 — W3-07 Insights & anomalies
+- **Fait :** `business/insights.py`: `compute_kpis` (revenue, orders, average order value, customers, last-30d vs previous-30d growth, best day), `detect_anomalies` (drops/spikes on the daily series, consecutive days merged into one `Anomaly` with actual/expected/ratio/score), `analyze` (KPIs + anomalies).
+- **Fichiers principaux :** `mide/business/insights.py`, `tests/test_insights.py`
+- **Tests :** 182 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-b4e2ck`, empilée sur W3-06)
+- **Décisions techniques :** expected value = weekday factor x centered 29-day rolling median (absorbs trend and season); robust MAD z-score (threshold 4) plus a minimum 40% deviation to avoid flagging noise. Finds all 3 planted demo anomalies with at most 2 extra detections.
+- **Problèmes / dette technique :** `tests/test_files.py` still not collectable in this sandbox (environment issue). Not wired into the CLI yet (W3-08).
+- **Prochaine tâche :** W3-08 — Agent décisionnel
+
+### 2026-11-14 — W3-06 Marketing module
+- **Fait :** `business/marketing.py`: `channel_performance` and `campaign_performance` (spend, revenue, ROI, ROAS, cost per conversion, conversion rate, CTR), `underperforming_channels`, `suggest_reallocation` (`ReallocationPlan` with `BudgetMove`s: part of weak channels' budget moved to the best-ROAS channel, with reason and estimated extra revenue).
+- **Fichiers principaux :** `mide/business/marketing.py`, `tests/test_marketing.py`
+- **Tests :** 174 passés (hors `tests/test_files.py`, voir ci-dessous) ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-a1wkmu`, empilée sur W3-05)
+- **Décisions techniques :** underperformance is measured against the median channel ROI (a spend-weighted baseline wrongly flagged Facebook/Google Ads because Email/WhatsApp dominate). Extra-revenue estimate is linear (average ROAS of the receiving channel), hence optimistic; at most 50% of a weak channel's budget moves.
+- **Problèmes / dette technique :** `tests/test_files.py` could not be collected in this sandbox (system `cryptography` lacks `_cffi_backend`; environment issue, not code). Not wired into the CLI yet (W3-08).
+- **Prochaine tâche :** W3-07 — Insights & anomalies
+
+### 2026-11-14 — W3-05 Customers module
+- **Fait :** `business/customers.py`: `customer_table` (recency, frequency, monetary, typical purchase gap per customer), `rfm_segments` (1-5 rank-quantile scores + named segments: Champions, Loyal, New / promising, At risk, Hibernating, Needs attention), `segment_summary` (customers, revenue, revenue share per segment), `churn_risk` (risk in [0,1] from silence relative to each customer's own purchase rhythm; `ChurnReport` with high-risk customers and revenue at risk).
+- **Fichiers principaux :** `mide/business/customers.py`, `tests/test_customers.py`
+- **Tests :** 174 passés / 174 au total ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-nu241q`)
+- **Décisions techniques :** rank-based quantiles (robust to ties/skew) instead of `qcut`; churn is a transparent heuristic (risk = 1 - 0.5^(recency/(3 x typical gap))), not a trained model, so it works on any dataset and stays explainable. Single-order customers use the population median gap.
+- **Problèmes / dette technique :** heuristic not validated against real churn labels; not yet wired into the CLI (planned with the agent, W3-08). Pre-existing pandas deprecation warnings in `scripts/make_demo_data.py`.
+- **Prochaine tâche :** W3-06 — Module marketing
 
 ### 2026-11-13 — W3-04 Sales module
 - **Fait :** `business/sales.py`: `forecast_sales` (30/60/90-day forecast: linear trend + weekday + yearly Fourier terms by least squares, anomalous days >3 sigma excluded from the fit, growth vs previous period), `product_ranking` (top/flop with revenue share), `sales_trend` (monthly totals, last-3-months and YoY growth, direction), `detect_seasonality` (monthly/weekday indices after detrending, peak/trough, yearly seasonality flag).

@@ -123,27 +123,27 @@
   - `business/sales.py` : prévision 30/60/90 jours, top/flop produits, tendances, saisonnalité.
   - ✅ Critères : sur le jeu de démo, détecte la saisonnalité générée.
 
-- [ ] **W3-05 — Module clients**
+- [x] **W3-05 — Module clients**
   - `business/customers.py` : segmentation RFM, score de risque de churn.
   - ✅ Critères : segments cohérents sur le jeu de démo ; tests.
 
-- [ ] **W3-06 — Module marketing**
+- [x] **W3-06 — Module marketing**
   - `business/marketing.py` : performance par canal/campagne (coût, conversions, ROI),
     canaux qui sous-performent, réallocation de budget suggérée.
   - ✅ Critères : tests sur le jeu de démo.
 
-- [ ] **W3-07 — Insights & anomalies**
+- [x] **W3-07 — Insights & anomalies**
   - `business/insights.py` : KPIs principaux, détection d'anomalies (chutes/pics anormaux).
   - ✅ Critères : retrouve les anomalies volontaires du jeu de démo.
 
-- [ ] **W3-08 — Agent décisionnel**
+- [x] **W3-08 — Agent décisionnel**
   - `agent/router.py` : la question va vers le RAG, un module business, ou les deux.
   - `agent/decision.py` : le LLM transforme les résultats chiffrés en recommandations
     actionnables (« quoi faire, pourquoi, impact estimé, données utilisées »).
   - `mide ask` utilise maintenant l'agent.
   - ✅ Critères : tests de routage ; chaque recommandation contient ses chiffres sources.
 
-- [ ] **W3-09 — Auto-apprentissage planifié**
+- [x] **W3-09 — Auto-apprentissage planifié**
   - `mide auto` : scan → indexation incrémentale → réentraînement si les données ont changé
     → rapport. Réentraîne uniquement si le nouveau modèle est meilleur (sinon garde l'ancien).
   - ✅ Critères : test : données inchangées → aucun réentraînement.
@@ -152,24 +152,24 @@
 
 ## Semaine 4 — Produit, fine-tuning et livraison
 
-- [ ] **W4-01 — Dashboard Streamlit**
+- [x] **W4-01 — Dashboard Streamlit**
   - `app/dashboard.py` : pages Accueil (KPIs), Ventes, Clients, Marketing, Poser une question,
     Sources de données, Matériel & modèles.
   - `mide ui` lance le dashboard.
   - ✅ Critères : se lance sans erreur sur le jeu de démo.
 
-- [ ] **W4-02 — Rapport hebdomadaire**
+- [x] **W4-02 — Rapport hebdomadaire**
   - `mide report` : génère un rapport Markdown/HTML (KPIs, prévisions, alertes, 3 actions prioritaires).
   - ✅ Critères : rapport généré sur le jeu de démo, testé.
 
-- [ ] **W4-03 — Fine-tuning LoRA optionnel**
+- [x] **W4-03 — Fine-tuning LoRA optionnel**
   - `llm/lora.py` : uniquement si profil `medium`/`large` avec GPU.
   - Génère un petit dataset Q/R à partir des documents de l'entreprise, entraîne un adaptateur LoRA,
     évalue avant/après, n'active l'adaptateur que s'il améliore les résultats.
   - Sinon : message clair « fine-tuning indisponible sur cette machine, le RAG est utilisé ».
   - ✅ Critères : désactivé proprement sans GPU ; tests du chemin « non disponible ».
 
-- [ ] **W4-04 — Performance et robustesse**
+- [x] **W4-04 — Performance et robustesse**
   - Mesurer RAM/temps sur le profil `tiny` ; traitement par lots pour gros fichiers ;
     gestion des erreurs utilisateur avec messages clairs (FR/EN).
   - ✅ Critères : jeu de démo traité entièrement avec < 4 Go RAM (hors LLM).
