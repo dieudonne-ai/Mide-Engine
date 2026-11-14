@@ -19,7 +19,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
-| S3 — Intelligence     | 6 / 9 | 🔄 en cours |
+| S3 — Intelligence     | 7 / 9 | 🔄 en cours |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
 ---
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W3-07 Insights & anomalies
+- **Fait :** `business/insights.py`: `compute_kpis` (revenue, orders, average order value, customers, last-30d vs previous-30d growth, best day), `detect_anomalies` (drops/spikes on the daily series, consecutive days merged into one `Anomaly` with actual/expected/ratio/score), `analyze` (KPIs + anomalies).
+- **Fichiers principaux :** `mide/business/insights.py`, `tests/test_insights.py`
+- **Tests :** 182 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-b4e2ck`, empilée sur W3-06)
+- **Décisions techniques :** expected value = weekday factor x centered 29-day rolling median (absorbs trend and season); robust MAD z-score (threshold 4) plus a minimum 40% deviation to avoid flagging noise. Finds all 3 planted demo anomalies with at most 2 extra detections.
+- **Problèmes / dette technique :** `tests/test_files.py` still not collectable in this sandbox (environment issue). Not wired into the CLI yet (W3-08).
+- **Prochaine tâche :** W3-08 — Agent décisionnel
 
 ### 2026-11-14 — W3-06 Marketing module
 - **Fait :** `business/marketing.py`: `channel_performance` and `campaign_performance` (spend, revenue, ROI, ROAS, cost per conversion, conversion rate, CTR), `underperforming_channels`, `suggest_reallocation` (`ReallocationPlan` with `BudgetMove`s: part of weak channels' budget moved to the best-ROAS channel, with reason and estimated extra revenue).

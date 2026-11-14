@@ -132,7 +132,7 @@
     canaux qui sous-performent, réallocation de budget suggérée.
   - ✅ Critères : tests sur le jeu de démo.
 
-- [ ] **W3-07 — Insights & anomalies**
+- [x] **W3-07 — Insights & anomalies**
   - `business/insights.py` : KPIs principaux, détection d'anomalies (chutes/pics anormaux).
   - ✅ Critères : retrouve les anomalies volontaires du jeu de démo.
 
