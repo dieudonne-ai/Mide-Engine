@@ -152,7 +152,7 @@
 
 ## Semaine 4 — Produit, fine-tuning et livraison
 
-- [ ] **W4-01 — Dashboard Streamlit**
+- [x] **W4-01 — Dashboard Streamlit**
   - `app/dashboard.py` : pages Accueil (KPIs), Ventes, Clients, Marketing, Poser une question,
     Sources de données, Matériel & modèles.
   - `mide ui` lance le dashboard.

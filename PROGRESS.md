@@ -20,7 +20,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
 | S3 — Intelligence     | 9 / 9 | ✅ terminé |
-| S4 — Produit          | 0 / 8 | ⏳ pas commencé |
+| S4 — Produit          | 1 / 8 | 🔄 en cours |
 
 ---
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W4-01 Streamlit dashboard
+- **Fait :** `app/dashboard.py` with 7 pages (Home KPIs/anomalies, Sales, Customers, Marketing, Ask a question, Data sources add/remove, Hardware & models) and `mide ui` (launches Streamlit with usage stats disabled, `--config-dir` forwarded via `MIDE_CONFIG_DIR`). Data logic lives in `mide/dashboard_data.py` (no Streamlit import, unit-tested). The body of `mide ask` was extracted into `cli.ask_answer()` so CLI and dashboard share it.
+- **Fichiers principaux :** `app/dashboard.py`, `mide/dashboard_data.py`, `mide/cli.py`, `pyproject.toml` (new extra `[ui]`), `tests/test_dashboard.py`
+- **Tests :** 206 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK. Pages are exercised with `streamlit.testing.AppTest` on the demo data and on an empty config.
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-wjbujy`, empilée sur W3-09)
+- **Décisions techniques :** Streamlit is an optional extra (`pip install mide-engine[ui]`) to keep the base install light; the dashboard only reads authorized sources and caches the load (refresh button / source edits invalidate it).
+- **Problèmes / dette technique :** `app/` is not part of the installed Python package, so `mide ui` works from a repo checkout only (packaging is W4-06). In this sandbox pytest needs `/usr/bin/python3 -m pip install -e ".[dev,ui]"` first.
+- **Prochaine tâche :** W4-02 — Rapport hebdomadaire
 
 ### 2026-11-14 — W3-09 Scheduled auto-learning
 - **Fait :** `automl/auto.py` (`retrain_if_changed`, `fingerprint`, `AutoReport`) and `mide auto`: scan -> incremental indexing -> retrain registered models only when their dataset content changed -> promote the new version only if it beats the previous one on its primary metric, otherwise keep the old one -> report. `mide train` now stores `dataset` and `data_hash` in the model metadata.

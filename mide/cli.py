@@ -298,6 +298,39 @@ def _load_all_datasets(sources: list[str]) -> dict:
     return frames
 
 
+class EmptyIndexError(Exception):
+    """The vector index is empty and no business data can answer."""
+
+
+def ask_answer(question: str, config_dir: Path | None = None, source: str | None = None,
+               top_k: int = 5) -> tuple[str, str, str]:
+    """Answer a question; returns (answer, figures used, sources footer)."""
+    cfg = load_config(config_dir)
+    route = route_question(question)
+    passages: list = []
+    findings: list = []
+    if route.modules:
+        findings = run_modules(route.modules, detect_tables(_load_all_datasets(list_sources(config_dir))))
+        if not findings and not route.use_rag:
+            route.use_rag = True  # no usable business data: fall back to documents
+    if route.use_rag:
+        store = VectorStore(cfg.app_dir / "index")
+        if store.count() == 0 and not findings:
+            raise EmptyIndexError(
+                "Index vide. Lancez `mide index`." if cfg.language == "fr"
+                else "Empty index. Run `mide index`.")
+        if store.count() > 0:
+            passages = Retriever(store, _get_embedder(cfg), top_k).retrieve(question, source=source)
+    llm = _get_llm(cfg)
+    if findings:
+        rec = recommend(question, findings, llm, passages, cfg.language)
+        answer, used = rec.text, rec.data_used(cfg.language)
+    else:
+        prompt = build_rag_prompt(question, passages, cfg.language)
+        answer, used = llm.generate(prompt, max_tokens=512, temperature=0.2), ""
+    return answer.strip(), used, sources_footer(passages)
+
+
 @app.command("ask")
 def ask_command(
     question: str,
@@ -306,40 +339,44 @@ def ask_command(
     config_dir: Path | None = CONFIG_DIR_OPTION,
 ) -> None:
     """Answer a question: documents (RAG), business modules, or both (agent)."""
-    fr = True
     try:
-        cfg = load_config(config_dir)
-        fr = cfg.language == "fr"
-        route = route_question(question)
-        passages: list = []
-        findings: list = []
-        if route.modules:
-            findings = run_modules(route.modules, detect_tables(_load_all_datasets(list_sources(config_dir))))
-            if not findings and not route.use_rag:
-                route.use_rag = True  # no usable business data: fall back to documents
-        if route.use_rag:
-            store = VectorStore(cfg.app_dir / "index")
-            if store.count() == 0 and not findings:
-                typer.echo("Index vide. Lancez `mide index`." if fr else "Empty index. Run `mide index`.")
-                raise typer.Exit(1)
-            if store.count() > 0:
-                passages = Retriever(store, _get_embedder(cfg), top_k).retrieve(question, source=source)
-        llm = _get_llm(cfg)
-        if findings:
-            rec = recommend(question, findings, llm, passages, cfg.language)
-            answer, used = rec.text, rec.data_used(cfg.language)
-        else:
-            prompt = build_rag_prompt(question, passages, cfg.language)
-            answer, used = llm.generate(prompt, max_tokens=512, temperature=0.2), ""
-    except (ConfigError, DownloadError) as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        answer, used, footer = ask_answer(question, config_dir, source, top_k)
+    except (ConfigError, DownloadError, EmptyIndexError) as exc:
+        typer.echo(f"Error: {exc}" if not isinstance(exc, EmptyIndexError) else str(exc), err=True)
         raise typer.Exit(1) from exc
-    typer.echo(answer.strip())
+    typer.echo(answer)
     if used:
         typer.echo("\n" + used)
-    footer = sources_footer(passages)
     if footer:
         typer.echo("\n" + footer)
+
+
+@app.command("ui")
+def ui_command(
+    port: int = typer.Option(8501, help="Port of the dashboard."),
+    config_dir: Path | None = CONFIG_DIR_OPTION,
+) -> None:
+    """Launch the Streamlit dashboard (needs `pip install mide-engine[ui]`)."""
+    import importlib.util
+    import os
+    import subprocess
+    import sys
+
+    from mide.dashboard_data import CONFIG_ENV
+
+    if importlib.util.find_spec("streamlit") is None:
+        typer.echo("Streamlit is not installed: pip install 'mide-engine[ui]'", err=True)
+        raise typer.Exit(1)
+    script = Path(__file__).resolve().parent.parent / "app" / "dashboard.py"
+    if not script.exists():
+        typer.echo(f"Dashboard not found: {script}", err=True)
+        raise typer.Exit(1)
+    env = dict(os.environ)
+    if config_dir is not None:
+        env[CONFIG_ENV] = str(config_dir.resolve())
+    cmd = [sys.executable, "-m", "streamlit", "run", str(script), "--server.port", str(port),
+           "--browser.gatherUsageStats", "false"]
+    raise typer.Exit(subprocess.call(cmd, env=env))
 
 
 @app.command("auto")
