@@ -40,6 +40,9 @@ mide = "mide.cli:run"
 [tool.setuptools.packages.find]
 include = ["mide*"]
 
+[tool.setuptools.package-data]
+mide = ["_defaults/*.yaml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

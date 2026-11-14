@@ -1,0 +1,19 @@
+# Models per hardware profile. Update names here, not in the code.
+# Check each model's license before use.
+profiles:
+  tiny:
+    llm: {repo: "Qwen/Qwen2.5-1.5B-Instruct-GGUF", file: "qwen2.5-1.5b-instruct-q4_k_m.gguf"}
+    embeddings: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    lora: false
+  small:
+    llm: {repo: "Qwen/Qwen2.5-3B-Instruct-GGUF", file: "qwen2.5-3b-instruct-q4_k_m.gguf"}
+    embeddings: "intfloat/multilingual-e5-base"
+    lora: false
+  medium:
+    llm: {repo: "Qwen/Qwen2.5-3B-Instruct-GGUF", file: "qwen2.5-3b-instruct-q5_k_m.gguf"}
+    embeddings: "intfloat/multilingual-e5-base"
+    lora: true
+  large:
+    llm: {repo: "Qwen/Qwen2.5-7B-Instruct-GGUF", file: "qwen2.5-7b-instruct-q4_k_m.gguf"}
+    embeddings: "intfloat/multilingual-e5-large"
+    lora: true
