@@ -32,6 +32,8 @@ mide doctor                     # checks the install and shows the hardware repo
 
 Docker: `docker build -t mide-engine .` then `docker run --rm mide-engine demo`.
 
+One-shot demo (isolated workspace, no intervention): `./scripts/demo.sh` (set `MIDE_DEMO_SKIP_RAG=1` to skip indexing; `ask` steps are skipped until a model is pulled).
+
 ### Quick start (5 minutes, demo data)
 ```bash
 python scripts/make_demo_data.py demo_data     # fictional SME dataset (sales, customers, campaigns, notes)
