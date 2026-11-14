@@ -10,6 +10,7 @@ import typer
 from mide import __version__
 from mide.agent.decision import detect_tables, recommend, run_modules
 from mide.agent.router import route_question
+from mide.automl.auto import AutoReport, fingerprint, retrain_if_changed
 from mide.automl.evaluator import evaluate
 from mide.automl.registry import list_models as list_trained_models
 from mide.automl.registry import save_model
@@ -248,7 +249,10 @@ def train_command(
         )
         metrics = evaluate(result, df)
         record = save_model(
-            result, cfg.app_dir / "models_trained", f"{dataset}-{target}", {"evaluation": metrics}
+            result,
+            cfg.app_dir / "models_trained",
+            f"{dataset}-{target}",
+            {"evaluation": metrics, "dataset": dataset, "data_hash": fingerprint(df)},
         )
     except Exception as exc:
         typer.echo(f"Error: {exc}", err=True)
@@ -336,6 +340,50 @@ def ask_command(
     footer = sources_footer(passages)
     if footer:
         typer.echo("\n" + footer)
+
+
+@app.command("auto")
+def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
+    """Scan, index incrementally, retrain changed models (kept only if better), report."""
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    sources = list_sources(config_dir)
+    if not sources:
+        typer.echo("No authorized sources. Use `mide sources add`.")
+        return
+    report = AutoReport(n_datasets=len(build_catalog(sources)))
+    try:
+        idx = index_sources(
+            sources,
+            cfg.app_dir / "index",
+            _get_embedder(cfg),
+            cfg.general.chunk_size,
+            cfg.general.chunk_overlap,
+            cfg.general.max_file_size_mb,
+        )
+        report.index_summary = (
+            f"{len(idx.new_items)} new, {len(idx.updated_items)} updated, "
+            f"{len(idx.unchanged_items)} unchanged, {len(idx.removed_items)} removed"
+        )
+        report.outcomes = retrain_if_changed(
+            _load_all_datasets(sources),
+            cfg.app_dir / "models_trained",
+            cfg.app_dir / "auto_state.json",
+            profile=profile_hardware().profile,
+        )
+    except Exception as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Scan: {report.n_datasets} datasets/documents.")
+    typer.echo(f"Index: {report.index_summary}.")
+    if not report.outcomes:
+        typer.echo("No trained models. Use `mide train --dataset X --target Y`.")
+    for o in report.outcomes:
+        scores = "" if o.new_score is None else f" ({o.old_score:.4g} -> {o.new_score:.4g})"
+        typer.echo(f"Model {o.name}: {o.status}{scores} {o.detail}".rstrip())
 
 
 @app.command("chat")

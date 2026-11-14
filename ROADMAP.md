@@ -143,7 +143,7 @@
   - `mide ask` utilise maintenant l'agent.
   - ✅ Critères : tests de routage ; chaque recommandation contient ses chiffres sources.
 
-- [ ] **W3-09 — Auto-apprentissage planifié**
+- [x] **W3-09 — Auto-apprentissage planifié**
   - `mide auto` : scan → indexation incrémentale → réentraînement si les données ont changé
     → rapport. Réentraîne uniquement si le nouveau modèle est meilleur (sinon garde l'ancien).
   - ✅ Critères : test : données inchangées → aucun réentraînement.

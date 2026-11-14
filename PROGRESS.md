@@ -19,7 +19,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
-| S3 — Intelligence     | 8 / 9 | 🔄 en cours |
+| S3 — Intelligence     | 9 / 9 | ✅ terminé |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
 ---
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W3-09 Scheduled auto-learning
+- **Fait :** `automl/auto.py` (`retrain_if_changed`, `fingerprint`, `AutoReport`) and `mide auto`: scan -> incremental indexing -> retrain registered models only when their dataset content changed -> promote the new version only if it beats the previous one on its primary metric, otherwise keep the old one -> report. `mide train` now stores `dataset` and `data_hash` in the model metadata.
+- **Fichiers principaux :** `mide/automl/auto.py`, `mide/cli.py`, `tests/test_auto.py`, `tests/test_cli.py`
+- **Tests :** 199 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-pnu5qf`, empilée sur W3-08)
+- **Décisions techniques :** only models already trained via `mide train` are retrained (no automatic target guessing); data fingerprint = pandas row hash, stored in `~/.mide/auto_state.json` so a rejected candidate is not retrained on every run; one failing model is reported and does not stop the run.
+- **Problèmes / dette technique :** scheduling itself is left to cron/Task Scheduler calling `mide auto`. Metric comparison is on the training CV score of the primary metric (not a held-out set). Use `/usr/bin/python3` for pytest in this sandbox.
+- **Prochaine tâche :** W4-01 — Dashboard Streamlit
 
 ### 2026-11-14 — W3-08 Decision agent
 - **Fait :** `agent/router.py` (`route_question`: FR/EN keyword routing to RAG, business modules, or both), `agent/decision.py` (`detect_tables`, `run_modules` -> `Finding`s with figures, `build_decision_prompt`, `recommend`; `Recommendation.data_used()` always appends the source figures, independent of LLM output). `mide ask` now uses the agent; pure document questions behave as before.
