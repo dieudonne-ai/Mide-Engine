@@ -136,7 +136,7 @@
   - `business/insights.py` : KPIs principaux, détection d'anomalies (chutes/pics anormaux).
   - ✅ Critères : retrouve les anomalies volontaires du jeu de démo.
 
-- [ ] **W3-08 — Agent décisionnel**
+- [x] **W3-08 — Agent décisionnel**
   - `agent/router.py` : la question va vers le RAG, un module business, ou les deux.
   - `agent/decision.py` : le LLM transforme les résultats chiffrés en recommandations
     actionnables (« quoi faire, pourquoi, impact estimé, données utilisées »).

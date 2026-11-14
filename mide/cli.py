@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import typer
 
 from mide import __version__
+from mide.agent.decision import detect_tables, recommend, run_modules
+from mide.agent.router import route_question
 from mide.automl.evaluator import evaluate
 from mide.automl.registry import list_models as list_trained_models
 from mide.automl.registry import save_model
@@ -27,6 +30,7 @@ from mide.rag.indexer import index_sources
 from mide.rag.retriever import Retriever
 from mide.rag.store import VectorStore
 
+logger = logging.getLogger(__name__)
 app = typer.Typer(help="MIDE Engine - local market intelligence engine.", no_args_is_help=True)
 
 
@@ -269,6 +273,27 @@ def _get_llm(cfg: Config) -> LLM:
     return load_llm(path, report)
 
 
+def _load_all_datasets(sources: list[str]) -> dict:
+    """Read every tabular dataset of the authorized sources (read-only)."""
+    frames: dict = {}
+    for source in sources:
+        try:
+            if is_url(source):
+                conn = SQLConnector(source, sources)
+            elif Path(source).expanduser().exists():
+                conn = TabularConnector(source, sources)
+            else:
+                continue
+            for item in conn.discover():
+                try:
+                    frames[item] = conn.read(item)
+                except Exception as exc:  # noqa: BLE001 - unreadable item: skip it
+                    logger.debug("Skipping %s: %s", item, exc)
+        except Exception as exc:  # noqa: BLE001 - unreachable source: skip it
+            logger.debug("Skipping source %s: %s", type(exc).__name__, exc)
+    return frames
+
+
 @app.command("ask")
 def ask_command(
     question: str,
@@ -276,23 +301,38 @@ def ask_command(
     top_k: int = typer.Option(5, "--top-k", "-k", min=1, help="Number of excerpts."),
     config_dir: Path | None = CONFIG_DIR_OPTION,
 ) -> None:
-    """Answer a question from the indexed data, citing the sources."""
+    """Answer a question: documents (RAG), business modules, or both (agent)."""
+    fr = True
     try:
         cfg = load_config(config_dir)
-        store = VectorStore(cfg.app_dir / "index")
-        if store.count() == 0:
-            typer.echo(
-                "Index vide. Lancez `mide index`." if cfg.language == "fr"
-                else "Empty index. Run `mide index`."
-            )
-            raise typer.Exit(1)
-        passages = Retriever(store, _get_embedder(cfg), top_k).retrieve(question, source=source)
-        prompt = build_rag_prompt(question, passages, cfg.language)
-        answer = _get_llm(cfg).generate(prompt, max_tokens=512, temperature=0.2)
+        fr = cfg.language == "fr"
+        route = route_question(question)
+        passages: list = []
+        findings: list = []
+        if route.modules:
+            findings = run_modules(route.modules, detect_tables(_load_all_datasets(list_sources(config_dir))))
+            if not findings and not route.use_rag:
+                route.use_rag = True  # no usable business data: fall back to documents
+        if route.use_rag:
+            store = VectorStore(cfg.app_dir / "index")
+            if store.count() == 0 and not findings:
+                typer.echo("Index vide. Lancez `mide index`." if fr else "Empty index. Run `mide index`.")
+                raise typer.Exit(1)
+            if store.count() > 0:
+                passages = Retriever(store, _get_embedder(cfg), top_k).retrieve(question, source=source)
+        llm = _get_llm(cfg)
+        if findings:
+            rec = recommend(question, findings, llm, passages, cfg.language)
+            answer, used = rec.text, rec.data_used(cfg.language)
+        else:
+            prompt = build_rag_prompt(question, passages, cfg.language)
+            answer, used = llm.generate(prompt, max_tokens=512, temperature=0.2), ""
     except (ConfigError, DownloadError) as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
     typer.echo(answer.strip())
+    if used:
+        typer.echo("\n" + used)
     footer = sources_footer(passages)
     if footer:
         typer.echo("\n" + footer)

@@ -19,7 +19,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
-| S3 — Intelligence     | 7 / 9 | 🔄 en cours |
+| S3 — Intelligence     | 8 / 9 | 🔄 en cours |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
 ---
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W3-08 Decision agent
+- **Fait :** `agent/router.py` (`route_question`: FR/EN keyword routing to RAG, business modules, or both), `agent/decision.py` (`detect_tables`, `run_modules` -> `Finding`s with figures, `build_decision_prompt`, `recommend`; `Recommendation.data_used()` always appends the source figures, independent of LLM output). `mide ask` now uses the agent; pure document questions behave as before.
+- **Fichiers principaux :** `mide/agent/router.py`, `mide/agent/decision.py`, `mide/cli.py`, `tests/test_agent.py`
+- **Tests :** 194 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-5yr9v3`, empilée sur W3-07)
+- **Décisions techniques :** keyword router (no LLM call, deterministic, works on `tiny`); business-only questions skip the index so they work without `mide index`; if no usable business table is found, falls back to RAG. Sales/campaign tables are detected by column names.
+- **Problèmes / dette technique :** keyword lists are coarse (no semantic routing). `mide chat` still RAG-only. Sandbox needed `python -m pip install -e ".[dev]"` (PATH `pytest` used another Python).
+- **Prochaine tâche :** W3-09 — Auto-apprentissage planifié
 
 ### 2026-11-14 — W3-07 Insights & anomalies
 - **Fait :** `business/insights.py`: `compute_kpis` (revenue, orders, average order value, customers, last-30d vs previous-30d growth, best day), `detect_anomalies` (drops/spikes on the daily series, consecutive days merged into one `Anomaly` with actual/expected/ratio/score), `analyze` (KPIs + anomalies).
