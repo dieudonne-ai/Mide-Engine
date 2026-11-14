@@ -169,7 +169,7 @@
   - Sinon : message clair « fine-tuning indisponible sur cette machine, le RAG est utilisé ».
   - ✅ Critères : désactivé proprement sans GPU ; tests du chemin « non disponible ».
 
-- [ ] **W4-04 — Performance et robustesse**
+- [x] **W4-04 — Performance et robustesse**
   - Mesurer RAM/temps sur le profil `tiny` ; traitement par lots pour gros fichiers ;
     gestion des erreurs utilisateur avec messages clairs (FR/EN).
   - ✅ Critères : jeu de démo traité entièrement avec < 4 Go RAM (hors LLM).

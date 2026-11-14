@@ -20,7 +20,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
 | S3 — Intelligence     | 9 / 9 | ✅ terminé |
-| S4 — Produit          | 3 / 8 | 🔄 en cours |
+| S4 — Produit          | 4 / 8 | 🔄 en cours |
 
 ---
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W4-04 Performance and robustness
+- **Fait :** `TabularConnector.read_chunks()` (chunked CSV reading); `metadata()` now counts rows in chunks instead of loading the whole file (the catalog previously read each file twice in full). `mide/utils/errors.py`: bilingual FR/EN friendly messages (missing file, permission, encoding, empty/malformed file, out of memory, network) and `run_safely`; the console script is now `mide.cli:run`, which prints a clear error instead of a traceback. `mide/utils/perf.py`: `measure()` (time + peak memory).
+- **Fichiers principaux :** `mide/connectors/tabular.py`, `mide/utils/errors.py`, `mide/utils/perf.py`, `mide/cli.py`, `tests/test_robustness.py`
+- **Tests :** 234 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK. Demo dataset catalog peak allocation is asserted far below the 4 GB budget; chunked metadata uses less memory than a full read.
+- **PR :** voir la PR vers `main` (branche `task/W4-04-performance-robustness`)
+- **Décisions techniques :** memory measured with `tracemalloc` (Python allocations) to stay portable; Excel cannot be streamed by pandas, so it is read once then sliced.
+- **Problèmes / dette technique :** other modules (trainer, indexer) still load full DataFrames; only the tabular connector/catalog path is chunked. `tests/test_files.py` still uncollectable here (env `cryptography` issue).
+- **Prochaine tâche :** W4-05 — Sécurité et confidentialité
 
 ### 2026-11-14 — W4-03 Optional LoRA fine-tuning
 - **Fait :** `mide/llm/lora.py`: availability check (GPU + medium/large profile + `[finetune]` extra, FR/EN message "fine-tuning unavailable, RAG is used"), Q/A dataset generation from authorized documents with the local LLM, deterministic train/held-out split, injectable trainer/scorer, before/after evaluation (adapter activated only if the held-out score improves), PEFT trainer (lazy imports). New command `mide finetune`.

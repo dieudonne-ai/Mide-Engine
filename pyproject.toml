@@ -35,7 +35,7 @@ ui = ["streamlit>=1.35"]
 finetune = ["torch", "transformers", "peft"]
 
 [project.scripts]
-mide = "mide.cli:app"
+mide = "mide.cli:run"
 
 [tool.setuptools.packages.find]
 include = ["mide*"]

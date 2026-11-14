@@ -546,5 +546,16 @@ def doctor() -> None:
     typer.echo(f"Profile: {report.profile}")
 
 
+def run() -> None:
+    """Console entry point: runs the CLI and turns unexpected errors into clear messages."""
+    from mide.utils.errors import run_safely
+
+    try:
+        language = load_config().language
+    except Exception:  # noqa: BLE001 - config may be what is broken
+        language = "fr"
+    raise SystemExit(run_safely(app, language))
+
+
 if __name__ == "__main__":
-    app()
+    run()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,7 @@ SUPPORTED_EXTENSIONS = CSV_EXTENSIONS | EXCEL_EXTENSIONS
 SEPARATORS = [",", ";", "\t", "|"]
 SHEET_SEP = "::"
 _SAMPLE_BYTES = 64 * 1024
+DEFAULT_CHUNK_ROWS = 50_000
 
 
 def detect_encoding(path: Path) -> str:
@@ -85,16 +87,35 @@ class TabularConnector(BaseConnector):
         sep = "\t" if path.suffix.lower() == ".tsv" else detect_separator(path, encoding)
         return pd.read_csv(path, sep=sep, encoding=encoding, nrows=nrows)
 
+    def read_chunks(self, item: str, chunksize: int = DEFAULT_CHUNK_ROWS) -> Iterator[pd.DataFrame]:
+        """Yield the dataset in chunks of ``chunksize`` rows (bounded memory for big CSV)."""
+        path_s, _ = split_item(item)
+        ensure_authorized(path_s, self.authorized_sources)
+        path = Path(path_s).resolve()
+        if path.suffix.lower() in EXCEL_EXTENSIONS:
+            df = self.read(item)  # pandas cannot stream Excel files
+            for start in range(0, max(len(df), 1), chunksize):
+                yield df.iloc[start : start + chunksize]
+            return
+        encoding = detect_encoding(path)
+        sep = "\t" if path.suffix.lower() == ".tsv" else detect_separator(path, encoding)
+        yield from pd.read_csv(path, sep=sep, encoding=encoding, chunksize=chunksize)
+
     def metadata(self, item: str) -> dict[str, Any]:
         path_s, sheet = split_item(item)
         ensure_authorized(path_s, self.authorized_sources)
         path = Path(path_s).resolve()
-        df = self.read(item)
+        rows = 0
+        df = pd.DataFrame()
+        for chunk in self.read_chunks(item):
+            if rows == 0:
+                df = chunk.head(0)
+            rows += len(chunk)
         meta: dict[str, Any] = {
             "type": "excel" if path.suffix.lower() in EXCEL_EXTENSIONS else "csv",
             "path": str(path),
             "size_bytes": path.stat().st_size,
-            "rows": len(df),
+            "rows": rows,
             "columns": [str(c) for c in df.columns],
             "dtypes": {str(c): str(t) for c, t in df.dtypes.items()},
         }
