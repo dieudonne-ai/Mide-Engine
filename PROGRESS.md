@@ -20,7 +20,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
 | S3 — Intelligence     | 9 / 9 | ✅ terminé |
-| S4 — Produit          | 6 / 8 | 🔄 en cours |
+| S4 — Produit          | 7 / 8 | 🔄 en cours |
 
 ---
 
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W4-07 Documentation
+- **Fait :** Full bilingual `README.md` (EN + FR): installation (scripts, pip, Docker), demo quick start, adding sources, command table, configuration, architecture, limits, privacy FAQ. Demo steps were run end to end (sources add, scan, train `sales`/`amount`, report); `ask`/`chat` need the LLM weights (`mide models pull`), documented.
+- **Fichiers principaux :** `README.md`, `tests/test_readme.py`
+- **Tests :** 249 passés (hors `tests/test_files.py`, voir W3-06) ; `ruff check .` OK.
+- **PR :** voir la PR vers `main` (branche `task/W4-07-documentation`)
+- **Décisions techniques :** `test_readme.py` checks every CLI command appears in the README so docs cannot drift.
+- **Problèmes / dette technique :** the French section references the English command table instead of duplicating it.
+- **Prochaine tâche :** W4-08 — Démo finale
 
 ### 2026-11-14 — W4-06 Packaging
 - **Fait :** `Dockerfile` (+ `.dockerignore`, `scripts/docker-entrypoint.sh`; `docker run ... mide-engine demo` generates the demo data, authorizes it, scans and reports), `scripts/install.sh` (Linux/macOS) and `scripts/install.ps1` (Windows) creating a venv in `~/.mide/venv`. `pip install` of the wheel now works outside a checkout: default YAML files are shipped in `mide/_defaults/` and seeded into `<MIDE_HOME>/config` on first use (the repo `config/` is still used in a source checkout).

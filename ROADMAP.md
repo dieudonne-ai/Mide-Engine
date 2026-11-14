@@ -184,7 +184,7 @@
   - Dockerfile + installation `pip install mide-engine` ; script d'installation Windows/Linux.
   - ✅ Critères : `docker build` OK ; démarrage avec le jeu de démo documenté.
 
-- [ ] **W4-07 — Documentation**
+- [x] **W4-07 — Documentation**
   - `README.md` complet (FR + EN) : installation, ajout de sources, commandes, architecture,
     limites, FAQ confidentialité.
   - ✅ Critères : un nouvel utilisateur peut faire la démo en suivant le README.
