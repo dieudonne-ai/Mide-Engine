@@ -127,7 +127,7 @@
   - `business/customers.py` : segmentation RFM, score de risque de churn.
   - ✅ Critères : segments cohérents sur le jeu de démo ; tests.
 
-- [ ] **W3-06 — Module marketing**
+- [x] **W3-06 — Module marketing**
   - `business/marketing.py` : performance par canal/campagne (coût, conversions, ROI),
     canaux qui sous-performent, réallocation de budget suggérée.
   - ✅ Critères : tests sur le jeu de démo.

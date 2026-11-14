@@ -19,7 +19,7 @@ _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond d
 |---------|------------------|--------|
 | S1 — Fondations       | 9 / 9 | ✅ terminé |
 | S2 — LLM & RAG        | 7 / 7 | ✅ terminé |
-| S3 — Intelligence     | 5 / 9 | 🔄 en cours |
+| S3 — Intelligence     | 6 / 9 | 🔄 en cours |
 | S4 — Produit          | 0 / 8 | ⏳ pas commencé |
 
 ---
@@ -38,6 +38,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-14 — W3-06 Marketing module
+- **Fait :** `business/marketing.py`: `channel_performance` and `campaign_performance` (spend, revenue, ROI, ROAS, cost per conversion, conversion rate, CTR), `underperforming_channels`, `suggest_reallocation` (`ReallocationPlan` with `BudgetMove`s: part of weak channels' budget moved to the best-ROAS channel, with reason and estimated extra revenue).
+- **Fichiers principaux :** `mide/business/marketing.py`, `tests/test_marketing.py`
+- **Tests :** 174 passés (hors `tests/test_files.py`, voir ci-dessous) ; `ruff check .` OK
+- **PR :** voir la PR vers `main` (branche `claude/clever-bell-a1wkmu`, empilée sur W3-05)
+- **Décisions techniques :** underperformance is measured against the median channel ROI (a spend-weighted baseline wrongly flagged Facebook/Google Ads because Email/WhatsApp dominate). Extra-revenue estimate is linear (average ROAS of the receiving channel), hence optimistic; at most 50% of a weak channel's budget moves.
+- **Problèmes / dette technique :** `tests/test_files.py` could not be collected in this sandbox (system `cryptography` lacks `_cffi_backend`; environment issue, not code). Not wired into the CLI yet (W3-08).
+- **Prochaine tâche :** W3-07 — Insights & anomalies
 
 ### 2026-11-14 — W3-05 Customers module
 - **Fait :** `business/customers.py`: `customer_table` (recency, frequency, monetary, typical purchase gap per customer), `rfm_segments` (1-5 rank-quantile scores + named segments: Champions, Loyal, New / promising, At risk, Hibernating, Needs attention), `segment_summary` (customers, revenue, revenue share per segment), `churn_risk` (risk in [0,1] from silence relative to each customer's own purchase rhythm; `ChurnReport` with high-risk customers and revenue at risk).
