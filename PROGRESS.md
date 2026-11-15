@@ -9,6 +9,7 @@
 
 _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond directement sous chaque question.)_
 
+- Roadmap complete (2026-11-15): which backlog item should come next (Google Sheets/Odoo/QuickBooks connectors, local FastAPI REST API, desktop app, Swahili, multi-user)? Until then, scheduled runs only do maintenance.
 - W4-06: Docker daemon unavailable in the agent sandbox, so `docker build` was not verified. Could you run `docker build -t mide-engine . && docker run --rm mide-engine demo` and confirm?
 
 ---
@@ -38,6 +39,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-15 — Maintenance: fix failing memory test (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked, and the backlog needs validation first, so no new task was started. Per §7 step 2 the broken test was fixed: `test_chunked_metadata_uses_less_memory_than_full_read` failed with pandas 3.x (Arrow-backed strings make a full read of the fixture smaller than one 50k-row chunk). `TabularConnector.metadata()` now counts CSV rows by reading only the first column in chunks, and infers dtypes from a 10k-row sample (peak memory about halved). Excel is unchanged.
+- **Fichiers principaux :** `mide/connectors/tabular.py`, `tests/test_robustness.py`
+- **Tests :** 261 passed (new: header-only CSV metadata); `ruff check .` OK. `tests/test_files.py` is collectable again after reinstalling `cffi`/`cryptography` in the sandbox.
+- **PR :** task/maintenance-csv-metadata-memory -> main
+- **Décisions techniques :** dtypes now come from the first 10k rows instead of the first 50k-row chunk; types inferred only further down the file may differ.
+- **Problèmes / dette technique :** none new.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
 
 ### 2026-11-14 — W4-08 Final demo
 - **Fait :** `scripts/demo.sh` runs data generation, consent, scan, index, train, 5 business questions and the weekly report in an isolated workspace (own `MIDE_HOME` and config copy). Index and `ask` steps are optional and never stop the demo (no model/rag extra on small setups).

@@ -90,3 +90,12 @@ def test_demo_dataset_processed_within_memory_budget(demo_data):
     assert len(result.result) > 0
     assert result.peak_mb < 4096  # CLAUDE.md budget for the tiny profile (without LLM)
     assert result.peak_mb < 500  # in practice far below
+
+
+def test_metadata_header_only_csv(tmp_path):
+    path = tmp_path / "empty.csv"
+    path.write_text("date,amount\n", encoding="utf-8")
+    conn = TabularConnector(str(path), [str(path)])
+    meta = conn.metadata(str(path))
+    assert meta["rows"] == 0
+    assert meta["columns"] == ["date", "amount"]
