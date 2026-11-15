@@ -18,6 +18,7 @@ SEPARATORS = [",", ";", "\t", "|"]
 SHEET_SEP = "::"
 _SAMPLE_BYTES = 64 * 1024
 DEFAULT_CHUNK_ROWS = 50_000
+DTYPE_SAMPLE_ROWS = 10_000
 
 
 def detect_encoding(path: Path) -> str:
@@ -105,12 +106,10 @@ class TabularConnector(BaseConnector):
         path_s, sheet = split_item(item)
         ensure_authorized(path_s, self.authorized_sources)
         path = Path(path_s).resolve()
-        rows = 0
-        df = pd.DataFrame()
-        for chunk in self.read_chunks(item):
-            if rows == 0:
-                df = chunk.head(0)
-            rows += len(chunk)
+        if path.suffix.lower() in EXCEL_EXTENSIONS:
+            rows, df = self._excel_shape(item)
+        else:
+            rows, df = self._csv_shape(path)
         meta: dict[str, Any] = {
             "type": "excel" if path.suffix.lower() in EXCEL_EXTENSIONS else "csv",
             "path": str(path),
@@ -127,3 +126,24 @@ class TabularConnector(BaseConnector):
                 "\t" if path.suffix.lower() == ".tsv" else detect_separator(path, meta["encoding"])
             )
         return meta
+
+    def _excel_shape(self, item: str) -> tuple[int, pd.DataFrame]:
+        """Return (row count, empty frame with the sheet's columns and dtypes)."""
+        df = self.read(item)
+        return len(df), df.head(0)
+
+    def _csv_shape(self, path: Path) -> tuple[int, pd.DataFrame]:
+        """Count CSV rows reading only the first column, in chunks (bounded memory).
+
+        Column dtypes are inferred from a sample of ``DTYPE_SAMPLE_ROWS`` rows.
+        """
+        encoding = detect_encoding(path)
+        sep = "\t" if path.suffix.lower() == ".tsv" else detect_separator(path, encoding)
+        sample = pd.read_csv(path, sep=sep, encoding=encoding, nrows=DTYPE_SAMPLE_ROWS)
+        rows = 0
+        if len(sample.columns) > 0:
+            for chunk in pd.read_csv(
+                path, sep=sep, encoding=encoding, usecols=[0], chunksize=DEFAULT_CHUNK_ROWS
+            ):
+                rows += len(chunk)
+        return rows, sample.head(0)
