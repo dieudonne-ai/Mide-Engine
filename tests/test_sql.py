@@ -1,6 +1,7 @@
 """Tests for the read-only SQL connector."""
 
 import sqlite3
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -24,16 +25,20 @@ def db_url(tmp_path: Path) -> str:
     return f"sqlite:///{path}"
 
 
-def test_discover_and_metadata(db_url: str) -> None:
-    c = SQLConnector(db_url, [db_url])
+@pytest.fixture
+def c(db_url: str) -> Iterator[SQLConnector]:
+    with SQLConnector(db_url, [db_url]) as connector:
+        yield connector
+
+
+def test_discover_and_metadata(c: SQLConnector) -> None:
     assert c.discover() == ["clients", "ventes"]
     meta = c.metadata("ventes")
     assert meta["rows"] == 25 and meta["columns"] == ["id", "produit", "montant"]
     assert meta["dialect"] == "sqlite"
 
 
-def test_read_sample_and_chunks(db_url: str) -> None:
-    c = SQLConnector(db_url, [db_url])
+def test_read_sample_and_chunks(c: SQLConnector) -> None:
     assert len(c.read("ventes")) == 25
     assert len(c.sample("ventes", 5)) == 5
     sizes = [len(ch) for ch in c.read_chunks("ventes", chunksize=10)]
@@ -45,9 +50,9 @@ def test_unauthorized_url_refused(db_url: str) -> None:
         SQLConnector(db_url, ["sqlite:///other.db"])
 
 
-def test_unknown_table_refused(db_url: str) -> None:
+def test_unknown_table_refused(c: SQLConnector) -> None:
     with pytest.raises(KeyError):
-        SQLConnector(db_url, [db_url]).read("nope; DROP TABLE ventes")
+        c.read("nope; DROP TABLE ventes")
 
 
 @pytest.mark.parametrize(
@@ -63,23 +68,20 @@ def test_unknown_table_refused(db_url: str) -> None:
         "CREATE TABLE t AS SELECT 1",
     ],
 )
-def test_write_queries_blocked(db_url: str, sql: str) -> None:
-    c = SQLConnector(db_url, [db_url])
+def test_write_queries_blocked(c: SQLConnector, sql: str) -> None:
     with pytest.raises(WriteQueryBlockedError):
         c.query(sql)
     assert len(c.read("ventes")) == 25
 
 
-def test_select_allowed_and_string_literals_ignored(db_url: str) -> None:
-    c = SQLConnector(db_url, [db_url])
+def test_select_allowed_and_string_literals_ignored(c: SQLConnector) -> None:
     df = c.query("SELECT 'delete me' AS x, COUNT(*) AS n FROM ventes -- drop")
     assert df["n"][0] == 25
 
 
-def test_database_itself_read_only(db_url: str) -> None:
+def test_database_itself_read_only(c: SQLConnector) -> None:
     from sqlalchemy import text
 
-    c = SQLConnector(db_url, [db_url])
     with pytest.raises(Exception, match="readonly|read-only"), c.engine.begin() as conn:
         conn.execute(text("DELETE FROM ventes"))
 
@@ -90,3 +92,32 @@ def test_credentials_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("DB_PASS")
     with pytest.raises(KeyError):
         expand_env("postgresql://u:${DB_PASS}@h/db")
+
+
+def test_close_releases_connections(db_url: str) -> None:
+    import gc
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", ResourceWarning)
+        with SQLConnector(db_url, [db_url]) as conn:
+            assert conn.discover() == ["clients", "ventes"]
+            conn.metadata("ventes")
+            assert conn._engine is not None
+        assert conn._engine is None
+        conn.close()  # idempotent
+        gc.collect()
+
+
+def test_catalog_closes_sql_connections(db_url: str) -> None:
+    import gc
+    import warnings
+
+    from mide.ingestion.catalog import build_catalog
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", ResourceWarning)
+        entries = build_catalog([db_url])
+        gc.collect()
+    assert sorted(e.item for e in entries) == ["clients", "ventes"]
+    assert not [w for w in caught if issubclass(w.category, ResourceWarning)]

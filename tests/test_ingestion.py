@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import numpy as np
@@ -55,7 +56,7 @@ def test_catalog_all_source_types(tmp_path: Path) -> None:
     _sales_df().to_csv(folder / "ventes.csv", index=False)
     (folder / "notes.txt").write_text("Meeting notes", encoding="utf-8")
     db = tmp_path / "shop.db"
-    with sqlite3.connect(db) as conn:
+    with closing(sqlite3.connect(db)) as conn:
         _sales_df().to_sql("orders", conn, index=False)
     url = f"sqlite:///{db}"
     entries = build_catalog([str(folder), url])

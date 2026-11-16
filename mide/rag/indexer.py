@@ -144,11 +144,11 @@ def index_sources(
 
 def _scan_source(source, sources, old, process, chunk_size, overlap, max_mb) -> None:  # type: ignore[no-untyped-def]
     if is_url(source):
-        conn = SQLConnector(source, sources)
-        for table in conn.discover():
-            item = f"{source}#{table}"
-            state = {"hash": _sql_hash(conn, table), "source": source}
-            process(item, state, lambda t=table: summarize_table(conn.read(t), source, t))
+        with SQLConnector(source, sources) as conn:
+            for table in conn.discover():
+                item = f"{source}#{table}"
+                state = {"hash": _sql_hash(conn, table), "source": source}
+                process(item, state, lambda t=table: summarize_table(conn.read(t), source, t))
         return
     if not Path(source).expanduser().exists():
         logger.warning("Source not found: %s", source)

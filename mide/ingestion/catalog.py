@@ -47,14 +47,14 @@ def _tabular_entries(source: str, authorized: list[str]) -> list[CatalogEntry]:
 
 
 def _sql_entries(source: str, authorized: list[str]) -> list[CatalogEntry]:
-    conn = SQLConnector(source, authorized)
     entries: list[CatalogEntry] = []
-    for table in conn.discover():
-        meta = conn.metadata(table)
-        profile = profile_dataframe(conn.sample(table, PROFILE_SAMPLE_ROWS))
-        entries.append(
-            CatalogEntry(source, table, "sql", meta["rows"], len(meta["columns"]), profile)
-        )
+    with SQLConnector(source, authorized) as conn:
+        for table in conn.discover():
+            meta = conn.metadata(table)
+            profile = profile_dataframe(conn.sample(table, PROFILE_SAMPLE_ROWS))
+            entries.append(
+                CatalogEntry(source, table, "sql", meta["rows"], len(meta["columns"]), profile)
+            )
     return entries
 
 
