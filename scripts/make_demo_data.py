@@ -54,10 +54,10 @@ def _daily_multiplier(dates: pd.DatetimeIndex) -> np.ndarray:
     """Trend x yearly seasonality x weekly pattern x anomalies."""
     t = np.arange(len(dates)) / 365.0
     trend = 1.0 + 0.25 * t
-    doy = dates.dayofyear.to_numpy()
+    doy = dates.day_of_year.to_numpy()
     # Peak around December, dip around August.
     season = 1.0 + 0.35 * np.cos(2 * np.pi * (doy - 355) / 365.0)
-    weekly = np.array([0.9, 0.85, 0.9, 1.0, 1.15, 1.35, 1.1])[dates.dayofweek.to_numpy()]
+    weekly = np.array([0.9, 0.85, 0.9, 1.0, 1.15, 1.35, 1.1])[dates.day_of_week.to_numpy()]
     mult = trend * season * weekly
     for a in ANOMALIES:
         mask = (dates >= a["start"]) & (dates <= a["end"])

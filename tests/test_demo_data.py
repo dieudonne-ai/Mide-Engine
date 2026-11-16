@@ -1,4 +1,5 @@
 import json
+import warnings
 
 import pandas as pd
 
@@ -20,6 +21,15 @@ def test_deterministic(tmp_path):
     c = mod.generate_demo_data(tmp_path / "c", seed=8)
     assert a["sales"].read_bytes() == b["sales"].read_bytes()
     assert a["sales"].read_bytes() != c["sales"].read_bytes()
+
+
+def test_generation_emits_no_deprecation_warnings(tmp_path):
+    """Demo generation must keep working on future pandas versions."""
+    mod = _load_demo_module()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        warnings.simplefilter("error", FutureWarning)
+        mod.generate_demo_data(tmp_path / "w", seed=7)
 
 
 def test_two_years_and_integrity(demo_data):
