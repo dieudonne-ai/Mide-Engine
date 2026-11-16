@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-16 — Maintenance: remove pandas 4 deprecation warnings (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. Test suite was green at session start (261 passed). Fixed the tech debt noted in W4-06: `scripts/make_demo_data.py` used `DatetimeIndex.dayofyear` / `dayofweek`, deprecated in pandas 3 and removed in pandas 4; replaced with `day_of_year` / `day_of_week` (available since pandas 1.1, output unchanged). New test fails if demo generation raises any `DeprecationWarning`/`FutureWarning`.
+- **Fichiers principaux :** `scripts/make_demo_data.py`, `tests/test_demo_data.py`
+- **Tests :** 262 passed, 0 warnings (previously 8); `ruff check .` OK.
+- **PR :** claude/wizardly-shannon-opmu51 -> main
+- **Décisions techniques :** none (same values, new attribute names).
+- **Problèmes / dette technique :** sandbox setup still needs `pip install --ignore-installed PyYAML cffi cryptography` before `pip install -e ".[dev,ui]"` (environment only, not the project).
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-15 — Maintenance: fix failing memory test (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked, and the backlog needs validation first, so no new task was started. Per §7 step 2 the broken test was fixed: `test_chunked_metadata_uses_less_memory_than_full_read` failed with pandas 3.x (Arrow-backed strings make a full read of the fixture smaller than one 50k-row chunk). `TabularConnector.metadata()` now counts CSV rows by reading only the first column in chunks, and infers dtypes from a 10k-row sample (peak memory about halved). Excel is unchanged.
 - **Fichiers principaux :** `mide/connectors/tabular.py`, `tests/test_robustness.py`
