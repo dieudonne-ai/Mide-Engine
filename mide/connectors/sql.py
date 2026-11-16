@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Self
 
 import pandas as pd
 from sqlalchemy import create_engine, event, inspect, text
@@ -77,6 +77,18 @@ class SQLConnector(BaseConnector):
 
             self._engine = engine
         return self._engine
+
+    def close(self) -> None:
+        """Release every pooled database connection (safe to call twice)."""
+        if self._engine is not None:
+            self._engine.dispose()
+            self._engine = None
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.close()
 
     def discover(self) -> list[str]:
         return sorted(inspect(self.engine).get_table_names())

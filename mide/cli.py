@@ -227,10 +227,14 @@ def _load_dataset(dataset: str, sources: list[str]):
             if not Path(source).expanduser().exists():
                 continue
             conn = TabularConnector(source, sources)
-        for item in conn.discover():
-            base = Path(split_item(item)[0]).stem if not is_url(source) else item
-            if dataset in (item, base, Path(item).name):
-                return item, conn.read(item)
+        try:
+            for item in conn.discover():
+                base = Path(split_item(item)[0]).stem if not is_url(source) else item
+                if dataset in (item, base, Path(item).name):
+                    return item, conn.read(item)
+        finally:
+            if isinstance(conn, SQLConnector):
+                conn.close()
     raise ValueError(f"Dataset not found in authorized sources: {dataset}")
 
 
@@ -290,11 +294,15 @@ def _load_all_datasets(sources: list[str]) -> dict:
                 conn = TabularConnector(source, sources)
             else:
                 continue
-            for item in conn.discover():
-                try:
-                    frames[item] = conn.read(item)
-                except Exception as exc:  # noqa: BLE001 - unreadable item: skip it
-                    logger.debug("Skipping %s: %s", item, type(exc).__name__)
+            try:
+                for item in conn.discover():
+                    try:
+                        frames[item] = conn.read(item)
+                    except Exception as exc:  # noqa: BLE001 - unreadable item: skip it
+                        logger.debug("Skipping %s: %s", item, type(exc).__name__)
+            finally:
+                if isinstance(conn, SQLConnector):
+                    conn.close()
         except Exception as exc:  # noqa: BLE001 - unreachable source: skip it
             logger.debug("Skipping a source: %s", type(exc).__name__)
     return frames

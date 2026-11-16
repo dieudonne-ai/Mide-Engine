@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-16 — Maintenance: close SQL connections (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. Suite was green at start (262 passed), but `pytest -W error` exposed 4 failures from `ResourceWarning: unclosed database`: `SQLConnector` never disposed its SQLAlchemy engine, so pooled connections leaked after `mide scan`, `mide index`, `mide train`, `mide report`/`auto`. Added `SQLConnector.close()` (idempotent) and context-manager support; `ingestion/catalog.py`, `rag/indexer.py` and `cli.py` (`_load_dataset`, `_load_all_datasets`) now close it. Tests also fixed: SQL tests use a closing fixture, and `test_ingestion` used `with sqlite3.connect(...)` (commits but does not close) — now wrapped in `contextlib.closing`.
+- **Fichiers principaux :** `mide/connectors/sql.py`, `mide/ingestion/catalog.py`, `mide/rag/indexer.py`, `mide/cli.py`, `tests/test_sql.py`, `tests/test_ingestion.py`
+- **Tests :** 264 passed (2 new: connector close + catalog closes connections, both fail without the fix); also 264 passed with `-W error`; `ruff check .` OK.
+- **PR :** claude/wizardly-shannon-g81s8b -> main
+- **Décisions techniques :** did not add `filterwarnings = error` to the pytest config, since third-party warnings in other environments could break the suite.
+- **Problèmes / dette technique :** six stale PRs from early sessions are still open (#15, #17, #20, #21, #24, #26); their tasks already landed on `main` through later PRs. They should be closed, not merged (merging would conflict/regress). Sandbox note: `pip` installs to Python 3.13 while `python` is 3.11 — run tests with `python3.13 -m pytest`.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-16 — Maintenance: remove pandas 4 deprecation warnings (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. Test suite was green at session start (261 passed). Fixed the tech debt noted in W4-06: `scripts/make_demo_data.py` used `DatetimeIndex.dayofyear` / `dayofweek`, deprecated in pandas 3 and removed in pandas 4; replaced with `day_of_year` / `day_of_week` (available since pandas 1.1, output unchanged). New test fails if demo generation raises any `DeprecationWarning`/`FutureWarning`.
 - **Fichiers principaux :** `scripts/make_demo_data.py`, `tests/test_demo_data.py`
