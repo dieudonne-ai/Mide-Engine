@@ -52,10 +52,11 @@ class VectorStore:
         if not chunks:
             return
         key = item_key(item)
+        vectors: list[Sequence[float] | Sequence[int]] = [list(e) for e in embeddings]
         self._collection.add(
             ids=[f"{key}:{i}" for i in range(len(chunks))],
             documents=[c.text for c in chunks],
-            embeddings=[list(e) for e in embeddings],
+            embeddings=vectors,
             metadatas=[{**c.metadata, "item": item} for c in chunks],
         )
 
@@ -70,8 +71,9 @@ class VectorStore:
         total = self.count()
         if total == 0:
             return []
+        query: list[Sequence[float] | Sequence[int]] = [list(embedding)]
         result = self._collection.query(
-            query_embeddings=[list(embedding)],
+            query_embeddings=query,
             n_results=min(k, total),
             where={"item": source} if source else None,
         )

@@ -7,6 +7,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -61,7 +62,7 @@ def _save_manifest(path: Path, manifest: dict[str, dict]) -> None:
 def _file_state(path: Path, previous: dict | None) -> dict:
     """Fingerprint a file; the hash is recomputed only if size or mtime changed."""
     stat = path.stat()
-    state = {"mtime": stat.st_mtime_ns, "size": stat.st_size}
+    state: dict[str, Any] = {"mtime": stat.st_mtime_ns, "size": stat.st_size}
     if previous and previous.get("mtime") == state["mtime"] and previous.get("size") == state["size"]:
         state["hash"] = previous["hash"]
     else:

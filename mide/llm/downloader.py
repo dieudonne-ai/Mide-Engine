@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from pathlib import Path
@@ -50,7 +50,7 @@ def model_url(spec: LLMSpec) -> str:
     return HF_URL.format(repo=spec.repo, file=spec.file)
 
 
-def list_models(profiles: dict[str, Any], models_dir: Path) -> list[ModelInfo]:
+def list_models(profiles: Mapping[Any, Any], models_dir: Path) -> list[ModelInfo]:
     """List the models declared in ``models.yaml`` and whether they are installed."""
     infos = []
     for name, models in profiles.items():

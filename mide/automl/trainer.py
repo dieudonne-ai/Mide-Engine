@@ -143,7 +143,7 @@ def _splits(task: TaskType, y: np.ndarray, n_splits: int, seed: int):
 def _make_model(task: TaskType, limits: TrainingLimits, seed: int, n_classes: int):
     import lightgbm as lgb
 
-    params = {
+    params: dict[str, Any] = {
         "n_estimators": limits.n_estimators,
         "num_leaves": limits.num_leaves,
         "learning_rate": 0.05,
