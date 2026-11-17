@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-17 — Maintenance: fix mypy type errors (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. Suite was green at start (264 passed, also with `-W error`; `ruff` OK), but `mypy mide` (part of the quality stack in CLAUDE.md §5) reported 21 errors in 5 files. Fixed with annotations only, no behaviour change: LightGBM params dict typed `dict[str, Any]` (`automl/trainer.py`), file fingerprint dict typed (`rag/indexer.py`), Chroma embeddings passed as the list type Chroma declares (`rag/store.py`), `list_models` accepts any `Mapping` (`llm/downloader.py`, profile keys are `Literal`s), and connector variables in `cli.py` typed `SQLConnector | TabularConnector`.
+- **Fichiers principaux :** `mide/automl/trainer.py`, `mide/rag/indexer.py`, `mide/rag/store.py`, `mide/llm/downloader.py`, `mide/cli.py`, `tests/test_typecheck.py`
+- **Tests :** 265 passed (new `test_typecheck.py` runs mypy on `mide/` and fails on the old code; skipped if mypy is not installed); also green with `-W error`; `ruff check .` OK; `mypy mide`: no issues.
+- **PR :** claude/wizardly-shannon-pzqsgw -> main
+- **Décisions techniques :** mypy is run through a pytest test, so `pytest` (required before every commit) also guards typing.
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-16 — Maintenance: close SQL connections (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. Suite was green at start (262 passed), but `pytest -W error` exposed 4 failures from `ResourceWarning: unclosed database`: `SQLConnector` never disposed its SQLAlchemy engine, so pooled connections leaked after `mide scan`, `mide index`, `mide train`, `mide report`/`auto`. Added `SQLConnector.close()` (idempotent) and context-manager support; `ingestion/catalog.py`, `rag/indexer.py` and `cli.py` (`_load_dataset`, `_load_all_datasets`) now close it. Tests also fixed: SQL tests use a closing fixture, and `test_ingestion` used `with sqlite3.connect(...)` (commits but does not close) — now wrapped in `contextlib.closing`.
 - **Fichiers principaux :** `mide/connectors/sql.py`, `mide/ingestion/catalog.py`, `mide/rag/indexer.py`, `mide/cli.py`, `tests/test_sql.py`, `tests/test_ingestion.py`

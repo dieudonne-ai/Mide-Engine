@@ -222,7 +222,9 @@ def _load_dataset(dataset: str, sources: list[str]):
     from mide.connectors.tabular import split_item
 
     for source in sources:
-        conn = SQLConnector(source, sources) if is_url(source) else None
+        conn: SQLConnector | TabularConnector | None = (
+            SQLConnector(source, sources) if is_url(source) else None
+        )
         if conn is None:
             if not Path(source).expanduser().exists():
                 continue
@@ -288,6 +290,7 @@ def _load_all_datasets(sources: list[str]) -> dict:
     frames: dict = {}
     for source in sources:
         try:
+            conn: SQLConnector | TabularConnector
             if is_url(source):
                 conn = SQLConnector(source, sources)
             elif Path(source).expanduser().exists():
