@@ -71,11 +71,12 @@ def _actions(f: dict[str, Finding], fr: bool) -> list[Action]:
                 "Renforcer le canal le plus rentable" if fr else "Invest more in the best channel",
                 f"best channel: {mkt.facts['best channel']}"))
     ins = f.get("insights")
-    if ins and "anomaly 1" in ins.facts:
+    anomalies = [v for k, v in ins.facts.items() if k.startswith("anomaly ")] if ins else []
+    if anomalies:  # chronological order: the last one is the most recent
         out.append(Action(
             "Analyser la cause de l'anomalie de ventes la plus récente" if fr
             else "Investigate the cause of the latest sales anomaly",
-            ins.facts["anomaly 1"]))
+            anomalies[-1]))
     sal = f.get("sales")
     if sal and "trend" in sal.facts:
         out.append(Action(

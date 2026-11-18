@@ -34,6 +34,45 @@ def test_routing(question, kind, module):
         assert module in route.modules
 
 
+@pytest.mark.parametrize("question", [
+    "What are my 3 priority actions this week?",
+    "Quelles actions prioritaires cette semaine ?",
+    "Que dois-je faire ce mois-ci ?",
+    "What do you recommend?",
+])
+def test_action_questions_use_all_business_modules(question):
+    route = route_question(question)
+    assert route.kind == "business"
+    assert set(route.modules) == {"sales", "customers", "marketing", "insights"}
+
+
+def test_transactions_is_not_an_action_question():
+    assert route_question("How many transactions did we log?").kind == "rag"
+
+
+def test_insights_keeps_most_recent_anomalies(monkeypatch, data):
+    from mide.agent import decision
+    from mide.business import insights
+
+    real = insights.analyze
+
+    def many_anomalies(df):
+        report = real(df)
+        base = report.anomalies[0]
+        report.anomalies = [
+            insights.Anomaly(base.start + pd.Timedelta(days=30 * i),
+                             base.start + pd.Timedelta(days=30 * i), "drop", 1, 10, 0.1, 9)
+            for i in range(7)]
+        return report
+
+    monkeypatch.setattr(decision.insights, "analyze", many_anomalies)
+    facts = run_modules(["insights"], data)[0].facts
+    anomalies = [v for k, v in facts.items() if k.startswith("anomaly")]
+    assert len(anomalies) == 5
+    last = (pd.Timestamp(real(data.sales).anomalies[0].start) + pd.Timedelta(days=180)).date()
+    assert str(last) in anomalies[-1]
+
+
 def test_detect_tables(data):
     assert "customer_id" in data.sales.columns and "spend" in data.campaigns.columns
 

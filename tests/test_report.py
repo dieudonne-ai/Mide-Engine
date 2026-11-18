@@ -23,6 +23,14 @@ def test_report_sections(tables):
         assert h in md
 
 
+def test_anomaly_action_cites_most_recent_alert(tables):
+    r = build_report(tables, "en")
+    anomalies = [a for a in r.alerts if a.startswith(("drop on", "spike on"))]
+    assert len(anomalies) >= 2
+    action = next(a for a in r.actions if "latest sales anomaly" in a.text)
+    assert action.evidence == anomalies[-1]
+
+
 def test_report_french_and_html(tables):
     r = build_report(tables, "fr")
     assert "Actions prioritaires" in render_markdown(r)

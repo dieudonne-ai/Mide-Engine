@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-18 — Maintenance: priority-action questions and latest-anomaly action (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #45 was already merged; suite green at start (268 passed, also with `-W error`; `ruff` and `mypy` OK). Running `scripts/demo.sh` showed two bugs: (1) demo question 5 "What are my 3 priority actions this week?" was routed to RAG only and failed ("Index vide"); the router now sends action/priority/recommendation questions (FR/EN, word-start match so "transactions" does not match) to all four business modules, like `mide report`. (2) The report action "Investigate the cause of the latest sales anomaly" cited the *oldest* anomaly (2023-06-14) because anomalies are chronological and it used `anomaly 1`; it now cites the last one (2024-09-03). The agent also keeps the 5 most recent anomalies instead of the 5 oldest.
+- **Fichiers principaux :** `mide/agent/router.py`, `mide/agent/decision.py`, `mide/report.py`, `tests/test_agent.py`, `tests/test_report.py`
+- **Tests :** 275 passed (7 new: 4 action-routing cases, "transactions" negative case, most-recent anomalies kept, report cites latest anomaly; the new ones fail without the fix); also green with `-W error`; `ruff check .` OK; `mypy mide` OK. Demo step 6 now answers all 5 questions.
+- **PR :** claude/wizardly-shannon-1a9e5r -> main
+- **Décisions techniques :** action questions skip RAG unless document keywords are present (same rule as other business questions).
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-18 — Maintenance: `mide ask` answers business questions without an LLM (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. Suite green at start (265 passed, also with `-W error`; `ruff` and `mypy` OK). Running `scripts/demo.sh` showed that all business questions in step 6 fail when no LLM weights are installed ("Model not installed"), although the agent computes the figures deterministically. Applying principle 4 (graceful degradation): when business findings exist but the LLM is not installed, `ask_answer` now returns a bilingual note ("Local LLM unavailable (...). Here are the computed figures...") plus the usual "Data used" figures, with exit code 0. Questions that need documents only still fail with the same clear error as before.
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_agent.py`
