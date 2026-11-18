@@ -100,12 +100,21 @@ def _sales_finding(df: pd.DataFrame, products: pd.DataFrame | None = None) -> Fi
     return Finding("sales", facts)
 
 
+_MAX_CHURN_NAMED = 3
+
+
 def _customers_finding(df: pd.DataFrame) -> Finding:
     summary = customers.segment_summary(customers.rfm_segments(df))
     churn = customers.churn_risk(df)
     facts = {f"segment {seg}": f"{int(r.customers)} customers, {r.revenue_share_pct}% of revenue"
              for seg, r in summary.head(3).iterrows()}
-    facts["churn"] = (f"{len(churn.high_risk)} customers at high risk, "
+    # Name the most valuable at-risk customers so the action says whom to contact.
+    top = churn.high_risk[:_MAX_CHURN_NAMED]
+    named = ""
+    if top:
+        more = ", ..." if len(churn.high_risk) > len(top) else ""
+        named = f" (top: {', '.join(map(str, top))}{more})"
+    facts["churn"] = (f"{len(churn.high_risk)} customers at high risk{named}, "
                       f"{_money(churn.revenue_at_risk)} past revenue at risk")
     return Finding("customers", facts)
 
