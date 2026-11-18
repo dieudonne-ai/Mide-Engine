@@ -50,7 +50,7 @@ def page_sales(data: dd.DashboardData) -> None:
     st.header("Sales")
     if not _need(data.has_sales, "sales"):
         return
-    view = dd.sales_view(data.tables.sales)
+    view = dd.sales_view(data.tables.sales, data.tables.products)
     fc = view["forecast"]
     cols = st.columns(len(fc.totals))
     for col, (h, total) in zip(cols, fc.totals.items()):

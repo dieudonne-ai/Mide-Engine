@@ -7,6 +7,7 @@ carries the figures that justify it (explainability).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -100,13 +101,29 @@ def forecast_sales(df: pd.DataFrame, horizons: tuple[int, ...] = DEFAULT_HORIZON
 # ------------------------------------------------------------------- products
 
 
+def product_names(products: pd.DataFrame, product_col: str = "product_id",
+                  name_col: str = "name") -> dict[str, str]:
+    """Map product id -> display name from a product catalog (empty if columns are missing)."""
+    if product_col not in products.columns or name_col not in products.columns:
+        return {}
+    pairs = products[[product_col, name_col]].dropna()
+    return {str(pid): str(name) for pid, name in zip(pairs[product_col], pairs[name_col])}
+
+
 def product_ranking(df: pd.DataFrame, n: int = 3, product_col: str = "product_id",
-                    amount_col: str = "amount") -> dict[str, pd.DataFrame]:
-    """Top and flop products by revenue, with their share of total revenue."""
+                    amount_col: str = "amount",
+                    names: Mapping[str, str] | None = None) -> dict[str, pd.DataFrame]:
+    """Top and flop products by revenue, with their share of total revenue.
+
+    With ``names`` (see :func:`product_names`), a ``name`` column is added; unknown ids
+    get an empty name.
+    """
     revenue = (pd.to_numeric(df[amount_col], errors="coerce")
                .groupby(df[product_col]).sum().sort_values(ascending=False))
     table = revenue.rename("revenue").to_frame()
     table["share_pct"] = table["revenue"] / table["revenue"].sum() * 100
+    if names:
+        table.insert(0, "name", [names.get(str(pid), "") for pid in table.index])
     return {"top": table.head(n), "flop": table.tail(n).iloc[::-1]}
 
 
