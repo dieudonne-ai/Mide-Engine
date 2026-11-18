@@ -149,10 +149,13 @@ _MAX_ANOMALIES = 5
 def _insights_finding(df: pd.DataFrame) -> Finding:
     report = insights.analyze(df)
     k = report.kpis
+    period = f"{k.start.date()} -> {k.end.date()}"
+    growth = ("n/a" if k.growth_30d is None
+              else f"{k.growth_30d:+.1%} (30 days to {k.end.date()} vs previous 30)")
     facts = {
-        "revenue": _money(k.total_revenue), "orders": f"{k.orders:,}",
+        "revenue": f"{_money(k.total_revenue)} for {period}", "orders": f"{k.orders:,}",
         "average order value": _money(k.avg_order_value),
-        "30d growth": "n/a" if k.growth_30d is None else f"{k.growth_30d:+.1%}",
+        "30d growth": growth,
     }
     # Keep the most recent anomalies (detection order is chronological).
     for i, a in enumerate(report.anomalies[-_MAX_ANOMALIES:], start=1):
