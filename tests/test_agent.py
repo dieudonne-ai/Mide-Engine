@@ -202,3 +202,17 @@ def test_insights_orders_use_thousands_separator(data):
     facts = run_modules(["insights"], data)[0].facts
     assert facts["orders"] == f"{data.sales['order_id'].nunique():,}"
     assert "," in facts["orders"]
+
+
+def test_reallocation_estimate_is_flagged_as_upper_bound(data):
+    # The extra revenue is a linear, optimistic estimate: the figure must say so
+    # and cite the ROAS it is based on (explainability).
+    facts = run_modules(["marketing"], data)[0].facts
+    moves = [v for k, v in facts.items() if k.startswith("move ")]
+    assert moves
+    best = facts["best channel"]
+    roas = facts[f"channel {best}"].split("ROAS ")[1]
+    for move in moves:
+        assert "est. extra revenue up to " in move
+        assert f"linear, at {best} ROAS {roas}" in move
+        assert "returns diminish" in move
