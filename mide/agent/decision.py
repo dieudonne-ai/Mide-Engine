@@ -86,12 +86,19 @@ def _trend_text(trend: sales.Trend) -> str:
     return ", ".join(parts)
 
 
+def _forecast_text(forecast: sales.Forecast, horizon: int) -> str:
+    """Total for one horizon, the dates it covers (it starts after the last data day) and growth."""
+    days = forecast.daily.index[:horizon]
+    period = f"{days[0]:%Y-%m-%d} -> {days[-1]:%Y-%m-%d}"
+    growth = _pct(forecast.growth_pct[horizon])
+    return f"{_money(forecast.totals[horizon])} for {period} ({growth} vs previous {horizon}d)"
+
+
 def _sales_finding(df: pd.DataFrame, products: pd.DataFrame | None = None) -> Finding:
     forecast = sales.forecast_sales(df)
     trend = sales.sales_trend(df)
     ranking = sales.product_ranking(df, n=2) if "product_id" in df.columns else None
-    facts = {f"forecast {h}d": f"{_money(t)} ({_pct(forecast.growth_pct[h])} vs previous {h}d)"
-             for h, t in forecast.totals.items()}
+    facts = {f"forecast {h}d": _forecast_text(forecast, h) for h in forecast.totals}
     facts["trend"] = _trend_text(trend)
     if ranking is not None:
         names = sales.product_names(products) if products is not None else {}
