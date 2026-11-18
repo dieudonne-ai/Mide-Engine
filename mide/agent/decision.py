@@ -77,13 +77,22 @@ def _product_list(table: pd.DataFrame, names: dict[str, str]) -> str:
     return ", ".join(f"{label} ({share:.1f}%)" for label, share in zip(labels, table["share_pct"]))
 
 
+def _trend_text(trend: sales.Trend) -> str:
+    """Direction plus the figure it is based on (YoY when available) and recent momentum."""
+    parts = [trend.direction]
+    if trend.yoy_growth_pct is not None:
+        parts.append(f"YoY {_pct(trend.yoy_growth_pct)}")
+    parts.append(f"last 3 months {_pct(trend.last_3m_growth_pct)}")
+    return ", ".join(parts)
+
+
 def _sales_finding(df: pd.DataFrame, products: pd.DataFrame | None = None) -> Finding:
     forecast = sales.forecast_sales(df)
     trend = sales.sales_trend(df)
     ranking = sales.product_ranking(df, n=2) if "product_id" in df.columns else None
     facts = {f"forecast {h}d": f"{_money(t)} ({_pct(forecast.growth_pct[h])} vs previous {h}d)"
              for h, t in forecast.totals.items()}
-    facts["trend"] = f"{trend.direction}, last 3 months {_pct(trend.last_3m_growth_pct)}"
+    facts["trend"] = _trend_text(trend)
     if ranking is not None:
         names = sales.product_names(products) if products is not None else {}
         facts["top products"] = _product_list(ranking["top"], names)
@@ -120,7 +129,7 @@ def _insights_finding(df: pd.DataFrame) -> Finding:
     report = insights.analyze(df)
     k = report.kpis
     facts = {
-        "revenue": _money(k.total_revenue), "orders": str(k.orders),
+        "revenue": _money(k.total_revenue), "orders": f"{k.orders:,}",
         "average order value": _money(k.avg_order_value),
         "30d growth": "n/a" if k.growth_30d is None else f"{k.growth_30d:+.1%}",
     }

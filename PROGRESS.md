@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-18 — Maintenance: trend figure cites its YoY basis (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #47 was already merged; suite green at start (278 passed, 2 skipped for missing `streamlit`, also with `-W error`; `ruff` and `mypy` OK). Running `scripts/demo.sh` showed the sales fact "trend: up, last 3 months +70.7%": the direction "up" is actually computed from year-over-year growth (+20.7%), which was never shown, so a reader could not see what "up" was based on (principle 5, explainability). The fact now reads "up, YoY +20.7%, last 3 months +70.7%" (YoY only when 24 months of data exist). The insights "orders" figure now uses a thousands separator ("17,037") like the other amounts.
+- **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
+- **Tests :** 281 passed, 2 skipped (3 new: YoY cited, short history without YoY, orders formatting; two of them fail without the fix); also green with `-W error`; `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-4mxxwj -> main
+- **Décisions techniques :** text-only change to the finding; `sales_trend` logic unchanged. The -9.3% 30-day forecast next to +70.7% recent growth is not a bug: the demo data peaks in Oct–Dec and the forecast covers January.
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged. The sandbox's `pip` installs into Python 3.13 while `python` is 3.11; tests were run with `python3.13`.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-18 — Maintenance: cite product names in sales figures (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. Merged PR #46 first (suite green: 275 passed, also with `-W error`; `ruff` and `mypy` OK). Running `scripts/demo.sh` showed that top/flop products were cited by id only ("P001 (43.2%)"), which a business user cannot read. When an authorized product catalog (columns `product_id` + `name`) is present, `detect_tables` now picks it up as `BusinessData.products`, and the sales figures read "P001 Rice 25kg (43.2%)". Without a catalog, output is unchanged (ids only). The dashboard Sales page shows a `name` column in the top/flop tables too.
 - **Fichiers principaux :** `mide/business/sales.py` (`product_names`, `product_ranking(names=...)`), `mide/agent/decision.py`, `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_sales.py`, `tests/test_agent.py`, `tests/test_dashboard.py`
