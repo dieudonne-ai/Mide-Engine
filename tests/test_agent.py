@@ -166,3 +166,18 @@ def test_ask_document_question_without_llm_still_fails(tmp_path, monkeypatch, de
         "retrieve": lambda s, q, source=None: []})())
     with pytest.raises(DownloadError):
         cli.ask_answer("What is our return policy?", cfg_dir)
+
+
+def test_products_catalog_detected(data):
+    assert data.products is not None and "name" in data.products.columns
+
+
+def test_sales_finding_cites_product_names(data):
+    facts = run_modules(["sales"], data)[0].facts
+    assert facts["top products"].startswith("P001 Rice 25kg (")
+    assert facts["flop products"].startswith("P009 ")
+
+
+def test_sales_finding_without_catalog_uses_ids(data):
+    plain = BusinessData(sales=data.sales)
+    assert run_modules(["sales"], plain)[0].facts["top products"].startswith("P001 (")

@@ -14,7 +14,8 @@ def cfg_dir(tmp_path, monkeypatch, demo_data):
     cfg = tmp_path / "cfg"
     cfg.mkdir()
     (cfg / "sources.yaml").write_text(
-        f"sources:\n  - {demo_data['campaigns']}\n  - {demo_data['sales']}\n")
+        f"sources:\n  - {demo_data['campaigns']}\n  - {demo_data['sales']}\n"
+        f"  - {demo_data['products']}\n")
     return cfg
 
 
@@ -33,6 +34,8 @@ def test_load_and_views(cfg_dir):
     assert report.kpis.total_revenue > 0 and report.anomalies
     sv = dd.sales_view(data.tables.sales)
     assert set(sv["forecast"].totals) == {30, 60, 90}
+    named = dd.sales_view(data.tables.sales, data.tables.products)["products"]["top"]
+    assert named.loc["P001", "name"] == "Rice 25kg"
     assert not dd.customers_view(data.tables.sales)["segments"].empty
     mv = dd.marketing_view(data.tables.campaigns)
     assert not mv["channels"].empty and mv["plan"].best_channel

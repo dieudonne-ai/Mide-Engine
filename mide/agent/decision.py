@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
 import pandas as pd
@@ -23,10 +23,11 @@ class Finding:
 
 @dataclass
 class BusinessData:
-    """Tables the business modules work on (either may be missing)."""
+    """Tables the business modules work on (any may be missing)."""
 
     sales: pd.DataFrame | None = None
     campaigns: pd.DataFrame | None = None
+    products: pd.DataFrame | None = None  # optional catalog: product_id -> name
 
 
 @dataclass
@@ -45,10 +46,11 @@ class Recommendation:
 
 _SALES_COLS = {"date", "amount"}
 _CAMPAIGN_COLS = {"channel", "spend", "revenue"}
+_PRODUCT_COLS = {"product_id", "name"}
 
 
 def detect_tables(frames: dict[str, pd.DataFrame]) -> BusinessData:
-    """Pick the sales and campaigns tables among datasets by their columns."""
+    """Pick the sales, campaigns and product-catalog tables among datasets by their columns."""
     data = BusinessData()
     for df in frames.values():
         cols = set(df.columns)
@@ -56,6 +58,8 @@ def detect_tables(frames: dict[str, pd.DataFrame]) -> BusinessData:
             data.sales = df
         elif data.campaigns is None and _CAMPAIGN_COLS <= cols:
             data.campaigns = df
+        elif data.products is None and _PRODUCT_COLS <= cols and "date" not in cols:
+            data.products = df
     return data
 
 
@@ -67,7 +71,13 @@ def _pct(x: float | None) -> str:
     return "n/a" if x is None else f"{x:+.1f}%"
 
 
-def _sales_finding(df: pd.DataFrame) -> Finding:
+def _product_list(table: pd.DataFrame, names: dict[str, str]) -> str:
+    """'P001 Rice 25kg (43.2%), ...' (id only when the name is unknown)."""
+    labels = (f"{p} {names[str(p)]}" if names.get(str(p)) else str(p) for p in table.index)
+    return ", ".join(f"{label} ({share:.1f}%)" for label, share in zip(labels, table["share_pct"]))
+
+
+def _sales_finding(df: pd.DataFrame, products: pd.DataFrame | None = None) -> Finding:
     forecast = sales.forecast_sales(df)
     trend = sales.sales_trend(df)
     ranking = sales.product_ranking(df, n=2) if "product_id" in df.columns else None
@@ -75,10 +85,9 @@ def _sales_finding(df: pd.DataFrame) -> Finding:
              for h, t in forecast.totals.items()}
     facts["trend"] = f"{trend.direction}, last 3 months {_pct(trend.last_3m_growth_pct)}"
     if ranking is not None:
-        facts["top products"] = ", ".join(
-            f"{p} ({r.share_pct:.1f}%)" for p, r in ranking["top"].iterrows())
-        facts["flop products"] = ", ".join(
-            f"{p} ({r.share_pct:.1f}%)" for p, r in ranking["flop"].iterrows())
+        names = sales.product_names(products) if products is not None else {}
+        facts["top products"] = _product_list(ranking["top"], names)
+        facts["flop products"] = _product_list(ranking["flop"], names)
     return Finding("sales", facts)
 
 
@@ -121,9 +130,11 @@ def _insights_finding(df: pd.DataFrame) -> Finding:
     return Finding("insights", facts)
 
 
-_BUILDERS = {
-    "sales": ("sales", _sales_finding), "customers": ("sales", _customers_finding),
-    "insights": ("sales", _insights_finding), "marketing": ("campaigns", _marketing_finding),
+_BUILDERS: dict[str, tuple[str, Callable[[pd.DataFrame, BusinessData], Finding]]] = {
+    "sales": ("sales", lambda df, data: _sales_finding(df, data.products)),
+    "customers": ("sales", lambda df, _: _customers_finding(df)),
+    "insights": ("sales", lambda df, _: _insights_finding(df)),
+    "marketing": ("campaigns", lambda df, _: _marketing_finding(df)),
 }
 
 
@@ -136,7 +147,7 @@ def run_modules(modules: Sequence[str], data: BusinessData) -> list[Finding]:
         if table is None:
             continue
         try:
-            findings.append(builder(table))
+            findings.append(builder(table, data))
         except ValueError:
             continue
     return findings

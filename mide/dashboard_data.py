@@ -63,12 +63,13 @@ def home_kpis(data: DashboardData) -> insights.InsightReport | None:
         return None
 
 
-def sales_view(df: pd.DataFrame) -> dict:
-    """Forecast, product ranking, trend and seasonality for the sales page."""
+def sales_view(df: pd.DataFrame, products: pd.DataFrame | None = None) -> dict:
+    """Forecast, product ranking (with names if a catalog is given), trend and seasonality."""
     forecast = sales.forecast_sales(df)
+    names = sales.product_names(products) if products is not None else None
     return {
         "forecast": forecast,
-        "products": sales.product_ranking(df, n=5),
+        "products": sales.product_ranking(df, n=5, names=names),
         "trend": sales.sales_trend(df),
         "seasonality": sales.detect_seasonality(df),
         "history": sales.daily_series(df),

@@ -40,11 +40,20 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-18 — Maintenance: cite product names in sales figures (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. Merged PR #46 first (suite green: 275 passed, also with `-W error`; `ruff` and `mypy` OK). Running `scripts/demo.sh` showed that top/flop products were cited by id only ("P001 (43.2%)"), which a business user cannot read. When an authorized product catalog (columns `product_id` + `name`) is present, `detect_tables` now picks it up as `BusinessData.products`, and the sales figures read "P001 Rice 25kg (43.2%)". Without a catalog, output is unchanged (ids only). The dashboard Sales page shows a `name` column in the top/flop tables too.
+- **Fichiers principaux :** `mide/business/sales.py` (`product_names`, `product_ranking(names=...)`), `mide/agent/decision.py`, `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_sales.py`, `tests/test_agent.py`, `tests/test_dashboard.py`
+- **Tests :** 280 passed (5 new: catalog name mapping, ranking with names, catalog detection, finding cites names, fallback to ids without catalog; dashboard test now also authorizes the products file); also green with `-W error`; `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-2ekjz2 -> main
+- **Décisions techniques :** the catalog is used only if the user authorized it as a source (no extra reads). Module builders now receive the whole `BusinessData`, so a module can use secondary tables.
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-18 — Maintenance: priority-action questions and latest-anomaly action (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #45 was already merged; suite green at start (268 passed, also with `-W error`; `ruff` and `mypy` OK). Running `scripts/demo.sh` showed two bugs: (1) demo question 5 "What are my 3 priority actions this week?" was routed to RAG only and failed ("Index vide"); the router now sends action/priority/recommendation questions (FR/EN, word-start match so "transactions" does not match) to all four business modules, like `mide report`. (2) The report action "Investigate the cause of the latest sales anomaly" cited the *oldest* anomaly (2023-06-14) because anomalies are chronological and it used `anomaly 1`; it now cites the last one (2024-09-03). The agent also keeps the 5 most recent anomalies instead of the 5 oldest.
 - **Fichiers principaux :** `mide/agent/router.py`, `mide/agent/decision.py`, `mide/report.py`, `tests/test_agent.py`, `tests/test_report.py`
 - **Tests :** 275 passed (7 new: 4 action-routing cases, "transactions" negative case, most-recent anomalies kept, report cites latest anomaly; the new ones fail without the fix); also green with `-W error`; `ruff check .` OK; `mypy mide` OK. Demo step 6 now answers all 5 questions.
-- **PR :** claude/wizardly-shannon-1a9e5r -> main
+- **PR :** #46 (merged)
 - **Décisions techniques :** action questions skip RAG unless document keywords are present (same rule as other business questions).
 - **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
 - **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).

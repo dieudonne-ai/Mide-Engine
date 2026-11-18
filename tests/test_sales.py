@@ -5,6 +5,7 @@ from mide.business.sales import (
     daily_series,
     detect_seasonality,
     forecast_sales,
+    product_names,
     product_ranking,
     sales_trend,
 )
@@ -66,3 +67,17 @@ def test_no_seasonality_on_flat_data():
     dates = pd.date_range("2023-01-01", "2024-12-31", freq="D")
     flat = pd.DataFrame({"date": dates.strftime("%Y-%m-%d"), "amount": 100.0})
     assert not detect_seasonality(flat).has_yearly_seasonality
+
+
+def test_product_names_from_catalog():
+    catalog = pd.DataFrame({"product_id": ["P1", "P2"], "name": ["Rice", None]})
+    assert product_names(catalog) == {"P1": "Rice"}
+    assert product_names(pd.DataFrame({"product_id": ["P1"]})) == {}
+
+
+def test_product_ranking_adds_names(sales):
+    rank = product_ranking(sales, n=2, names={"P001": "Rice 25kg"})
+    assert list(rank["top"].columns) == ["name", "revenue", "share_pct"]
+    assert rank["top"].loc["P001", "name"] == "Rice 25kg"
+    assert rank["flop"].loc["P009", "name"] == ""
+    assert "name" not in product_ranking(sales, n=2)["top"].columns
