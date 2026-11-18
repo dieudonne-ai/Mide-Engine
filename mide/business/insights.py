@@ -59,7 +59,7 @@ class Anomaly:
         period = (str(self.start.date()) if self.start == self.end
                   else f"{self.start.date()} -> {self.end.date()}")
         return (f"{self.kind} on {period}: {self.actual:,.0f} vs "
-                f"{self.expected:,.0f} expected ({self.ratio:.0%})")
+                f"{self.expected:,.0f} expected ({self.ratio - 1:+.0%})")
 
 
 @dataclass

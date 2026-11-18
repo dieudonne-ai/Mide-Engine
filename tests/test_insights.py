@@ -78,3 +78,15 @@ def test_analyze_and_describe(sales):
     report = analyze(sales)
     assert report.kpis.orders == sales["order_id"].nunique()
     assert report.anomalies and "expected" in report.anomalies[0].describe()
+
+
+def test_describe_shows_signed_deviation_from_expected():
+    """A spike at 3x expected is +200%, a drop to 4% of expected is -96% (not '300%'/'4%')."""
+    from mide.business.insights import Anomaly
+
+    day = pd.Timestamp("2024-03-08")
+    spike = Anomaly(day, day, "spike", actual=3000.0, expected=1000.0, ratio=3.0, score=9.0)
+    drop = Anomaly(day, day + pd.Timedelta(days=2), "drop", actual=40.0, expected=1000.0,
+                   ratio=0.04, score=-9.0, days=3)
+    assert spike.describe() == "spike on 2024-03-08: 3,000 vs 1,000 expected (+200%)"
+    assert drop.describe() == "drop on 2024-03-08 -> 2024-03-10: 40 vs 1,000 expected (-96%)"
