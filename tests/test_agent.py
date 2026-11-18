@@ -252,3 +252,20 @@ def test_forecast_fact_cites_the_period_it_covers(data):
         end = start + pd.Timedelta(days=h - 1)
         assert f"for {start} -> {end} (" in facts[f"forecast {h}d"]
         assert facts[f"forecast {h}d"].endswith(f"vs previous {h}d)")
+
+
+def test_insights_revenue_and_growth_cite_their_period(data):
+    # Totals and growth refer to the data's own dates, not to today: say which.
+    facts = run_modules(["insights"], data)[0].facts
+    dates = pd.to_datetime(data.sales["date"])
+    first, last = dates.min().date(), dates.max().date()
+    assert facts["revenue"].endswith(f" for {first} -> {last}")
+    assert facts["30d growth"].endswith(f" (30 days to {last} vs previous 30)")
+
+
+def test_insights_growth_without_previous_period_is_na(data):
+    sales = data.sales
+    short = sales[pd.to_datetime(sales["date"]) >= pd.to_datetime(sales["date"]).max()
+                  - pd.Timedelta(days=40)]
+    facts = run_modules(["insights"], BusinessData(sales=short))[0].facts
+    assert facts["30d growth"] == "n/a"

@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-18 — Maintenance: revenue and 30d growth cite the dates they cover (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #52 was already merged; suite green at start (286 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed (pip copies of `PyYAML`, `cryptography`, `cffi` over the Debian ones). Running `scripts/demo.sh` showed the KPIs "revenue: 735,907" and "30d growth: +10.4%" in a report dated 2026-11-18. Neither said which dates it covered: the total is all history and the growth is the last 30 days of data (to 2024-12-31), which a reader could take as the last 30 days before today. They now read "735,907 for 2023-01-01 -> 2024-12-31" and "+10.4% (30 days to 2024-12-31 vs previous 30)". This also shows how old the data is (part of the "data is stale" debt noted earlier). The change shows up in `mide ask`, the agent figures and the weekly report "Indicateurs clés" section.
+- **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
+- **Tests :** 288 passed, 2 skipped (2 new: revenue/growth cite the exact data dates, which fails without the fix; growth stays "n/a" with no full previous period). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-v01j1y -> main
+- **Décisions techniques :** text-only change; `compute_kpis` is unchanged (it already stores `start`/`end`).
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged. The weekly report "Alertes" still lists every historical anomaly, not only recent ones. There is still no explicit warning when the last data day is far before the report date.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-18 — Maintenance: forecast figures cite the period they cover (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #51 was already merged; suite green at start (285 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed "forecast 30d: 45,871 (-9.3% vs previous 30d)" in a report dated 2026-11-18: the forecast starts the day after the last sales record (here 2025-01-01), not today, and nothing said which days it covered. A reader could take it as the next 30 days from today. The fact now reads "45,871 for 2025-01-01 -> 2025-01-30 (-9.3% vs previous 30d)". The change shows up in `mide ask`, the agent figures and the weekly report "Prévisions" section.
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
