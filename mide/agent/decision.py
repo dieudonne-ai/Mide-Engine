@@ -116,9 +116,14 @@ def _marketing_finding(df: pd.DataFrame) -> Finding:
     facts = {f"channel {c}": f"ROI {r.roi:.2f}, ROAS {r.roas:.2f}" for c, r in channels.iterrows()}
     facts["underperforming"] = ", ".join(plan.underperforming) or "none"
     facts["best channel"] = plan.best_channel
+    best_roas = float(channels.loc[plan.best_channel, "roas"])
     for m in plan.moves:
-        facts[f"move {m.from_channel}"] = (f"{_money(m.amount)} to {m.to_channel}, est. extra "
-                                           f"revenue {_money(m.estimated_extra_revenue)}")
+        # Linear estimate at the receiving channel's average ROAS: an upper bound,
+        # since returns diminish as spend grows. Say so next to the figure.
+        facts[f"move {m.from_channel}"] = (
+            f"{_money(m.amount)} to {m.to_channel}, est. extra revenue up to "
+            f"{_money(m.estimated_extra_revenue)} (linear, at {m.to_channel} ROAS "
+            f"{best_roas:.2f}; returns diminish)")
     return Finding("marketing", facts)
 
 

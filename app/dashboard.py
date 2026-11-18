@@ -97,7 +97,7 @@ def page_marketing(data: dd.DashboardData) -> None:
         st.success("No reallocation needed.")
     for m in plan.moves:
         st.write(f"- {m.from_channel} → {m.to_channel}: **{m.amount:,.0f}** ({m.reason}; "
-                 f"≈ +{m.estimated_extra_revenue:,.0f} revenue)")
+                 f"up to +{m.estimated_extra_revenue:,.0f} revenue, linear upper bound)")
 
 
 def page_ask(data: dd.DashboardData, config_dir) -> None:
