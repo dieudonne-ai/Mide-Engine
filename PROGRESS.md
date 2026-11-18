@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-18 — Maintenance: anomaly figures show a signed deviation (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #48 was already merged; suite green at start (283 passed, also with `-W error`; `ruff` and `mypy` OK). Running `scripts/demo.sh` showed the anomaly alert "spike on 2024-03-08: 3,962 vs 1,265 expected (313%)": the percentage was actual/expected, so it read as a +313% spike when sales were in fact +213% above expected, and drops read "(4%)" for a -96% fall. `Anomaly.describe()` now prints the signed deviation ("(+213%)", "(-96%)"), which flows into `mide ask`, the agent figures, the weekly report alerts/actions and the dashboard.
+- **Fichiers principaux :** `mide/business/insights.py`, `tests/test_insights.py`
+- **Tests :** 284 passed (1 new: exact spike/drop wording, fails without the fix); also green with `-W error`; `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-ad4noj -> main
+- **Décisions techniques :** text-only change; `Anomaly.ratio` (actual/expected) and detection are unchanged.
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged. `scripts/demo.sh` uses `python3` by default; in this sandbox it must be run with `PYTHON=python3.13`.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-18 — Maintenance: trend figure cites its YoY basis (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #47 was already merged; suite green at start (278 passed, 2 skipped for missing `streamlit`, also with `-W error`; `ruff` and `mypy` OK). Running `scripts/demo.sh` showed the sales fact "trend: up, last 3 months +70.7%": the direction "up" is actually computed from year-over-year growth (+20.7%), which was never shown, so a reader could not see what "up" was based on (principle 5, explainability). The fact now reads "up, YoY +20.7%, last 3 months +70.7%" (YoY only when 24 months of data exist). The insights "orders" figure now uses a thousands separator ("17,037") like the other amounts.
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
