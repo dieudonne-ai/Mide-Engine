@@ -216,3 +216,30 @@ def test_reallocation_estimate_is_flagged_as_upper_bound(data):
         assert "est. extra revenue up to " in move
         assert f"linear, at {best} ROAS {roas}" in move
         assert "returns diminish" in move
+
+
+def _churn_sales(n_lost: int) -> pd.DataFrame:
+    """Regular buyers until the end, plus `n_lost` customers silent for a long time."""
+    rows = []
+    days = pd.date_range("2024-01-01", "2024-12-31", freq="7D")
+    for i in range(5):
+        rows += [{"customer_id": f"A{i}", "date": d, "amount": 10.0, "order_id": f"A{i}-{k}"}
+                 for k, d in enumerate(days)]
+    for i in range(n_lost):
+        rows += [{"customer_id": f"L{i}", "date": d, "amount": 100.0 * (i + 1),
+                  "order_id": f"L{i}-{k}"} for k, d in enumerate(days[:5])]
+    return pd.DataFrame(rows)
+
+
+def test_churn_fact_names_most_valuable_at_risk_customers():
+    from mide.agent.decision import _customers_finding
+
+    fact = _customers_finding(_churn_sales(4)).facts["churn"]
+    assert fact.startswith("4 customers at high risk (top: L3, L2, L1, ...)")
+
+
+def test_churn_fact_without_overflow_has_no_ellipsis():
+    from mide.agent.decision import _customers_finding
+
+    fact = _customers_finding(_churn_sales(2)).facts["churn"]
+    assert "(top: L1, L0)," in fact and "..." not in fact

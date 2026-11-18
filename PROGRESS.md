@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-18 — Maintenance: churn figure names the most valuable at-risk customers (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #50 was already merged; suite green at start (283 passed, 2 skipped for missing `streamlit`, also with `-W error`; `ruff` and `mypy` OK). Running `scripts/demo.sh` showed that the answer to "Which customers are at risk of churn?" and the report action "Relancer les clients à risque de départ" only gave a count ("4 customers at high risk"), never saying whom to contact. The churn figure now names up to 3 high-risk customers, most valuable first: "4 customers at high risk (top: C0093, C0320, C0348, ...), 2,344 past revenue at risk". It flows into `mide ask`, the agent figures and the weekly report.
+- **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
+- **Tests :** 285 passed, 2 skipped (2 new: names in value order with "..." when more exist, no "..." otherwise; the first fails without the fix); also green with `-W error`; `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-4qe6ap -> main
+- **Décisions techniques :** text-only change; `churn_risk` is unchanged (it already sorts high-risk customers by past revenue). Ids only: the customers table has no name column in the demo data.
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged. The weekly report "Alertes" still lists every historical anomaly, not only recent ones.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-18 — Maintenance: budget reallocation estimate flagged as a linear upper bound (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #49 was already merged; suite green at start (284 passed, also with `-W error`; `ruff` and `mypy` OK) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed the marketing figure "move Radio: 6,840 to Email, est. extra revenue 285,353": moving 6.8k of budget would add revenue equal to ~39% of total sales. The estimate is linear at Email's average ROAS (42.54), which `suggest_reallocation` documents as optimistic, but nothing told the user. The figure now reads "est. extra revenue up to 285,353 (linear, at Email ROAS 42.54; returns diminish)"; it flows into `mide ask`, the agent figures and the weekly report action. The dashboard says "linear upper bound" too.
 - **Fichiers principaux :** `mide/agent/decision.py`, `app/dashboard.py`, `tests/test_agent.py`
