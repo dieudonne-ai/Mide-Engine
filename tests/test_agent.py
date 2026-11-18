@@ -181,3 +181,24 @@ def test_sales_finding_cites_product_names(data):
 def test_sales_finding_without_catalog_uses_ids(data):
     plain = BusinessData(sales=data.sales)
     assert run_modules(["sales"], plain)[0].facts["top products"].startswith("P001 (")
+
+
+def test_sales_trend_cites_yoy_basis(data):
+    # Two years of demo data: direction is based on YoY growth, which must be cited.
+    trend = run_modules(["sales"], data)[0].facts["trend"]
+    direction, yoy, recent = trend.split(", ")
+    assert direction in {"up", "down", "flat"}
+    assert yoy.startswith("YoY ") and yoy.endswith("%")
+    assert recent.startswith("last 3 months ")
+
+
+def test_sales_trend_without_yoy_shows_recent_only(data):
+    short = data.sales[pd.to_datetime(data.sales["date"]) >= "2024-01-01"]
+    trend = run_modules(["sales"], BusinessData(sales=short))[0].facts["trend"]
+    assert "YoY" not in trend and "last 3 months" in trend
+
+
+def test_insights_orders_use_thousands_separator(data):
+    facts = run_modules(["insights"], data)[0].facts
+    assert facts["orders"] == f"{data.sales['order_id'].nunique():,}"
+    assert "," in facts["orders"]
