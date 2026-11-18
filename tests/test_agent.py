@@ -243,3 +243,12 @@ def test_churn_fact_without_overflow_has_no_ellipsis():
 
     fact = _customers_finding(_churn_sales(2)).facts["churn"]
     assert "(top: L1, L0)," in fact and "..." not in fact
+
+
+def test_forecast_fact_cites_the_period_it_covers(data):
+    facts = run_modules(["sales"], data)[0].facts
+    start = (pd.to_datetime(data.sales["date"]).max() + pd.Timedelta(days=1)).date()
+    for h in (30, 60, 90):
+        end = start + pd.Timedelta(days=h - 1)
+        assert f"for {start} -> {end} (" in facts[f"forecast {h}d"]
+        assert facts[f"forecast {h}d"].endswith(f"vs previous {h}d)")

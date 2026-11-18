@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-18 — Maintenance: forecast figures cite the period they cover (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #51 was already merged; suite green at start (285 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed "forecast 30d: 45,871 (-9.3% vs previous 30d)" in a report dated 2026-11-18: the forecast starts the day after the last sales record (here 2025-01-01), not today, and nothing said which days it covered. A reader could take it as the next 30 days from today. The fact now reads "45,871 for 2025-01-01 -> 2025-01-30 (-9.3% vs previous 30d)". The change shows up in `mide ask`, the agent figures and the weekly report "Prévisions" section.
+- **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
+- **Tests :** 286 passed, 2 skipped (1 new: exact start/end dates for the 30/60/90-day horizons; fails without the fix). Also green with `-W error`. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-ajmuyq -> main
+- **Décisions techniques :** text-only change; `forecast_sales` is unchanged (it already forecasts from the last data day, which is right for a model trained on that history).
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged. The weekly report "Alertes" still lists every historical anomaly, not only recent ones. Nothing flags that the data is stale yet (in the demo, the last sale is almost 2 years before the report date).
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-18 — Maintenance: churn figure names the most valuable at-risk customers (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #50 was already merged; suite green at start (283 passed, 2 skipped for missing `streamlit`, also with `-W error`; `ruff` and `mypy` OK). Running `scripts/demo.sh` showed that the answer to "Which customers are at risk of churn?" and the report action "Relancer les clients à risque de départ" only gave a count ("4 customers at high risk"), never saying whom to contact. The churn figure now names up to 3 high-risk customers, most valuable first: "4 customers at high risk (top: C0093, C0320, C0348, ...), 2,344 past revenue at risk". It flows into `mide ask`, the agent figures and the weekly report.
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
