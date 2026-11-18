@@ -17,6 +17,11 @@ MODULE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "insights": ("kpi", "anomal", "drop", "chute", "spike", "pic ", "unusual", "inhabituel",
                  "indicator", "indicateur", "overview", "apercu", "performance"),
 }
+# Questions asking what to do next draw on every business module (like `mide report`).
+ACTION_KEYWORDS: tuple[str, ...] = (
+    "priorit", "action", "recommend", "recommand", "what should", "que faire",
+    "que dois", "advice", "conseil", "next step",
+)
 DOCUMENT_KEYWORDS: tuple[str, ...] = (
     "document", "report", "rapport", "meeting", "reunion", "note", "memo", "pdf",
     "contract", "contrat", "according to", "selon", "what does", "que dit", "mentioned",
@@ -46,7 +51,11 @@ def _normalize(text: str) -> str:
 def route_question(question: str) -> Route:
     """Route by keywords (FR/EN). Business-only keywords skip the document search."""
     text = _normalize(question)
-    modules = [m for m, words in MODULE_KEYWORDS.items() if any(w in text for w in words)]
+    # Word-start match, so "transactions" does not count as "action".
+    if any(re.search(r"\b" + re.escape(w), text) for w in ACTION_KEYWORDS):
+        modules = list(MODULE_KEYWORDS)
+    else:
+        modules = [m for m, words in MODULE_KEYWORDS.items() if any(w in text for w in words)]
     wants_documents = any(w in text for w in DOCUMENT_KEYWORDS)
     if not modules:
         return Route(use_rag=True)

@@ -104,6 +104,9 @@ def _marketing_finding(df: pd.DataFrame) -> Finding:
     return Finding("marketing", facts)
 
 
+_MAX_ANOMALIES = 5
+
+
 def _insights_finding(df: pd.DataFrame) -> Finding:
     report = insights.analyze(df)
     k = report.kpis
@@ -112,7 +115,8 @@ def _insights_finding(df: pd.DataFrame) -> Finding:
         "average order value": _money(k.avg_order_value),
         "30d growth": "n/a" if k.growth_30d is None else f"{k.growth_30d:+.1%}",
     }
-    for i, a in enumerate(report.anomalies[:5], start=1):
+    # Keep the most recent anomalies (detection order is chronological).
+    for i, a in enumerate(report.anomalies[-_MAX_ANOMALIES:], start=1):
         facts[f"anomaly {i}"] = a.describe()
     return Finding("insights", facts)
 
