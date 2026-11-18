@@ -8,7 +8,7 @@ from pathlib import Path
 import typer
 
 from mide import __version__
-from mide.agent.decision import detect_tables, recommend, run_modules
+from mide.agent.decision import Recommendation, detect_tables, recommend, run_modules
 from mide.agent.router import route_question
 from mide.automl.auto import AutoReport, fingerprint, retrain_if_changed
 from mide.automl.evaluator import evaluate
@@ -315,6 +315,15 @@ class EmptyIndexError(Exception):
     """The vector index is empty and no business data can answer."""
 
 
+def _no_llm_note(reason: str, language: str) -> str:
+    """Answer shown when no LLM is installed but business figures are available."""
+    reason = reason.rstrip(".")
+    if language == "fr":
+        return (f"LLM local indisponible ({reason}). Voici les chiffres calculés, "
+                "sans recommandation rédigée.")
+    return f"Local LLM unavailable ({reason}). Here are the computed figures, without written advice."
+
+
 def ask_answer(question: str, config_dir: Path | None = None, source: str | None = None,
                top_k: int = 5) -> tuple[str, str, str]:
     """Answer a question; returns (answer, figures used, sources footer)."""
@@ -334,7 +343,14 @@ def ask_answer(question: str, config_dir: Path | None = None, source: str | None
                 else "Empty index. Run `mide index`.")
         if store.count() > 0:
             passages = Retriever(store, _get_embedder(cfg), top_k).retrieve(question, source=source)
-    llm = _get_llm(cfg)
+    try:
+        llm = _get_llm(cfg)
+    except DownloadError as exc:
+        if not findings:
+            raise
+        # Graceful degradation: the figures are computed without the LLM.
+        rec = Recommendation(_no_llm_note(str(exc), cfg.language), findings, passages)
+        return rec.text, rec.data_used(cfg.language), sources_footer(passages)
     if findings:
         rec = recommend(question, findings, llm, passages, cfg.language)
         answer, used = rec.text, rec.data_used(cfg.language)

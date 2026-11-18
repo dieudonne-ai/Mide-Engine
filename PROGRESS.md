@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-18 — Maintenance: `mide ask` answers business questions without an LLM (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. Suite green at start (265 passed, also with `-W error`; `ruff` and `mypy` OK). Running `scripts/demo.sh` showed that all business questions in step 6 fail when no LLM weights are installed ("Model not installed"), although the agent computes the figures deterministically. Applying principle 4 (graceful degradation): when business findings exist but the LLM is not installed, `ask_answer` now returns a bilingual note ("Local LLM unavailable (...). Here are the computed figures...") plus the usual "Data used" figures, with exit code 0. Questions that need documents only still fail with the same clear error as before.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_agent.py`
+- **Tests :** 268 passed (3 new: FR CLI fallback, EN `ask_answer` fallback, documents-only question still raises; the first two fail without the fix); also green with `-W error`; `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-m1xbqi -> main
+- **Décisions techniques :** fallback lives in `ask_answer`, so the CLI and the dashboard (which reuse it) both benefit. `mide chat` is unchanged: it always needs the LLM for conversation.
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged. The router sends "What are my 3 priority actions this week?" to RAG only; it could also route to `insights` (left as is, would change routing behaviour).
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-17 — Maintenance: fix mypy type errors (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. Suite was green at start (264 passed, also with `-W error`; `ruff` OK), but `mypy mide` (part of the quality stack in CLAUDE.md §5) reported 21 errors in 5 files. Fixed with annotations only, no behaviour change: LightGBM params dict typed `dict[str, Any]` (`automl/trainer.py`), file fingerprint dict typed (`rag/indexer.py`), Chroma embeddings passed as the list type Chroma declares (`rag/store.py`), `list_models` accepts any `Mapping` (`llm/downloader.py`, profile keys are `Literal`s), and connector variables in `cli.py` typed `SQLConnector | TabularConnector`.
 - **Fichiers principaux :** `mide/automl/trainer.py`, `mide/rag/indexer.py`, `mide/rag/store.py`, `mide/llm/downloader.py`, `mide/cli.py`, `tests/test_typecheck.py`
