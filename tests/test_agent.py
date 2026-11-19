@@ -405,3 +405,24 @@ def test_customer_segments_on_demo_data_include_at_risk(data):
     assert segments["segment At risk"] == "44 customers, 9.1% of revenue"
     assert len(segments) == 6
     assert sum(int(v.split()[0]) for v in segments.values()) == 400
+
+
+def test_data_used_labels_follow_language():
+    from mide.agent.decision import Finding, Recommendation, fact_label
+
+    findings = [Finding("sales", {"forecast 30d": "45,871", "top products": "P001"}),
+                Finding("marketing", {"channel SMS": "ROI -0.58", "move Radio": "6,840"}),
+                Finding("insights", {"anomaly 2": "spike", "custom key": "x"})]
+    rec = Recommendation("t", findings)
+    fr = rec.data_used("fr")
+    assert "- [sales] prévision à 30 jours: 45,871" in fr
+    assert "- [sales] meilleurs produits: P001" in fr
+    assert "- [marketing] canal SMS: ROI -0.58" in fr
+    assert "- [marketing] transfert depuis Radio: 6,840" in fr
+    assert "- [insights] anomalie 2: spike" in fr
+    assert "- [insights] custom key: x" in fr
+    en = rec.data_used("en")
+    assert "- [sales] forecast 30d: 45,871" in en and "- [marketing] channel SMS" in en
+    assert "- [marketing] move Radio: 6,840" in en and "top products: P001" in en
+    assert fact_label("30d growth", "fr") == "croissance sur 30 jours"
+    assert fact_label("trend", "xx") == "tendance"

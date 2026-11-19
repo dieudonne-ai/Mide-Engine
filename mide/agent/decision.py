@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
@@ -30,6 +31,39 @@ class BusinessData:
     products: pd.DataFrame | None = None  # optional catalog: product_id -> name
 
 
+# Display labels of the fact keys. The keys stay English (stable for the LLM prompt,
+# the dashboard and the report); only what the user reads is translated.
+_FACT_LABELS = {
+    "fr": {"revenue": "chiffre d'affaires", "orders": "commandes",
+           "average order value": "panier moyen", "30d growth": "croissance sur 30 jours",
+           "forecast": "prévision à {x} jours", "churn": "risque de départ",
+           "underperforming": "canaux marketing sous-performants", "trend": "tendance",
+           "top products": "meilleurs produits", "flop products": "produits les plus faibles",
+           "best channel": "meilleur canal", "attribution check": "contrôle d'attribution",
+           "segment": "segment {x}", "channel": "canal {x}", "move": "transfert depuis {x}",
+           "anomaly": "anomalie {x}"},
+    "en": {"revenue": "revenue", "orders": "orders", "average order value": "average order value",
+           "30d growth": "30d growth", "forecast": "forecast {x}d", "churn": "churn",
+           "underperforming": "marketing underperforming", "trend": "trend",
+           "top products": "top products", "flop products": "flop products",
+           "best channel": "best channel", "attribution check": "attribution check",
+           "segment": "segment {x}", "channel": "channel {x}", "move": "move {x}",
+           "anomaly": "anomaly {x}"},
+}
+_PARAM_KEY = re.compile(r"(forecast) (\d+)d|(segment|channel|move|anomaly) (.+)")
+
+
+def fact_label(key: str, language: str) -> str:
+    """Label of a fact key in the given language (unknown keys unchanged, French by default)."""
+    labels = _FACT_LABELS.get(language, _FACT_LABELS["fr"])
+    match = _PARAM_KEY.fullmatch(key)
+    if match:
+        prefix = match.group(1) or match.group(3)
+        value = match.group(2) or match.group(4)
+        return labels[prefix].format(x=value)
+    return labels.get(key, key)
+
+
 @dataclass
 class Recommendation:
     """LLM text plus the deterministic figures used to produce it."""
@@ -40,7 +74,8 @@ class Recommendation:
 
     def data_used(self, language: str = "fr") -> str:
         title = "Données utilisées" if language == "fr" else "Data used"
-        lines = [f"- [{f.module}] {k}: {v}" for f in self.findings for k, v in f.facts.items()]
+        lines = [f"- [{f.module}] {fact_label(k, language)}: {v}"
+                 for f in self.findings for k, v in f.facts.items()]
         return f"{title}:\n" + "\n".join(lines) if lines else ""
 
 

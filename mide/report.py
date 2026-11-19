@@ -9,7 +9,7 @@ from datetime import UTC, date, datetime
 
 import pandas as pd
 
-from mide.agent.decision import BusinessData, Finding, run_modules
+from mide.agent.decision import BusinessData, Finding, fact_label, run_modules
 
 _ACTION_LIMIT = 3
 STALE_AFTER_DAYS = 30  # older sales data gets a warning at the top of the alerts
@@ -28,27 +28,6 @@ _T = {
 }
 
 # Display labels of the business fact keys; the keys stay English for the agent facts.
-_LABELS = {
-    "fr": {"revenue": "chiffre d'affaires", "orders": "commandes",
-           "average order value": "panier moyen", "30d growth": "croissance sur 30 jours",
-           "forecast": "prévision à {days} jours", "churn": "risque de départ",
-           "underperforming": "canaux marketing sous-performants"},
-    "en": {"revenue": "revenue", "orders": "orders", "average order value": "average order value",
-           "30d growth": "30d growth", "forecast": "forecast {days}d", "churn": "churn",
-           "underperforming": "marketing underperforming"},
-}
-_FORECAST_KEY = re.compile(r"forecast (\d+)d")
-
-
-def fact_label(key: str, language: str) -> str:
-    """Label of a KPI/forecast/alert fact key in the report language (unknown keys unchanged)."""
-    labels = _LABELS.get(language, _LABELS["fr"])
-    match = _FORECAST_KEY.fullmatch(key)
-    if match:
-        return labels["forecast"].format(days=match.group(1))
-    return labels.get(key, key)
-
-
 @dataclass
 class Action:
     """A prioritized recommendation with the figures that justify it."""
