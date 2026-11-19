@@ -67,6 +67,10 @@ def _money(x: float) -> str:
     return f"{x:,.0f}"
 
 
+def _ratio(x: float) -> str:
+    return "n/a" if pd.isna(x) else f"{x:.2f}"
+
+
 def _pct(x: float | None) -> str:
     return "n/a" if x is None else f"{x:+.1f}%"
 
@@ -143,7 +147,10 @@ def _customers_finding(df: pd.DataFrame) -> Finding:
 def _marketing_finding(df: pd.DataFrame) -> Finding:
     channels = marketing.channel_performance(df)
     plan = marketing.suggest_reallocation(channels)
-    facts = {f"channel {c}": f"ROI {r.roi:.2f}, ROAS {r.roas:.2f}" for c, r in channels.iterrows()}
+    # Cite the totals behind each ratio, so "ROI 41.54" cannot be read as 41.54%.
+    facts = {f"channel {c}": (f"spend {_money(r.spend)}, revenue {_money(r.revenue)}: "
+                              f"ROI {_ratio(r.roi)}, ROAS {_ratio(r.roas)}")
+             for c, r in channels.iterrows()}
     facts["underperforming"] = ", ".join(plan.underperforming) or "none"
     facts["best channel"] = plan.best_channel
     best_roas = float(channels.loc[plan.best_channel, "roas"])

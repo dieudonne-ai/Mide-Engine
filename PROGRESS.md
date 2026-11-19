@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: channel figures cite the spend and revenue behind ROI/ROAS (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #57 was already merged; suite green at start (297 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed "channel Email: ROI 41.54, ROAS 42.54" with no amounts behind it. "ROI 41.54" can be read as 41.54% when it means revenue is 42x the spend. Each channel figure now cites its totals: "spend 16,089, revenue 684,450: ROI 41.54, ROAS 42.54". A channel with zero spend now shows "ROI n/a, ROAS n/a" instead of "nan". The change shows up in `mide ask`, the agent figures and the LLM prompt.
+- **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
+- **Tests :** 299 passed, 2 skipped (2 new: exact spend/revenue/ratio text for every demo channel; zero-spend channel shows "n/a". Both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-4z8kp4 -> main
+- **Décisions techniques :** text-only change; `channel_performance` is unchanged. The totals come before the ratios, so "ROAS <x>" stays at the end of the text (the reallocation test still reads it from there).
+- **Problèmes / dette technique :** on the demo data, campaign-attributed revenue (1,443,825 over all channels) is about twice total sales (735,907), so campaign revenue is not consistent with `sales.csv`. That is a demo-generator choice; I left it alone because changing the generator changes figures many tests rely on. The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: sales trend cites the months it compares (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #56 was already merged; suite green at start (294 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed "trend: up, YoY +20.7%, last 3 months +70.7%" next to "forecast 30d: ... (-9.3% vs previous 30d)". Neither growth figure said which months it compared, so the +70.7% (a strong Q4 against Q3) looked like it contradicted the forecast. The fact now reads "up, YoY +20.7% (2024-01 -> 2024-12 vs 2023-01 -> 2023-12), last 3 months +70.7% (2024-10 -> 2024-12 vs 2024-07 -> 2024-09)". Only complete months are counted: a partial last month is still left out. The change shows up in `mide ask`, the agent figures and the weekly report priority action "Surveiller la tendance des ventes".
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`

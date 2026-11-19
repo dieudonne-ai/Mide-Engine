@@ -9,6 +9,7 @@ from mide.agent.decision import (
     run_modules,
 )
 from mide.agent.router import route_question
+from mide.business import marketing
 from mide.llm.runtime import FakeLLM
 
 
@@ -291,3 +292,22 @@ def test_insights_growth_without_previous_period_is_na(data):
                   - pd.Timedelta(days=40)]
     facts = run_modules(["insights"], BusinessData(sales=short))[0].facts
     assert facts["30d growth"] == "n/a"
+
+
+def test_channel_figures_cite_spend_and_revenue(data):
+    # Each channel ratio must cite the totals it comes from (explainability).
+    facts = run_modules(["marketing"], data)[0].facts
+    channels = marketing.channel_performance(data.campaigns)
+    assert len(channels) > 1
+    for name, row in channels.iterrows():
+        assert facts[f"channel {name}"] == (
+            f"spend {row.spend:,.0f}, revenue {row.revenue:,.0f}: "
+            f"ROI {row.roi:.2f}, ROAS {row.roas:.2f}")
+
+
+def test_channel_figure_with_zero_spend_stays_readable():
+    df = pd.DataFrame({"channel": ["Email", "Radio"], "spend": [100.0, 0.0],
+                       "revenue": [500.0, 50.0], "conversions": [5, 1]})
+    facts = run_modules(["marketing"], detect_tables({"campaigns": df}))[0].facts
+    assert facts["channel Email"] == "spend 100, revenue 500: ROI 4.00, ROAS 5.00"
+    assert facts["channel Radio"] == "spend 0, revenue 50: ROI n/a, ROAS n/a"
