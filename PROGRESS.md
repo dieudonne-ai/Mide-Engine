@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: weekly report stock action cites the 30d forecast (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #61 was already merged; suite green at start (305 passed, 2 skipped for missing `streamlit`). Running `scripts/demo.sh` showed that priority action 3, "Surveiller la tendance des ventes et ajuster les stocks", cited only the past trend ("up, ... last 3 months +70.7%"). The report's own 30d forecast is -9.3%. Stock is bought for the coming weeks, so the action read as "stock up" when the forecast points down (the demo peaks in December). The action now ends with "; forecast 30d: 45,871 for 2025-01-01 -> 2025-01-30 (-9.3% vs previous 30d)" when a forecast exists. Applies to `mide report` (Markdown/HTML) and `mide auto`.
+- **Fichiers principaux :** `mide/report.py`, `tests/test_report.py`
+- **Tests :** 307 passed, 2 skipped (2 new: exact evidence text on the demo data; action with and without a forecast. Both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-osjjp7 -> main
+- **Décisions techniques :** text-only change; the actions, their order and the forecast itself are unchanged. Only the 30d horizon is cited, since it matches a weekly report and keeps the line short.
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged. The sandbox's `pip` installs into Python 3.13 while `python` is 3.11; tests and the demo were run with `python3.13`.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: weekly report budget action carries the attribution check (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #60 was already merged; suite green at start (303 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed that the "attribution check" added last session appears in `mide ask` but not in the weekly report. Priority action 2, "Réallouer le budget depuis Radio — ... est. extra revenue up to 285,353 ...", rests on a ROAS the engine itself flags as double-counted, and the report said nothing about it. When the marketing finding has an attribution check, the budget action now ends with "; attribution check: channels report 1,443,825 revenue, 1.96x total sales 735,907; ...". The same applies to the "Renforcer le canal le plus rentable" action. Applies to `mide report` (Markdown/HTML) and `mide auto`.
 - **Fichiers principaux :** `mide/report.py`, `tests/test_report.py`
