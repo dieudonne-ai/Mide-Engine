@@ -330,3 +330,26 @@ def test_product_figure_without_catalog_cites_revenue():
     df = pd.DataFrame({"date": days, "product_id": ["A", "A", "A", "B"] * 15, "amount": 100.0})
     facts = run_modules(["sales"], BusinessData(sales=df))[0].facts
     assert facts["top products"] == "A (4,500 = 75.0% of revenue), B (1,500 = 25.0% of revenue)"
+
+
+def test_marketing_flags_attribution_above_total_sales(data):
+    # Demo channels claim about twice total sales: the figures must say so.
+    facts = run_modules(["marketing"], data)[0].facts
+    attributed = marketing.channel_performance(data.campaigns)["revenue"].sum()
+    total = data.sales["amount"].sum()
+    assert attributed > total
+    assert facts["attribution check"] == (
+        f"channels report {attributed:,.0f} revenue, {attributed / total:.2f}x "
+        f"total sales {total:,.0f}; the same sale is likely counted by several channels, "
+        "so compare ROI/ROAS between channels rather than as absolute returns")
+
+
+def test_marketing_no_attribution_check_when_consistent_or_no_sales():
+    campaigns = pd.DataFrame({"channel": ["Email", "Radio"], "spend": [100.0, 100.0],
+                              "revenue": [300.0, 200.0]})
+    sales_df = pd.DataFrame({"date": ["2024-01-01"], "customer_id": ["C1"],
+                             "amount": [1000.0]})
+    consistent = run_modules(["marketing"], BusinessData(sales=sales_df, campaigns=campaigns))
+    alone = run_modules(["marketing"], BusinessData(campaigns=campaigns))
+    assert "attribution check" not in consistent[0].facts
+    assert "attribution check" not in alone[0].facts

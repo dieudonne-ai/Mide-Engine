@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: marketing figures flag channel revenue above total sales (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #59 was already merged; suite green at start (301 passed, 2 skipped for missing `streamlit`). The debt noted in the last two entries is that the demo channels report 1,443,825 revenue against 735,907 total sales. This also happens with real data when several channels claim the same sale. It was left as a demo-generator problem, but the engine said nothing about it, so "ROI 41.54" read as an absolute return. The marketing finding now adds an `attribution check` figure when a sales table is available and the channels claim more than total sales: "channels report 1,443,825 revenue, 1.96x total sales 735,907; the same sale is likely counted by several channels, so compare ROI/ROAS between channels rather than as absolute returns". It shows up in `mide ask`, the agent figures and the LLM prompt.
+- **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
+- **Tests :** 303 passed, 2 skipped (2 new: exact warning text on the demo data, which fails without the fix; no warning when channel revenue is within total sales or there is no sales table). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-wujpu2 -> main
+- **Décisions techniques :** the demo generator is unchanged, so the existing figures and tests still hold. The check compares whole tables rather than overlapping dates, which is enough for the demo (both cover 2023–2024) and stays simple. It is a caveat, not a correction: ROI/ROAS and the reallocation estimates are unchanged.
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged. The sandbox's `pip` installs into Python 3.13 while `python` is 3.11; tests were run with `python3.13`.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: product figures cite the revenue behind their share (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #58 was already merged; suite green at start (299 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed "top products: P001 Rice 25kg (43.2%), P002 Cooking oil 5L (13.5%)". It did not say 43.2% of what, or give the amount behind it. Each product now cites its revenue and the basis of the share: "P001 Rice 25kg (317,856 = 43.2% of revenue), P002 Cooking oil 5L (99,528 = 13.5% of revenue)". Flop products read the same way. The change shows up in `mide ask`, the agent figures and the LLM prompt.
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`

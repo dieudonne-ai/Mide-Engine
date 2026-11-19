@@ -147,7 +147,20 @@ def _customers_finding(df: pd.DataFrame) -> Finding:
     return Finding("customers", facts)
 
 
-def _marketing_finding(df: pd.DataFrame) -> Finding:
+def _attribution_check(channels: pd.DataFrame, sales_df: pd.DataFrame | None) -> str | None:
+    """Warn when channels claim more revenue than total sales (double-counted attribution)."""
+    if sales_df is None or "amount" not in sales_df.columns:
+        return None
+    total_sales = float(pd.to_numeric(sales_df["amount"], errors="coerce").sum())
+    attributed = float(channels["revenue"].sum())
+    if total_sales <= 0 or attributed <= total_sales:
+        return None
+    return (f"channels report {_money(attributed)} revenue, {attributed / total_sales:.2f}x "
+            f"total sales {_money(total_sales)}; the same sale is likely counted by several "
+            "channels, so compare ROI/ROAS between channels rather than as absolute returns")
+
+
+def _marketing_finding(df: pd.DataFrame, sales_df: pd.DataFrame | None = None) -> Finding:
     channels = marketing.channel_performance(df)
     plan = marketing.suggest_reallocation(channels)
     # Cite the totals behind each ratio, so "ROI 41.54" cannot be read as 41.54%.
@@ -164,6 +177,9 @@ def _marketing_finding(df: pd.DataFrame) -> Finding:
             f"{_money(m.amount)} to {m.to_channel}, est. extra revenue up to "
             f"{_money(m.estimated_extra_revenue)} (linear, at {m.to_channel} ROAS "
             f"{best_roas:.2f}; returns diminish)")
+    check = _attribution_check(channels, sales_df)
+    if check:
+        facts["attribution check"] = check
     return Finding("marketing", facts)
 
 
@@ -191,7 +207,7 @@ _BUILDERS: dict[str, tuple[str, Callable[[pd.DataFrame, BusinessData], Finding]]
     "sales": ("sales", lambda df, data: _sales_finding(df, data.products)),
     "customers": ("sales", lambda df, _: _customers_finding(df)),
     "insights": ("sales", lambda df, _: _insights_finding(df)),
-    "marketing": ("campaigns", lambda df, _: _marketing_finding(df)),
+    "marketing": ("campaigns", lambda df, data: _marketing_finding(df, data.sales)),
 }
 
 
