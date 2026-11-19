@@ -256,3 +256,50 @@ def test_dashboard_anomalies_follow_language(cfg_dir, monkeypatch, language, wor
     assert not at.exception, at.exception
     assert at.warning, "the demo data has deliberate anomalies"
     assert all(word in w.value for w in at.warning)
+
+
+def _move(**figures):
+    from mide.business.marketing import BudgetMove
+
+    return BudgetMove(from_channel="radio", to_channel="whatsapp", amount=300.0,
+                      reason="radio ROI -0.20 vs median 1.50; whatsapp returns 4.00 revenue "
+                             "per unit spent", estimated_extra_revenue=1000.0, **figures)
+
+
+def test_move_reason_english_matches_marketing_reason(demo_data):
+    import pandas as pd
+
+    from mide.business import marketing
+
+    campaigns = pd.read_csv(demo_data["campaigns"])
+    plan = marketing.suggest_reallocation(marketing.channel_performance(campaigns))
+    assert plan.moves, "the demo data has an underperforming channel"
+    assert all(dd.move_reason(m, "en") == m.reason for m in plan.moves)
+
+
+def test_move_reason_french():
+    move = _move(from_roi=-0.2, median_roi=1.5, to_roas=4.0)
+    assert dd.move_reason(move, "fr") == (
+        "ROI de radio -0.20 contre une médiane de 1.50 ; whatsapp rapporte 4.00 "
+        "de chiffre d'affaires par unité dépensée")
+
+
+def test_move_reason_without_figures_keeps_reason():
+    move = _move()
+    assert dd.move_reason(move, "fr") == move.reason
+
+
+@pytest.mark.parametrize(("language", "word"), [("fr", "médiane"), ("en", "median")])
+def test_dashboard_marketing_reasons_follow_language(cfg_dir, monkeypatch, language, word):
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    (cfg_dir / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+    monkeypatch.setenv(dd.CONFIG_ENV, str(cfg_dir))
+    at = AppTest.from_file(str(APP), default_timeout=120).run()
+    page = dd.page_labels(language)["marketing"]
+    at.sidebar.radio[0].set_value(page).run()
+    assert not at.exception, at.exception
+    moves = [m.value for m in at.markdown if "→" in m.value]
+    assert moves, "the demo data has a budget move"
+    assert all(word in m for m in moves)

@@ -80,6 +80,11 @@ UI_TEXT: dict[str, dict[str, str]] = {
         "en": "- {src} → {dst}: **{amount}** ({reason}; up to +{extra} revenue, "
               "linear upper bound)",
     },
+    "move_reason": {
+        "fr": "ROI de {src} {roi} contre une médiane de {median} ; {dst} rapporte {roas} "
+              "de chiffre d'affaires par unité dépensée",
+        "en": "{src} ROI {roi} vs median {median}; {dst} returns {roas} revenue per unit spent",
+    },
     "your_question": {"fr": "Votre question", "en": "Your question"},
     "thinking": {"fr": "Réflexion...", "en": "Thinking..."},
     "sources_caption": {"fr": "MIDE ne lit que les sources listées ici (lecture seule).",
@@ -131,6 +136,15 @@ def anomaly_text(anomaly: insights.Anomaly, language: str) -> str:
     return ui_text("anomaly_line", language, kind=kind, period=period,
                    actual=f"{anomaly.actual:,.0f}", expected=f"{anomaly.expected:,.0f}",
                    change=f"{anomaly.ratio - 1:+.0%}")
+
+
+def move_reason(move: marketing.BudgetMove, language: str) -> str:
+    """Reason of a budget move; in English it equals ``move.reason``."""
+    if move.from_roi is None or move.median_roi is None or move.to_roas is None:
+        return move.reason
+    return ui_text("move_reason", language, src=move.from_channel, dst=move.to_channel,
+                   roi=f"{move.from_roi:.2f}", median=f"{move.median_roi:.2f}",
+                   roas=f"{move.to_roas:.2f}")
 
 
 def page_labels(language: str) -> dict[str, str]:

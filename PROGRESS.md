@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: dashboard budget move reasons follow the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #99 was already merged; suite green at start (383 passed). On the dashboard marketing page, the reason of each suggested budget move was English even with `language: fr` ("radio ROI -0.20 vs median 1.50; whatsapp returns 4.00 revenue per unit spent"). In French it now reads "ROI de radio -0.20 contre une médiane de 1.50 ; whatsapp rapporte 4.00 de chiffre d'affaires par unité dépensée"; English output is unchanged.
+- **Fichiers principaux :** `mide/business/marketing.py`, `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
+- **Tests :** 388 passed, 0 skipped. 5 new: English text equals `BudgetMove.reason` on the demo data, French text, a move without figures keeps its reason, FR/EN reasons on the dashboard marketing page. 4 of them fail without the fix (the English AppTest case passes both ways). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-yz4d6s -> main
+- **Décisions techniques :** `BudgetMove` gets three optional fields (`from_roi`, `median_roi`, `to_roas`, default `None`) filled by `suggest_reallocation`, so the dashboard rebuilds the sentence instead of parsing English. New `dashboard_data.move_reason(move, language)` with a `move_reason` key in `UI_TEXT`; it falls back to `move.reason` when the figures are missing. `BudgetMove.reason` stays English for the agent facts and the report.
+- **Problèmes / dette technique :** table column names in the dashboard are still English. "Unknown profile" and "A time series task needs a date column" stay English (internal errors). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: dashboard anomaly alerts follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #98 was already merged; suite green at start (373 passed, 4 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). The anomaly warnings on the dashboard home page were English even with `language: fr` ("drop on 2024-03-10: 1,200 vs 4,000 expected (-70%)"). In French they now read "chute le 2024-03-10 : 1,200 au lieu de 4,000 attendus (-70%)" or "pic du … au … : …"; English output is unchanged.
 - **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
