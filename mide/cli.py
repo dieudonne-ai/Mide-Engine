@@ -183,6 +183,13 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "fr": " Jeux de données disponibles : {value}",
         "en": " Available datasets: {value}",
     },
+    "column_not_found": {
+        "fr": "Colonne {kind} '{column}' introuvable dans le jeu de données. "
+              "Colonnes disponibles : {columns}",
+        "en": "{kind_cap} column '{column}' not found in dataset. Available columns: {columns}",
+    },
+    "column_kind_target": {"fr": "cible", "en": "target"},
+    "column_kind_date": {"fr": "de date", "en": "date"},
     "llm_missing": {
         "fr": "Modèle non installé : lancez `mide models pull` ({value}).",
         "en": "Model not installed: run `mide models pull` ({value}).",
@@ -457,6 +464,20 @@ def _load_dataset(dataset: str, sources: list[str], language: str = "fr"):
     raise ValueError(_sources_msg("dataset_not_found", lang, dataset=dataset, hint=hint))
 
 
+def _check_columns(df, target: str, date_column: str | None, language: str) -> None:
+    """Raise a ``ValueError`` in ``language`` when ``target`` or ``date_column`` is missing."""
+    lang = _language_of(language)
+    columns = ", ".join(str(c) for c in df.columns)
+    for kind, column in (("target", target), ("date", date_column)):
+        if column is None or column in df.columns:
+            continue
+        label = _sources_msg(f"column_kind_{kind}", lang)
+        raise ValueError(_sources_msg(
+            "column_not_found", lang, kind=label, kind_cap=label.capitalize(),
+            column=column, columns=columns,
+        ))
+
+
 @app.command("train")
 def train_command(
     dataset: str = typer.Option(..., "--dataset", help="Dataset name (file stem or table)."),
@@ -469,6 +490,7 @@ def train_command(
     try:
         cfg = load_config(config_dir)
         _item, df = _load_dataset(dataset, list_sources(config_dir), cfg.language)
+        _check_columns(df, target, date_column, cfg.language)
         result = train_model(
             df, target, profile=profile_hardware().profile, seed=seed, date_column=date_column
         )
