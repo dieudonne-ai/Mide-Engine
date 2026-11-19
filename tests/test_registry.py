@@ -35,6 +35,18 @@ def test_evaluate_classification():
     assert "f1_macro" in m
 
 
+@pytest.mark.parametrize("labels", [(0, 1), (1, 2, 3, 4)])
+def test_evaluate_integer_classes(labels):
+    # Integer class labels (e.g. a quantity target) used to crash sklearn ("unknown").
+    rng = np.random.default_rng(1)
+    y = rng.choice(labels, size=300)
+    df = pd.DataFrame({"x": y + rng.normal(scale=0.1, size=300), "y": y})
+    model = train(df, "y", profile="tiny")
+    assert model.task.task.value == "classification"
+    m = evaluate(model, df)
+    assert m["accuracy"] > 0.9 and 0.5 < m["auc"] <= 1.0
+
+
 def test_mape_ignores_zero():
     assert mape(np.array([0.0, 100.0]), np.array([5.0, 90.0])) == pytest.approx(10.0)
     assert np.isnan(mape(np.array([0.0]), np.array([1.0])))
@@ -85,6 +97,19 @@ def test_cli_train_and_list(demo_data, tmp_path, monkeypatch):
     bad = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amout", *opt])
     assert bad.exit_code == 1
     assert "Colonnes disponibles :" in bad.output and "amount" in bad.output
+
+
+def test_cli_train_integer_class_target(demo_data, tmp_path, monkeypatch):
+    # `quantity` (few integer values) is a classification target; training must not crash.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    runner = CliRunner()
+    opt = ["--config-dir", str(cfg)]
+    runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
+    res = runner.invoke(app, ["train", "--dataset", "sales", "--target", "quantity", *opt])
+    assert res.exit_code == 0, res.output
+    assert "Modèle enregistré : sales-quantity v1" in res.output
+    assert "VC accuracy" in res.output
 
 
 def test_cli_train_unknown_column_follows_language(demo_data, tmp_path, monkeypatch):
