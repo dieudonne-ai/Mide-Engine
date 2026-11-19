@@ -213,3 +213,46 @@ def test_dashboard_follows_language(empty_cfg, monkeypatch, language, header, in
     assert at.header[0].value == header
     assert at.info[0].value.startswith(info)
     assert at.sidebar.radio[0].options[0] == header
+
+
+def _anomaly(start: str, end: str, kind: str = "drop"):
+    import pandas as pd
+
+    from mide.business.insights import Anomaly
+
+    return Anomaly(start=pd.Timestamp(start), end=pd.Timestamp(end), kind=kind,
+                   actual=1200.0, expected=4000.0, ratio=0.3, score=5.0)
+
+
+@pytest.mark.parametrize(("start", "end", "kind"), [
+    ("2024-03-10", "2024-03-10", "drop"),
+    ("2024-03-10", "2024-03-12", "spike"),
+])
+def test_anomaly_text_english_matches_describe(start, end, kind):
+    a = _anomaly(start, end, kind)
+    assert dd.anomaly_text(a, "en") == a.describe()
+
+
+def test_anomaly_text_french():
+    assert dd.anomaly_text(_anomaly("2024-03-10", "2024-03-10"), "fr") == (
+        "chute le 2024-03-10 : 1,200 au lieu de 4,000 attendus (-70%)")
+    assert dd.anomaly_text(_anomaly("2024-03-10", "2024-03-12", "spike"), "fr") == (
+        "pic du 2024-03-10 au 2024-03-12 : 1,200 au lieu de 4,000 attendus (-70%)")
+
+
+def test_anomaly_text_unknown_kind_kept():
+    assert dd.anomaly_text(_anomaly("2024-03-10", "2024-03-10", "other"), "fr").startswith(
+        "other le 2024-03-10")
+
+
+@pytest.mark.parametrize(("language", "word"), [("fr", "attendus"), ("en", "expected")])
+def test_dashboard_anomalies_follow_language(cfg_dir, monkeypatch, language, word):
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    (cfg_dir / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+    monkeypatch.setenv(dd.CONFIG_ENV, str(cfg_dir))
+    at = AppTest.from_file(str(APP), default_timeout=120).run()
+    assert not at.exception, at.exception
+    assert at.warning, "the demo data has deliberate anomalies"
+    assert all(word in w.value for w in at.warning)
