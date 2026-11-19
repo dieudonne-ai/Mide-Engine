@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide ui` help shows the `[ui]` install extra (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #69 was already merged; suite green at start (318 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. `mide --help` and `mide ui --help` said "needs `pip install mide-engine`": Rich markup treated `[ui]` as a style tag and dropped it, so a user following the hint would install the package without Streamlit. The bracket is now escaped in the docstring, and the help shows `pip install mide-engine[ui]`.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_cli.py`
+- **Tests :** 319 passed, 2 skipped (1 new: `mide ui --help` contains `mide-engine[ui]` and no stray backslash; it fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-07ob61 -> main
+- **Décisions techniques :** escaped the one affected docstring instead of turning off Rich markup for the whole CLI, so the rest of the help keeps its formatting. Error messages with `[rag]`/`[llm]`/`[finetune]` go through `typer.echo` (no markup) and were already correct.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: `mide privacy` shows readable storage sizes (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #68 was already merged; suite green at start (316 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. After the demo, `mide privacy` listed stored data as raw byte counts ("models_trained (888655 B)"), and a downloaded LLM would show as a 10-digit number. Sizes now use binary units in the user's language: "867.8 KB" in English, "867.8 Ko" in French ("0 B" / "0 o" for empty folders).
 - **Fichiers principaux :** `mide/utils/privacy.py`, `tests/test_privacy.py`

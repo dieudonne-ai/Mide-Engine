@@ -385,7 +385,7 @@ def ui_command(
     port: int = typer.Option(8501, help="Port of the dashboard."),
     config_dir: Path | None = CONFIG_DIR_OPTION,
 ) -> None:
-    """Launch the Streamlit dashboard (needs `pip install mide-engine[ui]`)."""
+    r"""Launch the Streamlit dashboard (needs `pip install mide-engine\[ui]`)."""
     import importlib.util
     import os
     import subprocess

@@ -28,3 +28,11 @@ def test_auto_no_sources(tmp_path):
     result = CliRunner().invoke(app, ["auto", "--config-dir", str(cfg)])
     assert result.exit_code == 0
     assert "No authorized sources" in result.output
+
+
+def test_ui_help_shows_install_extra() -> None:
+    # Rich markup must not swallow the "[ui]" extra in the install hint.
+    result = runner.invoke(app, ["ui", "--help"], env={"COLUMNS": "200"})
+    assert result.exit_code == 0
+    assert "mide-engine[ui]" in result.output
+    assert "\\[ui]" not in result.output
