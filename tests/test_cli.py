@@ -27,7 +27,23 @@ def test_auto_no_sources(tmp_path):
     cfg.mkdir()
     result = CliRunner().invoke(app, ["auto", "--config-dir", str(cfg)])
     assert result.exit_code == 0
-    assert "No authorized sources" in result.output
+    assert "Aucune source autorisée. Utilisez `mide sources add`." in result.output
+
+
+def test_no_sources_hint_follows_language(tmp_path) -> None:
+    # scan / index / auto answer in the configured language when no source is authorized.
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    args = ["--config-dir", str(cfg)]
+    for command in ("scan", "index", "auto"):
+        result = runner.invoke(app, [command, *args])
+        assert result.exit_code == 0, command
+        assert "Aucune source autorisée. Utilisez `mide sources add`." in result.output, command
+    (cfg / "default.yaml").write_text("language: en\n", encoding="utf-8")
+    for command in ("scan", "index", "auto"):
+        result = runner.invoke(app, [command, *args])
+        assert result.exit_code == 0, command
+        assert "No authorized sources. Use `mide sources add`." in result.output, command
 
 
 def test_ui_help_shows_install_extra() -> None:

@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide scan/index/auto` "no authorized sources" hint follows the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #78 was already merged; suite green at start (330 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. With no authorized source, `mide scan`, `mide index` and `mide auto` always printed the English "No authorized sources. Use `mide sources add`." although `language` defaults to `fr` (CLAUDE.md section 6; follow-up of the previous session). They now print "Aucune source autorisée. Utilisez `mide sources add`." in French, English unchanged when `language: en`. Also removed an unreachable duplicate `raise typer.Exit(1)` in `mide sources remove`.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_cli.py`
+- **Tests :** 331 passed, 2 skipped (1 new test covering the three commands in FR and EN; the assertion of `test_auto_no_sources` updated from English to French because it runs with the default language. Both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-iiv2u0 -> main
+- **Décisions techniques :** the message lives in `SOURCES_MESSAGES` (`none_hint`). `scan` reuses `_cli_language()` (French fallback if the config is broken); `index` and `auto` use the config they already loaded. Behaviour and exit codes are unchanged.
+- **Problèmes / dette technique :** other CLI messages (`doctor`, `models`, `report`, `index`/`auto` progress output) are still English-only; left for later sessions. The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: `mide sources add/list/remove` messages follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #77 was already merged; suite green at start (329 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. The consent commands (`mide sources add/list/remove`) only spoke English although `language` defaults to `fr` (CLAUDE.md section 6). They now answer in the configured language: "Source ajoutée : …", "Source retirée : …", "Aucune source autorisée.", "Erreur : source non listée : … Sources autorisées : …", "Erreur : le chemin n'existe pas : …" and the French "do not put a password in the URL" error (English unchanged when `language: en`).
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_connectors_base.py`
