@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from mide import dashboard_data as dd
+from mide.config import ConfigError
 from mide.llm.runtime import FakeLLM
 
 APP = Path(__file__).resolve().parent.parent / "app" / "dashboard.py"
@@ -133,3 +134,26 @@ def test_dashboard_without_data(empty_cfg, monkeypatch):
     monkeypatch.setenv(dd.CONFIG_ENV, str(empty_cfg))
     at = AppTest.from_file(str(APP), default_timeout=60).run()
     assert not at.exception and at.info
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("fr", "Erreur de configuration : YAML invalide dans"),
+        ("en", "Configuration error: Invalid YAML in"),
+    ],
+)
+def test_config_error_message_follows_language(empty_cfg, language, expected):
+    # A broken sources.yaml must not force English in the dashboard: the message
+    # follows the language of default.yaml, like the CLI errors.
+    (empty_cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+    (empty_cfg / "sources.yaml").write_text("sources: [\n", encoding="utf-8")
+    with pytest.raises(ConfigError) as info:
+        dd.load_dashboard_data(empty_cfg)
+    assert dd.config_error_message(info.value, empty_cfg).startswith(expected)
+
+
+def test_config_error_message_without_default_yaml(empty_cfg):
+    # No readable default.yaml: French default, plain error text kept.
+    exc = ConfigError("boom")
+    assert dd.config_error_message(exc, empty_cfg) == "Erreur de configuration : boom"

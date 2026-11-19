@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: dashboard config error follows the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #95 was already merged; suite green at start (360 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). The Streamlit dashboard showed "Configuration error: Invalid YAML in …" in English even with `language: fr`. It now shows "Erreur de configuration : YAML invalide dans …" in French (same localized details as the CLI); English output is unchanged.
+- **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `mide/cli.py`, `tests/test_dashboard.py`
+- **Tests :** 363 passed, 2 skipped (3 new: FR/EN dashboard message with a broken `sources.yaml`, French fallback without `default.yaml`; all fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-s6lk3f -> main
+- **Décisions techniques :** new `dashboard_data.config_error_message` (testable without Streamlit) reuses the CLI's `_error_text` and `_default_yaml_language`, since the full config cannot be loaded when it is broken. Message key `dashboard_config_error` in `SOURCES_MESSAGES`.
+- **Problèmes / dette technique :** the rest of the dashboard UI (page names, labels) is still English only. "Unknown profile" and "A time series task needs a date column" stay English (internal errors). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: config error details follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #94 was already merged; suite green at start (357 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). Config errors printed a French prefix with an English body ("Erreur : Invalid sources file …", "Erreur : Invalid YAML in …"). With `language: fr` they now read "Erreur : Fichier de sources invalide …", "YAML invalide dans …", "Configuration invalide dans …" or "… doit contenir un dictionnaire (clé: valeur) au premier niveau."; English output is unchanged.
 - **Fichiers principaux :** `mide/config.py`, `mide/connectors/sources.py`, `mide/cli.py`, `tests/test_cli.py`

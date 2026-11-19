@@ -19,6 +19,15 @@ from mide.llm.downloader import list_models
 CONFIG_ENV = "MIDE_CONFIG_DIR"
 
 
+def config_error_message(exc: BaseException, config_dir: Path | None) -> str:
+    """Dashboard text of a config error, in the ``language`` of ``default.yaml``."""
+    from mide.cli import SOURCES_MESSAGES, _default_yaml_language, _error_text
+
+    language = _default_yaml_language(config_dir)
+    value = _error_text(exc, language)
+    return SOURCES_MESSAGES["dashboard_config_error"][language].format(value=value)
+
+
 def config_dir_from_env() -> Path | None:
     """Config folder passed by `mide ui --config-dir` (None = repo default)."""
     value = os.environ.get(CONFIG_ENV)
