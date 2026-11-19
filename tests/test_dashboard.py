@@ -362,3 +362,56 @@ def test_dashboard_customer_columns_follow_language(cfg_dir, monkeypatch, langua
     assert column in list(churn.columns)
     risk = dd.column_label("risk", language)
     assert list(churn[risk]) == sorted(churn[risk], reverse=True), "riskiest first"
+
+
+def test_value_labels_cover_every_segment_and_risk_level():
+    from mide.business import customers
+
+    segments = {customers._segment(r, f, m) for r in range(1, 6)
+                for f in range(1, 6) for m in range(1, 6)}
+    assert segments == set(dd.VALUE_LABELS["segment"])
+    assert set(dd.VALUE_LABELS["risk_level"]) == {"low", "medium", "high"}
+    for labels in dd.VALUE_LABELS.values():
+        assert all(set(texts) == {"fr", "en"} for texts in labels.values())
+
+
+def test_value_label_translates_known_values_only():
+    assert dd.value_label("risk_level", "high", "fr") == "élevé"
+    assert dd.value_label("risk_level", "high", "en") == "high"
+    assert dd.value_label("segment", "At risk", "fr") == "À risque"
+    assert dd.value_label("segment", "Other", "fr") == "Other"
+    assert dd.value_label("name", "high", "fr") == "high", "only listed columns"
+    assert dd.value_label("risk", 0.5, "fr") == 0.5
+
+
+def test_display_table_translates_segments_and_risk_levels():
+    import pandas as pd
+
+    segments = pd.DataFrame({"customers": [3, 2]},
+                            index=pd.Index(["Loyal", "Hibernating"], name="segment"))
+    fr = dd.display_table(segments, "fr")
+    assert list(fr.index) == ["Fidèles", "En sommeil"]
+    assert list(fr["Clients"]) == [3, 2]
+    assert list(dd.display_table(segments, "en").index) == ["Loyal", "Hibernating"]
+    churn = pd.DataFrame({"risk": [0.9, 0.1], "risk_level": ["high", "low"]})
+    out = dd.display_table(churn, "fr")
+    assert list(out["Niveau de risque"]) == ["élevé", "faible"]
+    assert list(out["Risque"]) == [0.9, 0.1]
+    assert list(churn["risk_level"]) == ["high", "low"], "input is not modified"
+
+
+@pytest.mark.parametrize(("language", "level"), [("fr", "élevé"), ("en", "high")])
+def test_dashboard_customer_values_follow_language(cfg_dir, monkeypatch, language, level):
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    (cfg_dir / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+    monkeypatch.setenv(dd.CONFIG_ENV, str(cfg_dir))
+    at = AppTest.from_file(str(APP), default_timeout=120).run()
+    at.sidebar.radio[0].set_value(dd.page_labels(language)["customers"]).run()
+    assert not at.exception, at.exception
+    allowed = {dd.value_label("segment", s, language) for s in dd.VALUE_LABELS["segment"]}
+    assert set(at.dataframe[0].value.index) <= allowed
+    levels = set(at.dataframe[1].value[dd.column_label("risk_level", language)])
+    allowed_levels = {dd.value_label("risk_level", v, language) for v in ("low", "medium", "high")}
+    assert level in levels and levels <= allowed_levels

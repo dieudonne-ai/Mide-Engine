@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: dashboard segment names and risk levels follow the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #101 was already merged; suite green at start (395 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). On the dashboard customers page, RFM segment names ("Loyal", "Hibernating"…) and churn risk levels (`low/medium/high`) stayed English with `language: fr`. In French they now read "Fidèles", "En sommeil", "À risque", "Nouveaux / prometteurs", "À surveiller", "Champions" and "faible / moyen / élevé"; English output is unchanged.
+- **Fichiers principaux :** `mide/dashboard_data.py`, `tests/test_dashboard.py`
+- **Tests :** 400 passed, 0 skipped. 5 new: every segment produced by `customers._segment` and every risk level has FR and EN labels, `value_label` only translates listed values of listed columns, `display_table` translates segments in the index and risk levels in a column without touching numbers or the input, FR/EN values on the dashboard customers page. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-floyxy -> main
+- **Décisions techniques :** new `dashboard_data.VALUE_LABELS` (column → value → language) and `value_label()`; `display_table` applies it to columns and to the index, at display time only, so `customers.py`, the agent facts and the report keep the stable English values.
+- **Problèmes / dette technique :** chart series names stay English. "Unknown profile" and "A time series task needs a date column" stay English (internal errors). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: dashboard table column names follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #100 was already merged; suite green at start (388 passed after `pip install -e ".[dev,ui]"`). The tables of the dashboard (top/flop products, RFM segments, churn scores, channel performance) showed raw English column names (`share_pct`, `avg_recency_days`, `cost_per_conversion`…) even with `language: fr`. They now show readable labels in French ("Part (%)", "Récence moy. (jours)", "Coût par conversion") or English ("Share (%)", "Avg recency (days)", "Cost per conversion"). The index names (product, segment, customer, channel) are translated too.
 - **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
