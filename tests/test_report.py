@@ -23,15 +23,44 @@ def test_report_sections(tables):
         assert h in md
 
 
-def test_anomaly_action_cites_most_recent_anomaly(tables):
+def test_anomaly_action_cites_most_recent_anomaly(demo_data):
+    import pandas as pd
+
     from mide.agent.decision import run_modules
 
-    facts = run_modules(["insights"], tables)[0].facts
+    # Sales cut at 2024-10-01: the 2024-09-03 -> 09-04 drop is within the 90-day window.
+    sales = pd.read_csv(demo_data["sales"])
+    data = detect_tables({"s": sales[sales["date"] <= "2024-10-01"]})
+    facts = run_modules(["insights"], data)[0].facts
     anomalies = [v for k, v in facts.items() if k.startswith("anomaly ")]
-    assert len(anomalies) >= 2
-    action = next(a for a in build_report(tables, "en").actions
+    assert len(anomalies) >= 2 and anomalies[-1].startswith("drop on 2024-09-03")
+    action = next(a for a in build_report(data, "en").actions
                   if "latest sales anomaly" in a.text)
     assert action.evidence == anomalies[-1]
+
+
+def test_no_anomaly_action_when_all_anomalies_are_old(tables):
+    # Demo sales end 2024-12-31 and every anomaly ends before 2024-10-02.
+    actions = build_report(tables, "en").actions
+    assert not any("anomaly" in a.text for a in actions)
+    assert any(a.text == "Track the sales trend and adjust stock" for a in actions)
+    fr = build_report(tables, "fr").actions
+    assert not any("anomalie" in a.text for a in fr)
+
+
+def test_actions_anomaly_window():
+    from datetime import date
+
+    from mide.agent.decision import Finding
+    from mide.report import _actions
+
+    ins = {"insights": Finding("insights", {
+        "anomaly 1": "drop on 2024-06-01: 1 vs 9 expected (-89%)",
+        "anomaly 2": "spike on 2024-09-28 -> 2024-10-03: 9 vs 1 expected (+800%)"})}
+    [act] = _actions(ins, fr=False, last_day=date(2024, 12, 31))
+    assert act.evidence.startswith("spike on 2024-09-28")  # a run counts by its last day
+    assert _actions(ins, fr=False, last_day=date(2025, 3, 1)) == []
+    assert _actions(ins, fr=False)[0].evidence.startswith("spike")  # no sales date: no filter
 
 
 def test_recent_anomaly_alerts_keeps_recent_and_counts_older():

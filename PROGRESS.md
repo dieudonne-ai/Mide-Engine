@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: priority actions skip anomalies outside the 90-day window (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #55 was already merged; suite green at start (292 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Fixed the debt noted last session: the priority action "Analyser la cause de l'anomalie de ventes la plus récente" cited the latest anomaly even when the "Alertes" section had left it out as too old (demo data: 2024-09-03, 119 days before the last sale). The action is now proposed only for an anomaly that ends within `RECENT_ANOMALY_DAYS` (90) of the last sale, the same window as the alerts. On the demo data the third action is now "Surveiller la tendance des ventes et ajuster les stocks" (trend: up, YoY +20.7%, last 3 months +70.7%). Applies to `mide report` (Markdown/HTML) and `mide auto`; `mide ask` is unchanged.
+- **Fichiers principaux :** `mide/report.py`, `tests/test_report.py`
+- **Tests :** 294 passed, 2 skipped (2 new: `_actions` window with a multi-day run, no filter without a sales date; no anomaly action on the demo data in FR/EN). `test_anomaly_action_cites_most_recent_anomaly` now uses demo sales cut at 2024-10-01, so the latest anomaly is recent; its intent is kept. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-1rj2mp -> main
+- **Décisions techniques :** the window check is shared with the alerts (`_is_recent`), so the action and the alerts can never disagree. Anomalies whose date cannot be read are still kept.
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: weekly report alerts list only recent anomalies (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #54 was already merged; suite green at start (290 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Fixed the debt noted in the last sessions: the "Alertes" section listed every anomaly the agent kept, back to 2023. Now it lists only anomalies that end within 90 days of the last sale, and adds one line counting the older ones. On the demo data (last sale 2024-12-31), all 4 anomalies are older, so the section reads "4 anomalie(s) plus ancienne(s) (avant le 2024-10-02) non listée(s)" (EN: "4 older anomalies (before 2024-10-02) not listed") instead of four 2023–2024 events. The change applies to `mide report` (Markdown and HTML) and `mide auto`. `mide ask` and the agent figures are unchanged.
 - **Fichiers principaux :** `mide/report.py`, `tests/test_report.py`
