@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
@@ -12,6 +13,8 @@ from mide.agent.decision import BusinessData, Finding, run_modules
 
 _ACTION_LIMIT = 3
 STALE_AFTER_DAYS = 30  # older sales data gets a warning at the top of the alerts
+RECENT_ANOMALY_DAYS = 90  # anomalies ending earlier than this before the last sale are summarized
+_ANOMALY_END = re.compile(r" on (\d{4}-\d{2}-\d{2})(?: -> (\d{4}-\d{2}-\d{2}))?:")
 
 _T = {
     "fr": {"title": "Rapport hebdomadaire MIDE", "kpis": "Indicateurs clés", "forecast": "Prévisions",
@@ -112,6 +115,36 @@ def stale_data_alert(data: BusinessData, today: date, fr: bool) -> str | None:
             "figures describe that period, not today")
 
 
+def _anomaly_end(text: str) -> date | None:
+    """Last day of an anomaly from its description ("drop on A -> B: ..."), or None."""
+    m = _ANOMALY_END.search(text)
+    if not m:
+        return None
+    try:
+        return date.fromisoformat(m.group(2) or m.group(1))
+    except ValueError:
+        return None
+
+
+def recent_anomaly_alerts(anomalies: list[str], last_day: date | None, fr: bool) -> list[str]:
+    """Keep anomalies that end within RECENT_ANOMALY_DAYS of the last sale; count the others.
+
+    The cutoff is relative to the last data day, not the report date: the stale-data alert
+    already says when the data is old, and every anomaly would be "old" otherwise.
+    """
+    if last_day is None:
+        return anomalies
+    cutoff = date.fromordinal(last_day.toordinal() - RECENT_ANOMALY_DAYS)
+    recent = [a for a in anomalies if (end := _anomaly_end(a)) is None or end >= cutoff]
+    older = len(anomalies) - len(recent)
+    if older:
+        recent.append(
+            f"{older} anomalie(s) plus ancienne(s) (avant le {cutoff.isoformat()}) non listée(s)"
+            if fr else f"{older} older anomal{'y' if older == 1 else 'ies'} "
+            f"(before {cutoff.isoformat()}) not listed")
+    return recent
+
+
 def build_report(data: BusinessData, language: str = "fr", today: date | None = None) -> Report:
     """Build the report from the business tables (missing tables are skipped)."""
     lang = language if language in _T else "fr"
@@ -120,8 +153,9 @@ def build_report(data: BusinessData, language: str = "fr", today: date | None = 
     if "insights" in findings:
         report.kpis = {k: v for k, v in findings["insights"].facts.items()
                        if not k.startswith("anomaly")}
-        report.alerts = [v for k, v in findings["insights"].facts.items()
-                         if k.startswith("anomaly")]
+        report.alerts = recent_anomaly_alerts(
+            [v for k, v in findings["insights"].facts.items() if k.startswith("anomaly")],
+            _last_sale_day(data), lang == "fr")
     if "sales" in findings:
         report.forecasts = {k: v for k, v in findings["sales"].facts.items()
                             if k.startswith("forecast")}
