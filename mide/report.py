@@ -63,16 +63,20 @@ def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> l
     recent_anomaly_alerts), so it never asks to investigate an event the alerts left out.
     """
     out: list[Action] = []
+
+    def label(key: str) -> str:
+        return fact_label(key, "fr" if fr else "en")
+
     cust = f.get("customers")
     if cust and "churn" in cust.facts:
         out.append(Action(
             "Relancer les clients à risque de départ" if fr else "Re-engage customers at churn risk",
-            f"churn: {cust.facts['churn']}"))
+            f"{label('churn')}: {cust.facts['churn']}"))
     mkt = f.get("marketing")
     if mkt:
         # The budget action rests on ROAS: carry the attribution caveat with it.
         check = mkt.facts.get("attribution check")
-        caveat = f"; attribution check: {check}" if check else ""
+        caveat = f"; {label('attribution check')}: {check}" if check else ""
         moves = [(k, v) for k, v in mkt.facts.items() if k.startswith("move ")]
         if moves:
             # Cite every suggested move: the alerts list all underperforming channels,
@@ -82,11 +86,11 @@ def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> l
             out.append(Action(
                 (f"Réallouer le budget depuis {sources}" if fr
                  else f"Reallocate budget from {sources}"),
-                f"{detail}; best channel: {mkt.facts.get('best channel', '-')}{caveat}"))
+                f"{detail}; {label('best channel')}: {mkt.facts.get('best channel', '-')}{caveat}"))
         elif "best channel" in mkt.facts:
             out.append(Action(
                 "Renforcer le canal le plus rentable" if fr else "Invest more in the best channel",
-                f"best channel: {mkt.facts['best channel']}{caveat}"))
+                f"{label('best channel')}: {mkt.facts['best channel']}{caveat}"))
     ins = f.get("insights")
     anomalies = [v for k, v in ins.facts.items() if k.startswith("anomaly ")] if ins else []
     anomalies = [a for a in anomalies if _is_recent(a, last_day)]
@@ -100,11 +104,11 @@ def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> l
         # Stock is bought for the coming weeks: cite the 30d forecast next to the past trend,
         # since a rising trend can come with a lower forecast (e.g. after a seasonal peak).
         forecast = sal.facts.get("forecast 30d")
-        outlook = f"; forecast 30d: {forecast}" if forecast else ""
+        outlook = f"; {label('forecast 30d')}: {forecast}" if forecast else ""
         out.append(Action(
             "Surveiller la tendance des ventes et ajuster les stocks" if fr
             else "Track the sales trend and adjust stock",
-            f"trend: {sal.facts['trend']}{outlook}"))
+            f"{label('trend')}: {sal.facts['trend']}{outlook}"))
     return out[:_ACTION_LIMIT]
 
 
