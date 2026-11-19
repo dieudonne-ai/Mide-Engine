@@ -122,6 +122,8 @@ UI_TEXT: dict[str, dict[str, str]] = {
 
 COLUMN_LABELS: dict[str, dict[str, str]] = {
     "product_id": {"fr": "Produit", "en": "Product"},
+    "date": {"fr": "Date", "en": "Date"},
+    "amount": {"fr": "Chiffre d'affaires", "en": "Revenue"},
     "name": {"fr": "Nom", "en": "Name"},
     "revenue": {"fr": "Chiffre d'affaires", "en": "Revenue"},
     "share_pct": {"fr": "Part (%)", "en": "Share (%)"},
@@ -203,6 +205,16 @@ def display_table(df: pd.DataFrame, language: str) -> pd.DataFrame:
         out.index = out.index.map(lambda v: value_label(df.index.name, v, language))
     out = out.rename(columns=lambda c: column_label(c, language))
     out.index = out.index.rename(column_label(df.index.name, language))
+    return out
+
+
+def chart_series(series: pd.Series, language: str) -> pd.Series:
+    """Copy of ``series`` whose name and index name (chart axis labels) are translated.
+
+    Values and index labels are unchanged.
+    """
+    out = series.rename(column_label(series.name, language))
+    out.index = out.index.rename(column_label(series.index.name, language))
     return out
 
 

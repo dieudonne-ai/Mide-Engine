@@ -415,3 +415,70 @@ def test_dashboard_customer_values_follow_language(cfg_dir, monkeypatch, languag
     levels = set(at.dataframe[1].value[dd.column_label("risk_level", language)])
     allowed_levels = {dd.value_label("risk_level", v, language) for v in ("low", "medium", "high")}
     assert level in levels and levels <= allowed_levels
+
+
+def test_chart_series_translates_name_and_index_name():
+    import pandas as pd
+
+    roi = pd.Series([1.5, -0.2], index=pd.Index(["whatsapp", "radio"], name="channel"),
+                    name="roi")
+    out = dd.chart_series(roi, "fr")
+    assert out.name == "ROI" and out.index.name == "Canal"
+    assert list(out) == [1.5, -0.2] and list(out.index) == ["whatsapp", "radio"]
+    assert roi.name == "roi" and roi.index.name == "channel", "input is not modified"
+    monthly = pd.Series([10.0], index=pd.DatetimeIndex(["2024-01-01"], name="date"),
+                        name="amount")
+    assert dd.chart_series(monthly, "fr").name == "Chiffre d'affaires"
+    assert dd.chart_series(monthly, "en").name == "Revenue"
+    assert dd.chart_series(monthly, "en").index.name == "Date"
+    unknown = pd.Series([1.0], name="other")
+    assert dd.chart_series(unknown, "fr").name == "other"
+
+
+def test_chart_series_labels_cover_dashboard_charts(cfg_dir):
+    data = dd.load_dashboard_data(cfg_dir)
+    sales_view = dd.sales_view(data.tables.sales, data.tables.products)
+    channels = dd.marketing_view(data.tables.campaigns)["channels"]
+    for series in (sales_view["history"], sales_view["trend"].monthly, channels["roi"]):
+        assert series.name in dd.COLUMN_LABELS
+        assert series.index.name in dd.COLUMN_LABELS
+
+
+def _spec_fields(spec: object) -> set[str]:
+    """Every ``field`` name used anywhere in a Vega-Lite spec (layers included)."""
+    if isinstance(spec, dict):
+        found = {spec["field"]} if isinstance(spec.get("field"), str) else set()
+        return found.union(*(_spec_fields(v) for v in spec.values()))
+    if isinstance(spec, list):
+        return set().union(*(_spec_fields(v) for v in spec))
+    return set()
+
+
+def _chart_fields(at) -> set[str]:
+    import json
+
+    fields: set[str] = set()
+    for node in at.main.children.values():
+        if getattr(node, "type", None) == "vega_lite_chart":
+            fields |= _spec_fields(json.loads(node.proto.spec))
+    return fields
+
+
+@pytest.mark.parametrize(("language", "page", "expected"), [
+    ("fr", "sales", {"Date", "Chiffre d'affaires"}),
+    ("en", "sales", {"Date", "Revenue"}),
+    ("fr", "marketing", {"Canal", "ROI"}),
+    ("en", "marketing", {"Channel", "ROI"}),
+])
+def test_dashboard_chart_labels_follow_language(cfg_dir, monkeypatch, language, page, expected):
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    (cfg_dir / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+    monkeypatch.setenv(dd.CONFIG_ENV, str(cfg_dir))
+    at = AppTest.from_file(str(APP), default_timeout=120).run()
+    at.sidebar.radio[0].set_value(dd.page_labels(language)[page]).run()
+    assert not at.exception, at.exception
+    fields = _chart_fields(at)
+    assert expected <= fields
+    assert not fields & {"amount", "date", "roi", "channel"}
