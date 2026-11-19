@@ -129,7 +129,7 @@ def test_cli_pull_requires_confirmation(tmp_path: Path, monkeypatch: pytest.Monk
     listing = runner.invoke(
         cli.app, ["models", "list", "--config-dir", str(_cfg_dir := tmp_path / "config")]
     )
-    assert "[installed]" in listing.output and _cfg_dir.exists()
+    assert "[installé]" in listing.output and _cfg_dir.exists()
 
 
 def test_cli_pull_unknown_profile_lists_configured_profiles(
@@ -141,6 +141,42 @@ def test_cli_pull_unknown_profile_lists_configured_profiles(
     args = ["models", "pull", "--profile", "large", "--yes", "--config-dir", str(_cfg(tmp_path))]
     result = CliRunner().invoke(cli.app, args)
     assert result.exit_code == 1
-    assert "no model configured for profile 'large'" in result.output
-    assert "Configured profiles: tiny" in result.output
+    assert "aucun modèle configuré pour le profil 'large'" in result.output
+    assert "Profils configurés : tiny" in result.output
     assert calls == []
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "fr",
+            ["tiny: org/model/m.gguf [non installé]", "Télécharger ", "(0.00 Go) depuis internet ?",
+             "Modèle prêt : ", "tiny: org/model/m.gguf [installé]",
+             "Erreur : aucun modèle configuré pour le profil 'large'. Profils configurés : tiny"],
+        ),
+        (
+            "en",
+            ["tiny: org/model/m.gguf [not installed]", "Download ", "(0.00 GB) from the internet?",
+             "Model ready: ", "tiny: org/model/m.gguf [installed]",
+             "Error: no model configured for profile 'large'. Configured profiles: tiny"],
+        ),
+    ],
+)
+def test_cli_models_list_and_pull_follow_language(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, language: str, expected: list[str]
+) -> None:
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(downloader, "_default_opener", opener_for(DATA))
+    cdir = _cfg(tmp_path)
+    (cdir / "default.yaml").write_text(f"language: {language}\n")
+    runner = CliRunner()
+    base = ["--config-dir", str(cdir)]
+    before = runner.invoke(cli.app, ["models", "list", *base])
+    pulled = runner.invoke(cli.app, ["models", "pull", "--profile", "tiny", *base], input="y\n")
+    after = runner.invoke(cli.app, ["models", "list", *base])
+    unknown = runner.invoke(cli.app, ["models", "pull", "--profile", "large", "--yes", *base])
+    assert pulled.exit_code == 0 and unknown.exit_code == 1
+    output = before.output + pulled.output + after.output + unknown.output
+    for text in expected:
+        assert text in output
