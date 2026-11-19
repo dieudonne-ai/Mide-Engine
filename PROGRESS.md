@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide auto` still retrains without the `[rag]` extra (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #70 was already merged; suite green at start (319 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Without `sentence-transformers` (the optional `[rag]` extra, also skipped by `MIDE_DEMO_SKIP_RAG=1` in the demo), `mide auto` stopped with "Error: sentence-transformers is not installed" before the retraining step, so the scheduled auto-learning did nothing at all on such a machine. This broke the graceful-degradation rule (CLAUDE.md §2.4). Now indexing is skipped with the reason ("Index: skipped (sentence-transformers is not installed. Install it with `pip install mide-engine[rag]`).") and the models are still checked and retrained.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_cli.py`
+- **Tests :** 320 passed, 2 skipped (1 new: with the embedder raising `EmbeddingError`, `mide auto` exits 0, says the index was skipped and still calls the retraining on the source's datasets; it fails without the fix). `ruff check .` OK; `mypy mide` OK. Checked by hand on the demo workspace: "Model sales-amount: unchanged".
+- **PR :** claude/wizardly-shannon-3oryop -> main
+- **Décisions techniques :** only `EmbeddingError` (embedder unavailable) is caught; any other indexing error still stops `mide auto` with exit code 1, as before. `mide index` itself still fails clearly without the extra, since indexing is its only job.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: `mide ui` help shows the `[ui]` install extra (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #69 was already merged; suite green at start (318 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. `mide --help` and `mide ui --help` said "needs `pip install mide-engine`": Rich markup treated `[ui]` as a style tag and dropped it, so a user following the hint would install the package without Streamlit. The bracket is now escaped in the docstring, and the help shows `pip install mide-engine[ui]`.
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_cli.py`
