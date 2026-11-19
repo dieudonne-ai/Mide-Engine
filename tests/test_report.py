@@ -94,6 +94,24 @@ def test_report_french_and_html(tables):
     assert page.startswith("<!doctype html>") and "<ol>" in page
 
 
+def test_report_labels_follow_language(tables):
+    from mide.report import fact_label
+
+    fr = render_markdown(build_report(tables, "fr"))
+    for label in ("**chiffre d'affaires**:", "**commandes**:", "**panier moyen**:",
+                  "**croissance sur 30 jours**:", "**prévision à 30 jours**:",
+                  "- risque de départ: ", "- canaux marketing sous-performants: Radio, SMS"):
+        assert label in fr, label
+    assert "**revenue**" not in fr and "- churn:" not in fr and "marketing underperforming" not in fr
+    en = render_markdown(build_report(tables, "en"))
+    for label in ("**revenue**:", "**average order value**:", "**forecast 90d**:", "- churn: ",
+                  "- marketing underperforming: Radio, SMS"):
+        assert label in en, label
+    assert "<b>prévision à 60 jours</b>" in render_html(build_report(tables, "fr"))
+    assert fact_label("unknown key", "fr") == "unknown key"
+    assert fact_label("forecast 7d", "xx") == "prévision à 7 jours"
+
+
 def test_html_escapes():
     from mide.report import Action, Report
 
