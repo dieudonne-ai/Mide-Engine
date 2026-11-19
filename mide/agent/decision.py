@@ -143,8 +143,9 @@ def _churn_scale(churn: customers.ChurnReport) -> str:
 def _customers_finding(df: pd.DataFrame) -> Finding:
     summary = customers.segment_summary(customers.rfm_segments(df))
     churn = customers.churn_risk(df)
+    # RFM has at most six segments: list them all, so "At risk" is never hidden.
     facts = {f"segment {seg}": f"{int(r.customers)} customers, {r.revenue_share_pct}% of revenue"
-             for seg, r in summary.head(3).iterrows()}
+             for seg, r in summary.iterrows()}
     # Name the most valuable at-risk customers so the action says whom to contact.
     # Hiding a single name saves nothing, so it is shown; beyond that, say how many are left out.
     limit = _MAX_CHURN_NAMED + 1 if len(churn.high_risk) <= _MAX_CHURN_NAMED + 1 \
