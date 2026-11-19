@@ -55,6 +55,10 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
     "added": {"fr": "Source ajoutée : {value}", "en": "Source added: {value}"},
     "removed": {"fr": "Source retirée : {value}", "en": "Source removed: {value}"},
     "none": {"fr": "Aucune source autorisée.", "en": "No authorized sources."},
+    "none_hint": {
+        "fr": "Aucune source autorisée. Utilisez `mide sources add`.",
+        "en": "No authorized sources. Use `mide sources add`.",
+    },
     "listed": {"fr": "Sources autorisées : {value}", "en": "Authorized sources: {value}"},
     "not_listed": {
         "fr": "Erreur : source non listée : {value}. {hint}",
@@ -79,6 +83,10 @@ def _cli_language(config_dir: Path | None) -> str:
         language = load_config(config_dir, create_app_dir=False).language
     except Exception:  # noqa: BLE001 - a broken config must not block source management
         return "fr"
+    return _language_of(language)
+
+
+def _language_of(language: str) -> str:
     return language if language in ("fr", "en") else "fr"
 
 
@@ -131,7 +139,7 @@ def scan(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     """Show the catalog of datasets found in the authorized sources."""
     sources = list_sources(config_dir)
     if not sources:
-        typer.echo("No authorized sources. Use `mide sources add`.")
+        typer.echo(_sources_msg("none_hint", _cli_language(config_dir)))
         return
     for entry in build_catalog(sources):
         if entry.error:
@@ -243,7 +251,7 @@ def index_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
         raise typer.Exit(1) from exc
     sources = list_sources(config_dir)
     if not sources:
-        typer.echo("No authorized sources. Use `mide sources add`.")
+        typer.echo(_sources_msg("none_hint", _language_of(cfg.language)))
         return
     try:
         report = index_sources(
@@ -545,7 +553,7 @@ def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
         raise typer.Exit(1) from exc
     sources = list_sources(config_dir)
     if not sources:
-        typer.echo("No authorized sources. Use `mide sources add`.")
+        typer.echo(_sources_msg("none_hint", _language_of(cfg.language)))
         return
     report = AutoReport(n_datasets=len(build_catalog(sources)))
     try:
