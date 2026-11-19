@@ -173,7 +173,7 @@ def main() -> None:
     try:
         data = _load(str(config_dir) if config_dir else None, st.session_state.get("version", 0))
     except ConfigError as exc:
-        st.error(f"Configuration error: {exc}")
+        st.error(dd.config_error_message(exc, config_dir))
         return
     if page == "Home":
         page_home(data)

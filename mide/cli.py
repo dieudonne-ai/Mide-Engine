@@ -160,6 +160,10 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "en": "Error: dashboard not found: {value}",
     },
     "error": {"fr": "Erreur : {value}", "en": "Error: {value}"},
+    "dashboard_config_error": {
+        "fr": "Erreur de configuration : {value}",
+        "en": "Configuration error: {value}",
+    },
     "item_error": {"fr": "[erreur] {item} : {message}", "en": "[error] {item}: {message}"},
     "index_done": {
         "fr": ("Indexation : {new} nouveaux, {updated} mis à jour, {unchanged} inchangés, "
