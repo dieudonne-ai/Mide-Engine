@@ -92,5 +92,33 @@ def test_scan_cli(tmp_path: Path) -> None:
     result = runner.invoke(app, ["scan", "--config-dir", str(cfg)])
     assert result.exit_code == 0
     assert "ventes.csv" in result.output
-    assert "date columns: date" in result.output
+    assert "colonnes de date : date" in result.output
     assert "montant" in result.output
+
+
+def test_scan_cli_follows_language(tmp_path: Path) -> None:
+    # Catalog lines (size, date columns, target candidates, errors) use the configured language.
+    cfg = tmp_path / "config"
+    cfg.mkdir()
+    data = tmp_path / "data"
+    data.mkdir()
+    _sales_df().to_csv(data / "ventes.csv", index=False)
+    broken = tmp_path / "broken"
+    broken.mkdir()
+    (broken / "bad.xlsx").write_bytes(b"not an excel file")
+    add_source(str(data), cfg)
+    add_source(str(broken), cfg)
+    args = ["scan", "--config-dir", str(cfg)]
+    fr = runner.invoke(app, args)
+    assert fr.exit_code == 0, fr.output
+    assert " lignes x " in fr.output and " colonnes" in fr.output
+    assert "colonnes de date : date" in fr.output
+    assert "cibles possibles : " in fr.output
+    assert "[erreur] " in fr.output and "broken : " in fr.output
+    (cfg / "default.yaml").write_text("language: en\n", encoding="utf-8")
+    en = runner.invoke(app, args)
+    assert en.exit_code == 0, en.output
+    assert " rows x " in en.output and " cols" in en.output
+    assert "date columns: date" in en.output
+    assert "target candidates: " in en.output
+    assert "[error] " in en.output and "broken: " in en.output
