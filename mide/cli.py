@@ -51,15 +51,54 @@ CONFIG_DIR_OPTION = typer.Option(
 )
 
 
+SOURCES_MESSAGES: dict[str, dict[str, str]] = {
+    "added": {"fr": "Source ajoutée : {value}", "en": "Source added: {value}"},
+    "removed": {"fr": "Source retirée : {value}", "en": "Source removed: {value}"},
+    "none": {"fr": "Aucune source autorisée.", "en": "No authorized sources."},
+    "listed": {"fr": "Sources autorisées : {value}", "en": "Authorized sources: {value}"},
+    "not_listed": {
+        "fr": "Erreur : source non listée : {value}. {hint}",
+        "en": "Error: source not listed: {value}. {hint}",
+    },
+    "missing_path": {
+        "fr": "Erreur : le chemin n'existe pas : {value}",
+        "en": "Error: path does not exist: {value}",
+    },
+    "password": {
+        "fr": ("Erreur : ne mettez pas de mot de passe dans l'URL ; utilisez une variable "
+               "d'environnement (ex. ${{DB_PASSWORD}})."),
+        "en": ("Error: do not put a password in the URL; use an environment variable "
+               "(e.g. ${{DB_PASSWORD}})."),
+    },
+}
+
+
+def _cli_language(config_dir: Path | None) -> str:
+    """Language of the CLI messages; ``fr`` when the config cannot be read."""
+    try:
+        language = load_config(config_dir, create_app_dir=False).language
+    except Exception:  # noqa: BLE001 - a broken config must not block source management
+        return "fr"
+    return language if language in ("fr", "en") else "fr"
+
+
+def _sources_msg(key: str, language: str, **values: str) -> str:
+    return SOURCES_MESSAGES[key][language].format(**values)
+
+
 @sources_app.command("add")
 def sources_add(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     """Authorize a folder, file or SQL URL."""
+    language = _cli_language(config_dir)
     try:
         value = add_source(source, config_dir)
-    except (FileNotFoundError, ValueError) as exc:
-        typer.echo(f"Error: {exc}", err=True)
+    except FileNotFoundError as exc:
+        typer.echo(_sources_msg("missing_path", language, value=source), err=True)
         raise typer.Exit(1) from exc
-    typer.echo(f"Source added: {value}")
+    except ValueError as exc:
+        typer.echo(_sources_msg("password", language), err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(_sources_msg("added", language, value=value))
 
 
 @sources_app.command("list")
@@ -67,7 +106,7 @@ def sources_list(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     """List authorized sources."""
     sources = list_sources(config_dir)
     if not sources:
-        typer.echo("No authorized sources.")
+        typer.echo(_sources_msg("none", _cli_language(config_dir)))
     for src in sources:
         typer.echo(src)
 
@@ -75,14 +114,16 @@ def sources_list(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
 @sources_app.command("remove")
 def sources_remove(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     """Revoke an authorized source."""
+    language = _cli_language(config_dir)
     if not remove_source(source, config_dir):
         listed = list_sources(config_dir)
         hint = (
-            f"Authorized sources: {', '.join(listed)}" if listed else "No authorized sources."
+            _sources_msg("listed", language, value=", ".join(listed))
+            if listed else _sources_msg("none", language)
         )
-        typer.echo(f"Error: source not listed: {source}. {hint}", err=True)
+        typer.echo(_sources_msg("not_listed", language, value=source, hint=hint), err=True)
         raise typer.Exit(1)
-    typer.echo(f"Source removed: {source}")
+    typer.echo(_sources_msg("removed", language, value=source))
 
 
 @app.command()

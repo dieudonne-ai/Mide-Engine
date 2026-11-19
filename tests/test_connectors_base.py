@@ -100,7 +100,7 @@ def test_cli_sources_roundtrip(tmp_path: Path) -> None:
     data = tmp_path / "data"
     data.mkdir()
     args = ["--config-dir", str(cfg)]
-    assert "No authorized" in runner.invoke(app, ["sources", "list", *args]).output
+    assert "Aucune source autorisée." in runner.invoke(app, ["sources", "list", *args]).output
     res = runner.invoke(app, ["sources", "add", str(data), *args])
     assert res.exit_code == 0
     assert str(data.resolve()) in runner.invoke(app, ["sources", "list", *args]).output
@@ -116,9 +116,38 @@ def test_cli_sources_remove_unknown_lists_sources(tmp_path: Path) -> None:
     args = ["--config-dir", str(cfg)]
     res = runner.invoke(app, ["sources", "remove", str(tmp_path / "nope"), *args])
     assert res.exit_code == 1
-    assert "No authorized sources." in res.output
+    assert "Aucune source autorisée." in res.output
     runner.invoke(app, ["sources", "add", str(data), *args])
     res = runner.invoke(app, ["sources", "remove", str(tmp_path / "nope"), *args])
     assert res.exit_code == 1
-    assert f"Authorized sources: {data.resolve()}" in res.output
+    assert f"Sources autorisées : {data.resolve()}" in res.output
     assert list_sources(cfg) == [str(data.resolve())]
+
+
+def test_cli_sources_messages_follow_language(tmp_path: Path) -> None:
+    # Consent messages follow `language`: French by default, English when configured.
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    data = tmp_path / "data"
+    data.mkdir()
+    args = ["--config-dir", str(cfg)]
+    res = runner.invoke(app, ["sources", "add", str(data), *args])
+    assert f"Source ajoutée : {data.resolve()}" in res.output
+    res = runner.invoke(app, ["sources", "add", str(tmp_path / "x"), *args])
+    assert res.exit_code == 1
+    assert "le chemin n'existe pas" in res.output
+    res = runner.invoke(app, ["sources", "add", "postgresql://u:secret@h/db", *args])
+    assert res.exit_code == 1
+    assert "ne mettez pas de mot de passe" in res.output and "${DB_PASSWORD}" in res.output
+    assert "Source retirée" in runner.invoke(app, ["sources", "remove", str(data), *args]).output
+
+    (cfg / "default.yaml").write_text("language: en\n", encoding="utf-8")
+    assert "No authorized sources." in runner.invoke(app, ["sources", "list", *args]).output
+    res = runner.invoke(app, ["sources", "add", str(data), *args])
+    assert f"Source added: {data.resolve()}" in res.output
+    res = runner.invoke(app, ["sources", "remove", str(tmp_path / "nope"), *args])
+    assert res.exit_code == 1
+    assert f"Error: source not listed: {tmp_path / 'nope'}. Authorized sources: {data.resolve()}" in res.output
+    res = runner.invoke(app, ["sources", "add", str(tmp_path / "x"), *args])
+    assert "Error: path does not exist" in res.output
+    assert "Source removed" in runner.invoke(app, ["sources", "remove", str(data), *args]).output
