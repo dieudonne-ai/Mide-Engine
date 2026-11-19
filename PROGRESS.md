@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide ui` errors follow the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #91 was already merged; suite green at start (349 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). `mide ui` printed "Streamlit is not installed: pip install 'mide-engine[ui]'" and "Dashboard not found: …" in English only, although `language` defaults to `fr`. In French they now read "Erreur : Streamlit n'est pas installé : pip install 'mide-engine[ui]'" and "Erreur : tableau de bord introuvable : …"; in English they get the same "Error: " prefix as the other CLI errors.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_dashboard.py`
+- **Tests :** 353 passed, 2 skipped (4 new: FR/EN error without Streamlit and FR/EN error when the dashboard script is missing; all four fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-83pb0v -> main
+- **Décisions techniques :** the messages live in `SOURCES_MESSAGES` (`ui_no_streamlit`, `ui_no_dashboard`). The language comes from `_cli_language`, so a broken config still gives a (French) message instead of a crash. The script path moved to a small `_dashboard_script()` helper so tests can point it at a missing file.
+- **Problèmes / dette technique :** "Unknown profile" and "A time series task needs a date column" stay English (internal errors). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: training errors of `mide train` follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #90 was already merged; suite green at start (348 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). The remaining trainer errors listed as debt were English-only behind the French prefix, e.g. "Erreur : Not enough rows to train (3); at least 20 are needed". In French they now read "Erreur : Pas assez de lignes pour entraîner (3) ; il en faut au moins 20", "Erreur : Aucune colonne utilisable comme variable explicative" and "Erreur : La validation croisée a échoué : jeu de données trop petit ou dégénéré"; English unchanged with `language: en`.
 - **Fichiers principaux :** `mide/automl/trainer.py`, `mide/cli.py`, `tests/test_trainer.py`, `tests/test_registry.py`
