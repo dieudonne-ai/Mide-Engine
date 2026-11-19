@@ -75,10 +75,14 @@ def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> l
         caveat = f"; attribution check: {check}" if check else ""
         moves = [(k, v) for k, v in mkt.facts.items() if k.startswith("move ")]
         if moves:
-            k, v = moves[0]
+            # Cite every suggested move: the alerts list all underperforming channels,
+            # so the action must not silently drop all but the first one.
+            sources = ", ".join(k[5:] for k, _ in moves)
+            detail = moves[0][1] if len(moves) == 1 else "; ".join(f"{k[5:]}: {v}" for k, v in moves)
             out.append(Action(
-                (f"Réallouer le budget depuis {k[5:]}" if fr else f"Reallocate budget from {k[5:]}"),
-                f"{v}; best channel: {mkt.facts.get('best channel', '-')}{caveat}"))
+                (f"Réallouer le budget depuis {sources}" if fr
+                 else f"Reallocate budget from {sources}"),
+                f"{detail}; best channel: {mkt.facts.get('best channel', '-')}{caveat}"))
         elif "best channel" in mkt.facts:
             out.append(Action(
                 "Renforcer le canal le plus rentable" if fr else "Invest more in the best channel",
