@@ -173,3 +173,24 @@ def test_budget_action_without_attribution_issue():
     mkt["marketing"].facts["attribution check"] = "channels report 2x total sales"
     assert _actions(mkt, fr=False)[0].evidence == (
         "best channel: Email; attribution check: channels report 2x total sales")
+
+
+def test_trend_action_cites_30d_forecast(tables):
+    # Demo trend is "up" while the 30d forecast is lower: stock advice must show both.
+    action = next(a for a in build_report(tables, "en").actions
+                  if a.text == "Track the sales trend and adjust stock")
+    assert action.evidence == (
+        "trend: up, YoY +20.7% (2024-01 -> 2024-12 vs 2023-01 -> 2023-12), last 3 months "
+        "+70.7% (2024-10 -> 2024-12 vs 2024-07 -> 2024-09); forecast 30d: 45,871 for "
+        "2025-01-01 -> 2025-01-30 (-9.3% vs previous 30d)")
+
+
+def test_trend_action_without_forecast():
+    from mide.agent.decision import Finding
+    from mide.report import _actions
+
+    sal = {"sales": Finding("sales", {"trend": "up"})}
+    assert _actions(sal, fr=False)[0].evidence == "trend: up"
+    sal["sales"].facts["forecast 30d"] = "100 (-5% vs previous 30d)"
+    assert _actions(sal, fr=False)[0].evidence == (
+        "trend: up; forecast 30d: 100 (-5% vs previous 30d)")

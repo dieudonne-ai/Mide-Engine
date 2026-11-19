@@ -93,10 +93,14 @@ def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> l
             anomalies[-1]))
     sal = f.get("sales")
     if sal and "trend" in sal.facts:
+        # Stock is bought for the coming weeks: cite the 30d forecast next to the past trend,
+        # since a rising trend can come with a lower forecast (e.g. after a seasonal peak).
+        forecast = sal.facts.get("forecast 30d")
+        outlook = f"; forecast 30d: {forecast}" if forecast else ""
         out.append(Action(
             "Surveiller la tendance des ventes et ajuster les stocks" if fr
             else "Track the sales trend and adjust stock",
-            f"trend: {sal.facts['trend']}"))
+            f"trend: {sal.facts['trend']}{outlook}"))
     return out[:_ACTION_LIMIT]
 
 
