@@ -16,6 +16,19 @@ MAX_CATEGORIES = 50  # text columns with more distinct values are dropped
 DATE_PARTS = ("year", "month", "day_of_week", "day_of_year", "day")
 
 
+class TrainingError(ValueError):
+    """A dataset that cannot be trained on, with a stable ``code`` for localized messages.
+
+    ``code`` is one of ``not_enough_rows`` (``n_rows`` is set), ``no_features`` or
+    ``cv_failed``. The English message stays the ``str()`` of the exception.
+    """
+
+    def __init__(self, code: str, message: str, n_rows: int | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+        self.n_rows = n_rows
+
+
 @dataclass(frozen=True)
 class TrainingLimits:
     """Resource limits derived from the hardware profile."""
@@ -211,12 +224,16 @@ def train(
     elif len(work) > limits.max_rows:
         work = work.sample(limits.max_rows, random_state=seed).reset_index(drop=True)
     if len(work) < 20:
-        raise ValueError(f"Not enough rows to train ({len(work)}); at least 20 are needed")
+        raise TrainingError(
+            "not_enough_rows",
+            f"Not enough rows to train ({len(work)}); at least 20 are needed",
+            n_rows=len(work),
+        )
 
     prep = FeaturePrep(target, info.date_column if info.task is TaskType.TIME_SERIES else None)
     prep.fit(work)
     if not prep.columns:
-        raise ValueError("No usable feature columns found")
+        raise TrainingError("no_features", "No usable feature columns found")
     X = prep.transform(work)
 
     classes: list[Any] | None = None
@@ -238,7 +255,9 @@ def train(
         model_scores.append(_score(info.task, y[te], fold.predict(X.iloc[te])))
         base_scores.append(_score(info.task, y[te], _baseline_predict(info.task, y[tr], len(te))))
     if not model_scores:
-        raise ValueError("Cross-validation failed: dataset too small or degenerate")
+        raise TrainingError(
+            "cv_failed", "Cross-validation failed: dataset too small or degenerate"
+        )
 
     metrics, baseline = _mean(model_scores), _mean(base_scores)
     if info.task is TaskType.CLASSIFICATION:
