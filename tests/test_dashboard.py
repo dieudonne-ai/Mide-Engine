@@ -75,6 +75,45 @@ def test_ui_command_without_streamlit(monkeypatch):
     assert res.exit_code == 1
 
 
+@pytest.mark.parametrize(("language", "expected"), [
+    ("fr", "Erreur : Streamlit n'est pas installé : pip install 'mide-engine[ui]'"),
+    ("en", "Error: Streamlit is not installed: pip install 'mide-engine[ui]'"),
+])
+def test_ui_without_streamlit_follows_language(empty_cfg, monkeypatch, language, expected):
+    import importlib.util
+
+    from typer.testing import CliRunner
+
+    from mide import cli
+
+    (empty_cfg / "default.yaml").write_text(f"language: {language}\n")
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+    res = CliRunner().invoke(cli.app, ["ui", "--config-dir", str(empty_cfg)])
+    assert res.exit_code == 1
+    assert expected in res.output
+
+
+@pytest.mark.parametrize(("language", "expected"), [
+    ("fr", "Erreur : tableau de bord introuvable : "),
+    ("en", "Error: dashboard not found: "),
+])
+def test_ui_without_dashboard_follows_language(empty_cfg, monkeypatch, tmp_path, language,
+                                               expected):
+    import importlib.util
+
+    from typer.testing import CliRunner
+
+    from mide import cli
+
+    (empty_cfg / "default.yaml").write_text(f"language: {language}\n")
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: object())
+    missing = tmp_path / "missing.py"
+    monkeypatch.setattr(cli, "_dashboard_script", lambda: missing)
+    res = CliRunner().invoke(cli.app, ["ui", "--config-dir", str(empty_cfg)])
+    assert res.exit_code == 1
+    assert expected + str(missing) in res.output
+
+
 def test_dashboard_pages_run_without_error(cfg_dir, monkeypatch):
     pytest.importorskip("streamlit")
     from streamlit.testing.v1 import AppTest

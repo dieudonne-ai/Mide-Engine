@@ -143,6 +143,14 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "en": "Download {url} ({size}) from the internet?",
     },
     "models_ready": {"fr": "Modèle prêt : {value}", "en": "Model ready: {value}"},
+    "ui_no_streamlit": {
+        "fr": "Erreur : Streamlit n'est pas installé : pip install 'mide-engine[ui]'",
+        "en": "Error: Streamlit is not installed: pip install 'mide-engine[ui]'",
+    },
+    "ui_no_dashboard": {
+        "fr": "Erreur : tableau de bord introuvable : {value}",
+        "en": "Error: dashboard not found: {value}",
+    },
     "error": {"fr": "Erreur : {value}", "en": "Error: {value}"},
     "item_error": {"fr": "[erreur] {item} : {message}", "en": "[error] {item}: {message}"},
     "index_done": {
@@ -680,6 +688,11 @@ def ask_command(
         typer.echo("\n" + footer)
 
 
+def _dashboard_script() -> Path:
+    """Path of the Streamlit dashboard script (patched in tests)."""
+    return Path(__file__).resolve().parent.parent / "app" / "dashboard.py"
+
+
 @app.command("ui")
 def ui_command(
     port: int = typer.Option(8501, help="Port of the dashboard."),
@@ -693,12 +706,13 @@ def ui_command(
 
     from mide.dashboard_data import CONFIG_ENV
 
+    language = _cli_language(config_dir)
     if importlib.util.find_spec("streamlit") is None:
-        typer.echo("Streamlit is not installed: pip install 'mide-engine[ui]'", err=True)
+        typer.echo(_sources_msg("ui_no_streamlit", language), err=True)
         raise typer.Exit(1)
-    script = Path(__file__).resolve().parent.parent / "app" / "dashboard.py"
+    script = _dashboard_script()
     if not script.exists():
-        typer.echo(f"Dashboard not found: {script}", err=True)
+        typer.echo(_sources_msg("ui_no_dashboard", language, value=str(script)), err=True)
         raise typer.Exit(1)
     env = dict(os.environ)
     if config_dir is not None:
