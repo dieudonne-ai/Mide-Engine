@@ -153,3 +153,21 @@ def test_corrupt_workbook_does_not_block_index(tmp_path, fake_embedder):
     report = index_sources([str(src)], tmp_path / "idx", fake_embedder)
     assert report.new_chunks > 0
     assert len(report.errors) == 1 and next(iter(report.errors)).endswith("bad.xlsx")
+
+
+def test_cli_index_warns_about_missing_source_in_language(tmp_path, monkeypatch, fake_embedder):
+    src = _make_source(tmp_path)
+    gone = tmp_path / "gone"
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(cli, "_get_embedder", lambda cfg: fake_embedder)
+    cfg_dir = tmp_path / "cfg"
+    cfg_dir.mkdir()
+    (cfg_dir / "sources.yaml").write_text(f"sources:\n  - {src}\n  - {gone}\n")
+    args = ["index", "--config-dir", str(cfg_dir)]
+    fr = CliRunner().invoke(cli.app, args)
+    assert fr.exit_code == 0, fr.output
+    assert f"Attention : source introuvable, ignorée : {gone}" in fr.output
+    assert "Indexation : 3 nouveaux" in fr.output
+    (cfg_dir / "default.yaml").write_text("language: en\n", encoding="utf-8")
+    en = CliRunner().invoke(cli.app, args)
+    assert f"Warning: source not found, skipped: {gone}" in en.output

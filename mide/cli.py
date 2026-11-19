@@ -165,6 +165,10 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "en": "Configuration error: {value}",
     },
     "item_error": {"fr": "[erreur] {item} : {message}", "en": "[error] {item}: {message}"},
+    "source_missing": {
+        "fr": "Attention : source introuvable, ignorée : {value}",
+        "en": "Warning: source not found, skipped: {value}",
+    },
     "index_done": {
         "fr": ("Indexation : {new} nouveaux, {updated} mis à jour, {unchanged} inchangés, "
                "{removed} retirés ({chunks} nouveaux extraits)."),
@@ -287,6 +291,13 @@ def _authorized_sources(config_dir: Path | None, language: str) -> list[str]:
         raise typer.Exit(1) from exc
 
 
+def _warn_missing_sources(sources: list[str], language: str) -> None:
+    """Print a localized warning (stderr) for each authorized folder/file that no longer exists."""
+    for source in sources:
+        if not is_url(source) and not Path(source).expanduser().exists():
+            typer.echo(_sources_msg("source_missing", language, value=source), err=True)
+
+
 def _language_of(language: str) -> str:
     return language if language in ("fr", "en") else "fr"
 
@@ -386,6 +397,7 @@ def scan(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     if not sources:
         typer.echo(_sources_msg("none_hint", language))
         return
+    _warn_missing_sources(sources, language)
     for entry in build_catalog(sources):
         if entry.error:
             typer.echo(_sources_msg("item_error", language, item=entry.item, message=entry.error))
@@ -522,6 +534,7 @@ def index_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     if not sources:
         typer.echo(_sources_msg("none_hint", _language_of(cfg.language)))
         return
+    _warn_missing_sources(sources, _language_of(cfg.language))
     try:
         report = index_sources(
             sources,
@@ -868,6 +881,7 @@ def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
         typer.echo(_sources_msg("none_hint", _language_of(cfg.language)))
         return
     language = _language_of(cfg.language)
+    _warn_missing_sources(sources, language)
     report = AutoReport(n_datasets=len(build_catalog(sources)))
     try:
         try:
