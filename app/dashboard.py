@@ -55,9 +55,9 @@ def page_sales(data: dd.DashboardData, lang: str) -> None:
         growth = fc.growth_pct.get(h)
         col.metric(dd.ui_text("forecast", lang, h=h), f"{total:,.0f}",
                    None if growth is None else f"{growth:+.1f}%")
-    st.line_chart(view["history"].resample("W").sum())
+    st.line_chart(dd.chart_series(view["history"].resample("W").sum(), lang))
     st.subheader(dd.ui_text("monthly_revenue", lang))
-    st.bar_chart(view["trend"].monthly)
+    st.bar_chart(dd.chart_series(view["trend"].monthly, lang))
     direction = dd.ui_text(f"trend_{view['trend'].direction}", lang)
     st.caption(dd.ui_text("trend", lang, value=direction))
     s = view["seasonality"]
@@ -90,7 +90,7 @@ def page_marketing(data: dd.DashboardData, lang: str) -> None:
         return
     view = dd.marketing_view(data.tables.campaigns)
     st.dataframe(dd.display_table(view["channels"], lang))
-    st.bar_chart(view["channels"]["roi"])
+    st.bar_chart(dd.chart_series(view["channels"]["roi"], lang))
     plan = view["plan"]
     st.subheader(dd.ui_text("reallocation", lang))
     if not plan.moves:

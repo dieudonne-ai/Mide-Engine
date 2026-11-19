@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: dashboard chart labels follow the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #102 was already merged; suite green at start (400 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The three dashboard charts (weekly revenue, monthly revenue, ROI per channel) showed raw English field names in their axes and tooltips (`date`, `amount`, `channel`, `roi`) even with `language: fr`. They now show "Date", "Chiffre d'affaires", "Canal", "ROI" in French and "Date", "Revenue", "Channel", "ROI" in English.
+- **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
+- **Tests :** 406 passed, 0 skipped. 6 new: `chart_series` translates the series name and index name without touching values or the input, the three dashboard series have labels, FR/EN field names in the Vega-Lite spec of the sales and marketing charts. The 4 AppTest cases fail without the fix. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-oxnr7s -> main
+- **Décisions techniques :** new `dashboard_data.chart_series()` reusing `COLUMN_LABELS` (with new `date` and `amount` entries), applied only at display time, so `sales.py`/`marketing.py` keep their stable English names.
+- **Problèmes / dette technique :** "Unknown profile" and "A time series task needs a date column" stay English (internal errors). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: dashboard segment names and risk levels follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #101 was already merged; suite green at start (395 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). On the dashboard customers page, RFM segment names ("Loyal", "Hibernating"…) and churn risk levels (`low/medium/high`) stayed English with `language: fr`. In French they now read "Fidèles", "En sommeil", "À risque", "Nouveaux / prometteurs", "À surveiller", "Champions" and "faible / moyen / élevé"; English output is unchanged.
 - **Fichiers principaux :** `mide/dashboard_data.py`, `tests/test_dashboard.py`
