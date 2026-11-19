@@ -96,7 +96,7 @@ def page_marketing(data: dd.DashboardData, lang: str) -> None:
         st.success(dd.ui_text("no_reallocation", lang))
     for m in plan.moves:
         st.write(dd.ui_text("move", lang, src=m.from_channel, dst=m.to_channel,
-                            amount=f"{m.amount:,.0f}", reason=m.reason,
+                            amount=f"{m.amount:,.0f}", reason=dd.move_reason(m, lang),
                             extra=f"{m.estimated_extra_revenue:,.0f}"))
 
 

@@ -103,6 +103,9 @@ class BudgetMove:
     amount: float
     reason: str
     estimated_extra_revenue: float
+    from_roi: float | None = None
+    median_roi: float | None = None
+    to_roas: float | None = None
 
 
 @dataclass
@@ -141,6 +144,7 @@ def suggest_reallocation(channels: pd.DataFrame, max_cut: float = MAX_CUT,
         extra = amount * best_roas - lost
         plan.moves.append(BudgetMove(
             from_channel=ch, to_channel=best, amount=amount, estimated_extra_revenue=round(extra, 2),
+            from_roi=float(row["roi"]), median_roi=median, to_roas=best_roas,
             reason=(f"{ch} ROI {row['roi']:.2f} vs median {median:.2f}; "
                     f"{best} returns {best_roas:.2f} revenue per unit spent")))
     plan.total_moved = round(sum(m.amount for m in plan.moves), 2)
