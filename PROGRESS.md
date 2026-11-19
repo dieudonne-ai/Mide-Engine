@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: product figures cite the revenue behind their share (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #58 was already merged; suite green at start (299 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed "top products: P001 Rice 25kg (43.2%), P002 Cooking oil 5L (13.5%)". It did not say 43.2% of what, or give the amount behind it. Each product now cites its revenue and the basis of the share: "P001 Rice 25kg (317,856 = 43.2% of revenue), P002 Cooking oil 5L (99,528 = 13.5% of revenue)". Flop products read the same way. The change shows up in `mide ask`, the agent figures and the LLM prompt.
+- **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
+- **Tests :** 301 passed, 2 skipped (2 new: exact revenue/share text for the demo top and flop products; a sales table with no product catalog cites ids with revenue. Both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-6p6r2o -> main
+- **Décisions techniques :** text-only change; `product_ranking` is unchanged (it already returns `revenue`). The existing `startswith("P001 Rice 25kg (")` checks still hold.
+- **Problèmes / dette technique :** campaign-attributed revenue on the demo data is still about twice total sales (see the previous entry). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: channel figures cite the spend and revenue behind ROI/ROAS (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #57 was already merged; suite green at start (297 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed "channel Email: ROI 41.54, ROAS 42.54" with no amounts behind it. "ROI 41.54" can be read as 41.54% when it means revenue is 42x the spend. Each channel figure now cites its totals: "spend 16,089, revenue 684,450: ROI 41.54, ROAS 42.54". A channel with zero spend now shows "ROI n/a, ROAS n/a" instead of "nan". The change shows up in `mide ask`, the agent figures and the LLM prompt.
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`

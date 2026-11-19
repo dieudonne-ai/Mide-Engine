@@ -76,9 +76,12 @@ def _pct(x: float | None) -> str:
 
 
 def _product_list(table: pd.DataFrame, names: dict[str, str]) -> str:
-    """'P001 Rice 25kg (43.2%), ...' (id only when the name is unknown)."""
+    """'P001 Rice 25kg (317,912 = 43.2% of revenue), ...' (id only when the name is unknown).
+
+    Each product cites the revenue its share comes from (explainability)."""
     labels = (f"{p} {names[str(p)]}" if names.get(str(p)) else str(p) for p in table.index)
-    return ", ".join(f"{label} ({share:.1f}%)" for label, share in zip(labels, table["share_pct"]))
+    return ", ".join(f"{label} ({_money(revenue)} = {share:.1f}% of revenue)"
+                     for label, revenue, share in zip(labels, table["revenue"], table["share_pct"]))
 
 
 def _months_compared(monthly: pd.Series, size: int) -> str:

@@ -9,7 +9,7 @@ from mide.agent.decision import (
     run_modules,
 )
 from mide.agent.router import route_question
-from mide.business import marketing
+from mide.business import marketing, sales
 from mide.llm.runtime import FakeLLM
 
 
@@ -311,3 +311,22 @@ def test_channel_figure_with_zero_spend_stays_readable():
     facts = run_modules(["marketing"], detect_tables({"campaigns": df}))[0].facts
     assert facts["channel Email"] == "spend 100, revenue 500: ROI 4.00, ROAS 5.00"
     assert facts["channel Radio"] == "spend 0, revenue 50: ROI n/a, ROAS n/a"
+
+
+def test_product_figures_cite_revenue_and_share_basis(data):
+    # Each product share must cite the revenue it comes from and say it is a share of revenue.
+    facts = run_modules(["sales"], data)[0].facts
+    ranking = sales.product_ranking(data.sales, n=2)
+    names = sales.product_names(data.products)
+    for key, table in (("top products", ranking["top"]), ("flop products", ranking["flop"])):
+        expected = ", ".join(
+            f"{pid} {names[str(pid)]} ({row.revenue:,.0f} = {row.share_pct:.1f}% of revenue)"
+            for pid, row in table.iterrows())
+        assert facts[key] == expected
+
+
+def test_product_figure_without_catalog_cites_revenue():
+    days = pd.date_range("2024-01-01", periods=60, freq="D")
+    df = pd.DataFrame({"date": days, "product_id": ["A", "A", "A", "B"] * 15, "amount": 100.0})
+    facts = run_modules(["sales"], BusinessData(sales=df))[0].facts
+    assert facts["top products"] == "A (4,500 = 75.0% of revenue), B (1,500 = 25.0% of revenue)"
