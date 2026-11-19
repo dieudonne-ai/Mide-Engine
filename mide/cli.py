@@ -15,7 +15,7 @@ from mide.automl.auto import AutoReport, ModelOutcome, fingerprint, retrain_if_c
 from mide.automl.evaluator import evaluate
 from mide.automl.registry import list_models as list_trained_models
 from mide.automl.registry import save_model
-from mide.automl.task_detector import TaskInfo
+from mide.automl.task_detector import TargetError, TaskInfo
 from mide.automl.trainer import TrainingError
 from mide.automl.trainer import train as train_model
 from mide.config import Config, ConfigError, load_config
@@ -238,6 +238,14 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "La validation croisée a échoué : jeu de données trop petit ou dégénéré",
         "en": "Cross-validation failed: dataset too small or degenerate",
     },
+    "target_no_values": {
+        "fr": "La colonne cible '{column}' ne contient aucune valeur",
+        "en": "Target column '{column}' has no values",
+    },
+    "target_single_value": {
+        "fr": "La colonne cible '{column}' a moins de 2 valeurs distinctes",
+        "en": "Target column '{column}' has fewer than 2 distinct values",
+    },
     "column_kind_date": {"fr": "de date", "en": "date"},
     "llm_missing": {
         "fr": "Modèle non installé : lancez `mide models pull` ({value}).",
@@ -304,9 +312,11 @@ def _task_line(info: TaskInfo, language: str) -> str:
 
 
 def _error_text(exc: BaseException, language: str) -> str:
-    """Text of ``exc`` in ``language``: coded training/config errors are localized."""
+    """Text of ``exc`` in ``language``: coded target/training/config errors are localized."""
     if isinstance(exc, TrainingError) and f"training_{exc.code}" in SOURCES_MESSAGES:
         return _sources_msg(f"training_{exc.code}", language, n=str(exc.n_rows))
+    if isinstance(exc, TargetError) and f"target_{exc.code}" in SOURCES_MESSAGES:
+        return _sources_msg(f"target_{exc.code}", language, column=exc.column)
     if isinstance(exc, ConfigError) and f"config_{exc.code}" in SOURCES_MESSAGES:
         return _sources_msg(f"config_{exc.code}", language, path=str(exc.path),
                             detail=exc.detail)

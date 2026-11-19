@@ -141,6 +141,35 @@ def test_cli_train_training_errors_follow_language(tmp_path, monkeypatch):
         assert features_line in res.output, (language, res.output)
 
 
+def test_cli_train_target_errors_follow_language(tmp_path, monkeypatch):
+    # Unusable targets (empty column, a single value) are reported in the configured language.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    data = tmp_path / "data"
+    data.mkdir()
+    pd.DataFrame({"a": [0.5, 1.5, 2.5], "y": ["", "", ""]}).to_csv(data / "empty.csv",
+                                                                    index=False)
+    pd.DataFrame({"a": [0.5, 1.5, 2.5], "y": ["x", "x", "x"]}).to_csv(data / "same.csv",
+                                                                       index=False)
+    cfg = tmp_path / "cfg"
+    runner = CliRunner()
+    opt = ["--config-dir", str(cfg)]
+    runner.invoke(app, ["sources", "add", str(data), *opt])
+    expected = {
+        "fr": ["Erreur : La colonne cible 'y' ne contient aucune valeur",
+               "Erreur : La colonne cible 'y' a moins de 2 valeurs distinctes"],
+        "en": ["Error: Target column 'y' has no values",
+               "Error: Target column 'y' has fewer than 2 distinct values"],
+    }
+    for language, (empty_line, same_line) in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        res = runner.invoke(app, ["train", "--dataset", "empty", "--target", "y", *opt])
+        assert res.exit_code == 1
+        assert empty_line in res.output, (language, res.output)
+        res = runner.invoke(app, ["train", "--dataset", "same", "--target", "y", *opt])
+        assert res.exit_code == 1
+        assert same_line in res.output, (language, res.output)
+
+
 def test_cli_train_unknown_dataset_follows_language(demo_data, tmp_path, monkeypatch):
     # The "dataset not found" error is fully in the configured language.
     monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))

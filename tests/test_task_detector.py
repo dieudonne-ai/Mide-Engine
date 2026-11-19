@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from mide.automl.task_detector import TaskType, detect_task
+from mide.automl.task_detector import TargetError, TaskType, detect_task
 
 
 @pytest.fixture
@@ -70,6 +70,19 @@ def test_unknown_date_column_raises():
 def test_constant_target_raises():
     with pytest.raises(ValueError, match="fewer than 2"):
         detect_task(pd.DataFrame({"a": ["x", "x", "x"]}), "a")
+
+
+def test_target_errors_have_codes():
+    # Unusable targets raise a coded TargetError so interfaces can translate the message.
+    cases = [
+        (pd.DataFrame({"a": [None, None, None]}), "no_values", "has no values"),
+        (pd.DataFrame({"a": ["x", "x", "x"]}), "single_value", "fewer than 2"),
+        (pd.DataFrame({"a": [3, 3, 3]}), "single_value", "fewer than 2"),
+    ]
+    for df, code, text in cases:
+        with pytest.raises(TargetError, match=text) as err:
+            detect_task(df, "a")
+        assert (err.value.code, err.value.column) == (code, "a")
 
 
 def test_reason_code_names_the_detection_rule(demo_frames):

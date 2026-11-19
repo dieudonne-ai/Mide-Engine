@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: unusable target errors of `mide train` follow the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #103 was already merged; suite green at start (406 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `mide train` on an empty target column or a target with a single value printed "Erreur : Target column 'y' has no values" / "… has fewer than 2 distinct values" in English even with `language: fr`. In French it now reads "Erreur : La colonne cible 'y' ne contient aucune valeur" / "… a moins de 2 valeurs distinctes"; English output is unchanged.
+- **Fichiers principaux :** `mide/automl/task_detector.py`, `mide/cli.py`, `tests/test_task_detector.py`, `tests/test_registry.py`
+- **Tests :** 408 passed, 0 skipped. 2 new: `detect_task` raises a coded `TargetError` (empty, single text value, single integer value), FR/EN `mide train` messages for both cases (fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-hwz14b -> main
+- **Décisions techniques :** new `TargetError(ValueError)` with `code` (`no_values`, `single_value`) and `column`, like `TrainingError`; `_error_text` localizes it through `SOURCES_MESSAGES` (`target_*`). It stays a `ValueError` with the same English `str()`, so existing callers (`mide auto`, tests) are unchanged.
+- **Problèmes / dette technique :** "Unknown profile" and "A time series task needs a date column" stay English (internal errors, not reachable from the CLI). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: dashboard chart labels follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #102 was already merged; suite green at start (400 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The three dashboard charts (weekly revenue, monthly revenue, ROI per channel) showed raw English field names in their axes and tooltips (`date`, `amount`, `channel`, `roi`) even with `language: fr`. They now show "Date", "Chiffre d'affaires", "Canal", "ROI" in French and "Date", "Revenue", "Channel", "ROI" in English.
 - **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
