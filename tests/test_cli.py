@@ -213,3 +213,24 @@ def test_train_task_line_follows_language():
     # Without a known code, the English reason is kept as it is.
     legacy = TaskInfo(TaskType.REGRESSION, "y", "some reason")
     assert _task_line(legacy, "fr") == "Tâche : régression - some reason"
+
+
+def test_broken_sources_file_gives_clear_error(tmp_path, monkeypatch) -> None:
+    # A malformed sources.yaml gives "Erreur : ..." / "Error: ..." and exit code 1,
+    # not the last-resort "Unexpected error" handler; the language still comes from default.yaml.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    (cfg / "sources.yaml").write_text("sources: [\n", encoding="utf-8")
+    args = ["--config-dir", str(cfg)]
+    commands = (["scan"], ["sources", "list"], ["sources", "add", str(tmp_path)],
+                ["sources", "remove", str(tmp_path)])
+    for language, prefix in (("fr", "Erreur : "), ("en", "Error: ")):
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        for command in commands:
+            result = runner.invoke(app, [*command, *args])
+            assert result.exit_code == 1, (language, command, result.output)
+            assert result.output.startswith(prefix + "Invalid sources file"), (
+                language, command, result.output)
+            assert "inattendue" not in result.output and "Unexpected" not in result.output
+    assert (cfg / "sources.yaml").read_text(encoding="utf-8") == "sources: [\n"

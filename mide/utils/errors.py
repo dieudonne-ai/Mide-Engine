@@ -77,6 +77,7 @@ def run_safely(func: Callable[[], Any], language: str = "fr") -> int:
     except (KeyboardInterrupt, SystemExit):
         raise
     except Exception as exc:  # noqa: BLE001 - last-resort handler for the CLI
-        print(f"Error: {friendly_message(exc, language)}", file=sys.stderr)
+        prefix = "Error: " if language == "en" else "Erreur : "
+        print(f"{prefix}{friendly_message(exc, language)}", file=sys.stderr)
         return 1
     return 0
