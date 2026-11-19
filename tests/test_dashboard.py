@@ -122,7 +122,7 @@ def test_dashboard_pages_run_without_error(cfg_dir, monkeypatch):
     monkeypatch.setenv(dd.CONFIG_ENV, str(cfg_dir))
     at = AppTest.from_file(str(APP), default_timeout=120).run()
     assert not at.exception, at.exception
-    for page in ("Sales", "Customers", "Marketing", "Data sources", "Hardware & models", "Home"):
+    for page in ("sales", "customers", "marketing", "sources", "hardware", "home"):
         at.sidebar.radio[0].set_value(page).run()
         assert not at.exception, (page, at.exception)
 
@@ -157,3 +157,59 @@ def test_config_error_message_without_default_yaml(empty_cfg):
     # No readable default.yaml: French default, plain error text kept.
     exc = ConfigError("boom")
     assert dd.config_error_message(exc, empty_cfg) == "Erreur de configuration : boom"
+
+
+def test_ui_text_has_both_languages_with_same_placeholders():
+    import string
+
+    def fields(text):
+        return {name for _, name, _, _ in string.Formatter().parse(text) if name}
+
+    for key, texts in dd.UI_TEXT.items():
+        assert set(texts) == {"fr", "en"}, key
+        assert fields(texts["fr"]) == fields(texts["en"]), key
+
+
+def test_ui_text_falls_back_to_french():
+    assert dd.ui_text("high_risk", "en", n=3) == "3 high-risk customers"
+    assert dd.ui_text("high_risk", "fr", n=3) == "3 clients à risque élevé"
+    assert dd.ui_text("high_risk", "sw", n=3) == "3 clients à risque élevé"
+
+
+@pytest.mark.parametrize(("language", "home", "sources"), [
+    ("fr", "Accueil", "Sources de données"),
+    ("en", "Home", "Data sources"),
+])
+def test_page_labels_follow_language(language, home, sources):
+    labels = dd.page_labels(language)
+    assert list(labels) == dd.PAGE_KEYS
+    assert labels["home"] == home and labels["sources"] == sources
+
+
+@pytest.mark.parametrize("language", ["fr", "en"])
+def test_dashboard_language_reads_config(empty_cfg, language):
+    (empty_cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+    assert dd.dashboard_language(empty_cfg) == language
+
+
+def test_dashboard_language_with_broken_config(empty_cfg):
+    (empty_cfg / "default.yaml").write_text("language: en\n", encoding="utf-8")
+    (empty_cfg / "sources.yaml").write_text("sources: [\n", encoding="utf-8")
+    assert dd.dashboard_language(empty_cfg) == "en"
+
+
+@pytest.mark.parametrize(("language", "header", "info"), [
+    ("fr", "Accueil", "Aucune donnée de ventes trouvée"),
+    ("en", "Home", "No sales data found"),
+])
+def test_dashboard_follows_language(empty_cfg, monkeypatch, language, header, info):
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    (empty_cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+    monkeypatch.setenv(dd.CONFIG_ENV, str(empty_cfg))
+    at = AppTest.from_file(str(APP), default_timeout=60).run()
+    assert not at.exception, at.exception
+    assert at.header[0].value == header
+    assert at.info[0].value.startswith(info)
+    assert at.sidebar.radio[0].options[0] == header
