@@ -48,7 +48,7 @@ def test_html_escapes():
 
 def test_empty_data():
     r = build_report(BusinessData(), "en")
-    assert r.empty and "No usable" in render_markdown(r)
+    assert r.empty and not r.alerts and "No usable" in render_markdown(r)
 
 
 def test_cli_report(tmp_path, monkeypatch, demo_data):
@@ -64,3 +64,34 @@ def test_cli_report(tmp_path, monkeypatch, demo_data):
     res = CliRunner().invoke(cli.app, ["report", "--config-dir", str(cfg)])
     assert res.exit_code == 0 and "#" in res.output
     assert CliRunner().invoke(cli.app, ["report", "--format", "pdf"]).exit_code == 2
+
+
+def _sales(last: str):
+    import pandas as pd
+
+    return BusinessData(sales=pd.DataFrame(
+        {"date": ["2024-01-01", last, "not a date"], "amount": [1.0, 2.0, 3.0]}))
+
+
+def test_stale_data_alert():
+    from datetime import date
+
+    from mide.report import stale_data_alert
+
+    data = _sales("2024-12-31")
+    en = stale_data_alert(data, date(2025, 3, 1), fr=False)
+    assert en == ("stale data: last sale on 2024-12-31, 60 days before this report; "
+                  "figures describe that period, not today")
+    assert "dernière vente le 2024-12-31, 60 jours" in stale_data_alert(data, date(2025, 3, 1), True)
+    assert stale_data_alert(data, date(2025, 1, 30), fr=False) is None  # 30 days: still fresh
+    assert stale_data_alert(BusinessData(), date(2025, 3, 1), fr=False) is None
+
+
+def test_report_flags_stale_data_first(tables):
+    from datetime import date
+
+    r = build_report(tables, "en", today=date(2026, 11, 19))
+    assert r.alerts[0].startswith("stale data: last sale on 2024-12-31,")
+    fresh = build_report(tables, "en", today=date(2025, 1, 2))
+    assert not any(a.startswith("stale data") for a in fresh.alerts)
+
