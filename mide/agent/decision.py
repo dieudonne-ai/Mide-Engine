@@ -77,12 +77,26 @@ def _product_list(table: pd.DataFrame, names: dict[str, str]) -> str:
     return ", ".join(f"{label} ({share:.1f}%)" for label, share in zip(labels, table["share_pct"]))
 
 
+def _months_compared(monthly: pd.Series, size: int) -> str:
+    """'(2024-10 -> 2024-12 vs 2024-07 -> 2024-09)': the last ``size`` months vs the ones before."""
+    idx = monthly.index
+    if len(idx) < 2 * size:
+        return ""
+    recent = f"{idx[-size]:%Y-%m} -> {idx[-1]:%Y-%m}"
+    before = f"{idx[-2 * size]:%Y-%m} -> {idx[-size - 1]:%Y-%m}"
+    return f" ({recent} vs {before})"
+
+
 def _trend_text(trend: sales.Trend) -> str:
-    """Direction plus the figure it is based on (YoY when available) and recent momentum."""
+    """Direction, the figure it is based on (YoY when available), recent momentum, and
+    the months each growth figure compares (complete months only)."""
     parts = [trend.direction]
     if trend.yoy_growth_pct is not None:
-        parts.append(f"YoY {_pct(trend.yoy_growth_pct)}")
-    parts.append(f"last 3 months {_pct(trend.last_3m_growth_pct)}")
+        parts.append(f"YoY {_pct(trend.yoy_growth_pct)}{_months_compared(trend.monthly, 12)}")
+    recent = _pct(trend.last_3m_growth_pct)
+    if trend.last_3m_growth_pct is not None:
+        recent += _months_compared(trend.monthly, 3)
+    parts.append(f"last 3 months {recent}")
     return ", ".join(parts)
 
 
