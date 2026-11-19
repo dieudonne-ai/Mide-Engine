@@ -27,6 +27,27 @@ _T = {
            "generated": "Generated on"},
 }
 
+# Display labels of the business fact keys; the keys stay English for the agent facts.
+_LABELS = {
+    "fr": {"revenue": "chiffre d'affaires", "orders": "commandes",
+           "average order value": "panier moyen", "30d growth": "croissance sur 30 jours",
+           "forecast": "prévision à {days} jours", "churn": "risque de départ",
+           "underperforming": "canaux marketing sous-performants"},
+    "en": {"revenue": "revenue", "orders": "orders", "average order value": "average order value",
+           "30d growth": "30d growth", "forecast": "forecast {days}d", "churn": "churn",
+           "underperforming": "marketing underperforming"},
+}
+_FORECAST_KEY = re.compile(r"forecast (\d+)d")
+
+
+def fact_label(key: str, language: str) -> str:
+    """Label of a KPI/forecast/alert fact key in the report language (unknown keys unchanged)."""
+    labels = _LABELS.get(language, _LABELS["fr"])
+    match = _FORECAST_KEY.fullmatch(key)
+    if match:
+        return labels["forecast"].format(days=match.group(1))
+    return labels.get(key, key)
+
 
 @dataclass
 class Action:
@@ -188,10 +209,12 @@ def build_report(data: BusinessData, language: str = "fr", today: date | None = 
         report.forecasts = {k: v for k, v in findings["sales"].facts.items()
                             if k.startswith("forecast")}
     if "customers" in findings and "churn" in findings["customers"].facts:
-        report.alerts.append(f"churn: {findings['customers'].facts['churn']}")
+        report.alerts.append(
+            f"{fact_label('churn', lang)}: {findings['customers'].facts['churn']}")
     if "marketing" in findings and findings["marketing"].facts.get("underperforming", "none") != "none":
         report.alerts.append(
-            f"marketing underperforming: {findings['marketing'].facts['underperforming']}")
+            f"{fact_label('underperforming', lang)}: "
+            f"{findings['marketing'].facts['underperforming']}")
     report.actions = _actions(findings, lang == "fr", _last_sale_day(data))
     stale = stale_data_alert(data, report.generated, lang == "fr")
     if stale and not report.empty:
@@ -204,8 +227,11 @@ def render_markdown(report: Report) -> str:
     lines = [f"# {t['title']}", "", f"_{t['generated']} {report.generated.isoformat()}_", ""]
     if report.empty:
         return "\n".join(lines + [t["nodata"], ""])
-    lines += [f"## {t['kpis']}", ""] + [f"- **{k}**: {v}" for k, v in report.kpis.items()]
-    lines += ["", f"## {t['forecast']}", ""] + [f"- **{k}**: {v}" for k, v in report.forecasts.items()]
+    def items(facts: dict[str, str]) -> list[str]:
+        return [f"- **{fact_label(k, report.language)}**: {v}" for k, v in facts.items()]
+
+    lines += [f"## {t['kpis']}", ""] + items(report.kpis)
+    lines += ["", f"## {t['forecast']}", ""] + items(report.forecasts)
     lines += ["", f"## {t['alerts']}", ""] + ([f"- {a}" for a in report.alerts] or [t["none"]])
     lines += ["", f"## {t['actions']}", ""]
     for i, a in enumerate(report.actions, start=1):
@@ -226,9 +252,11 @@ def render_html(report: Report) -> str:
         body.append(f"<p>{e(t['nodata'])}</p>")
     else:
         body += [
-            f"<h2>{e(t['kpis'])}</h2>", ul([f"<b>{e(k)}</b>: {e(v)}" for k, v in report.kpis.items()]),
+            f"<h2>{e(t['kpis'])}</h2>", ul([f"<b>{e(fact_label(k, report.language))}</b>: {e(v)}"
+                                         for k, v in report.kpis.items()]),
             f"<h2>{e(t['forecast'])}</h2>",
-            ul([f"<b>{e(k)}</b>: {e(v)}" for k, v in report.forecasts.items()]),
+            ul([f"<b>{e(fact_label(k, report.language))}</b>: {e(v)}"
+                for k, v in report.forecasts.items()]),
             f"<h2>{e(t['alerts'])}</h2>", ul([e(a) for a in report.alerts]),
             f"<h2>{e(t['actions'])}</h2>",
             ul([f"<b>{e(a.text)}</b> — {e(a.evidence)}" for a in report.actions], "ol"),
