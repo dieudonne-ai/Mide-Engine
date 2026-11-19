@@ -17,7 +17,8 @@ class TargetError(ValueError):
     """A target column that cannot be learned, with a stable ``code`` for localized messages.
 
     ``code`` is ``no_values`` (the column is empty), ``single_value`` (fewer than 2
-    distinct values) or ``not_a_date`` (an explicit date column that does not hold dates;
+    distinct values), ``unique_values`` (a class target where no value repeats, raised by
+    the trainer) or ``not_a_date`` (an explicit date column that does not hold dates;
     ``column`` is then that date column). The English message stays the ``str()``.
     """
 

@@ -85,6 +85,18 @@ def test_errors():
     assert feat_err.value.code == "no_features"
 
 
+def test_unique_class_target_is_refused():
+    # A text target where no value repeats (an id column) cannot be cross-validated.
+    from mide.automl.task_detector import TargetError
+
+    df = pd.DataFrame({"a": [float(i) for i in range(30)], "y": [f"C{i:03d}" for i in range(30)]})
+    with pytest.raises(TargetError, match="is unique") as err:
+        train(df, "y")
+    assert (err.value.code, err.value.column) == ("unique_values", "y")
+    df["y"] = ["a", "b"] * 15
+    assert train(df, "y").task.task is TaskType.CLASSIFICATION
+
+
 def test_feature_prep_dates():
     df = pd.DataFrame({"d": ["2024-01-05", "2024-02-06"], "y": [1.5, 2.5]})
     prep = FeaturePrep("y").fit(df)
