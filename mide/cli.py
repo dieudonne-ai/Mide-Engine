@@ -109,6 +109,19 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
     "doctor_gpu_none": {"fr": "aucun", "en": "none"},
     "doctor_disk": {"fr": "Espace disque libre : {value} Go", "en": "Disk free: {value} GB"},
     "doctor_profile": {"fr": "Profil : {value}", "en": "Profile: {value}"},
+    "models_installed": {"fr": "installé", "en": "installed"},
+    "models_not_installed": {"fr": "non installé", "en": "not installed"},
+    "models_no_profile": {
+        "fr": ("Erreur : aucun modèle configuré pour le profil '{name}'. "
+               "Profils configurés : {configured}"),
+        "en": "Error: no model configured for profile '{name}'. Configured profiles: {configured}",
+    },
+    "models_none": {"fr": "aucun", "en": "none"},
+    "models_confirm": {
+        "fr": "Télécharger {url} ({size}) depuis internet ?",
+        "en": "Download {url} ({size}) from the internet?",
+    },
+    "models_ready": {"fr": "Modèle prêt : {value}", "en": "Model ready: {value}"},
 }
 
 
@@ -193,8 +206,9 @@ models_app = typer.Typer(help="Manage local LLM weights.", no_args_is_help=True)
 app.add_typer(models_app, name="models")
 
 
-def _fmt_size(size: int | None) -> str:
-    return "?" if size is None else f"{size / 1e9:.2f} GB"
+def _fmt_size(size: int | None, language: str = "en") -> str:
+    unit = "Go" if language == "fr" else "GB"
+    return "?" if size is None else f"{size / 1e9:.2f} {unit}"
 
 
 @models_app.command("list")
@@ -205,8 +219,10 @@ def models_list(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     except ConfigError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
+    language = _language_of(cfg.language)
     for info in list_models(cfg.models.profiles, cfg.app_dir / "models"):
-        state = "installed" if info.installed else "not installed"
+        key = "models_installed" if info.installed else "models_not_installed"
+        state = _sources_msg(key, language)
         typer.echo(f"{info.profile}: {info.repo}/{info.file} [{state}]")
 
 
@@ -239,12 +255,13 @@ def models_pull(
     except ConfigError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
+    language = _language_of(cfg.language)
     name = profile or profile_hardware().profile
     models = cfg.models.profiles.get(name)  # type: ignore[call-overload]
     if models is None:
-        configured = ", ".join(cfg.models.profiles) or "none"
+        configured = ", ".join(cfg.models.profiles) or _sources_msg("models_none", language)
         typer.echo(
-            f"Error: no model configured for profile '{name}'. Configured profiles: {configured}",
+            _sources_msg("models_no_profile", language, name=name, configured=configured),
             err=True,
         )
         raise typer.Exit(1)
@@ -252,7 +269,9 @@ def models_pull(
     def confirm(url: str, size: int | None) -> bool:
         if yes:
             return True
-        return typer.confirm(f"Download {url} ({_fmt_size(size)}) from the internet?")
+        return typer.confirm(
+            _sources_msg("models_confirm", language, url=url, size=_fmt_size(size, language))
+        )
 
     last = {"pct": -1}
 
@@ -268,7 +287,7 @@ def models_pull(
     except DownloadError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
-    typer.echo(f"Model ready: {path}")
+    typer.echo(_sources_msg("models_ready", language, value=str(path)))
 
 
 def _get_embedder(cfg: Config) -> Embedder:
