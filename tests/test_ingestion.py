@@ -114,11 +114,25 @@ def test_scan_cli_follows_language(tmp_path: Path) -> None:
     assert " lignes x " in fr.output and " colonnes" in fr.output
     assert "colonnes de date : date" in fr.output
     assert "cibles possibles : " in fr.output
-    assert "[erreur] " in fr.output and "broken : " in fr.output
+    assert "[erreur] " in fr.output and "bad.xlsx : " in fr.output
     (cfg / "default.yaml").write_text("language: en\n", encoding="utf-8")
     en = runner.invoke(app, args)
     assert en.exit_code == 0, en.output
     assert " rows x " in en.output and " cols" in en.output
     assert "date columns: date" in en.output
     assert "target candidates: " in en.output
-    assert "[error] " in en.output and "broken: " in en.output
+    assert "[error] " in en.output and "bad.xlsx: " in en.output
+
+
+def test_catalog_corrupt_workbook_reports_only_that_file(tmp_path: Path) -> None:
+    # One unreadable workbook must not turn the whole folder into an error.
+    _sales_df().to_csv(tmp_path / "ventes.csv", index=False)
+    (tmp_path / "notes.txt").write_text("Meeting notes", encoding="utf-8")
+    (tmp_path / "bad.xlsx").write_bytes(b"not an excel file")
+    entries = build_catalog([str(tmp_path)])
+    errors = [e for e in entries if e.error]
+    assert len(errors) == 1
+    assert errors[0].item.endswith("bad.xlsx") and errors[0].kind == "excel"
+    csv_entry = next(e for e in entries if e.kind == "csv")
+    assert csv_entry.rows == 60 and csv_entry.profile is not None
+    assert any(e.kind == "document" for e in entries)

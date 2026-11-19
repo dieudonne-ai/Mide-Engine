@@ -144,3 +144,12 @@ def test_cli_index_summary_follows_language(tmp_path, monkeypatch, fake_embedder
     assert en.exit_code == 0, en.output
     assert "Indexed: 0 new, 0 updated, 3 unchanged, 0 removed (0 new chunks)." in en.output
     assert "[error] " in en.output and "broken.pdf: " in en.output
+
+
+def test_corrupt_workbook_does_not_block_index(tmp_path, fake_embedder):
+    # The other files of the folder are still indexed; only the workbook is in error.
+    src = _make_source(tmp_path)
+    (src / "bad.xlsx").write_bytes(b"not an excel file")
+    report = index_sources([str(src)], tmp_path / "idx", fake_embedder)
+    assert report.new_chunks > 0
+    assert len(report.errors) == 1 and next(iter(report.errors)).endswith("bad.xlsx")

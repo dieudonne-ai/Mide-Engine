@@ -9,7 +9,7 @@ from pathlib import Path
 from mide.connectors.base import is_url
 from mide.connectors.files import DocumentConnector
 from mide.connectors.sql import SQLConnector
-from mide.connectors.tabular import TabularConnector
+from mide.connectors.tabular import EXCEL_EXTENSIONS, TabularConnector, split_item
 from mide.ingestion.profiling import DatasetProfile, profile_dataframe
 
 logger = logging.getLogger("mide.ingestion.catalog")
@@ -42,7 +42,8 @@ def _tabular_entries(source: str, authorized: list[str]) -> list[CatalogEntry]:
             )
         except Exception as exc:  # noqa: BLE001 - unreadable file: report it, keep scanning
             logger.warning("Cannot profile %s: %s", item, exc)
-            entries.append(CatalogEntry(source, item, "csv", error=str(exc)))
+            kind = "excel" if Path(split_item(item)[0]).suffix.lower() in EXCEL_EXTENSIONS else "csv"
+            entries.append(CatalogEntry(source, item, kind, error=str(exc)))
     return entries
 
 

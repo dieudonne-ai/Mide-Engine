@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import logging
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,8 @@ from typing import Any
 import pandas as pd
 
 from mide.connectors.base import BaseConnector, ensure_authorized
+
+logger = logging.getLogger("mide.connectors.tabular")
 
 CSV_EXTENSIONS = {".csv", ".tsv"}
 EXCEL_EXTENSIONS = {".xlsx", ".xlsm"}
@@ -70,11 +73,24 @@ class TabularConnector(BaseConnector):
         items: list[str] = []
         for path in self._files():
             if path.suffix.lower() in EXCEL_EXTENSIONS:
-                with pd.ExcelFile(path, engine="openpyxl") as xls:
-                    items.extend(f"{path}{SHEET_SEP}{name}" for name in xls.sheet_names)
+                items.extend(self._excel_items(path))
             else:
                 items.append(str(path))
         return items
+
+    @staticmethod
+    def _excel_items(path: Path) -> list[str]:
+        """One item per sheet; an unreadable workbook stays a single item.
+
+        Its read error then surfaces for that file only instead of aborting
+        the discovery of the whole folder.
+        """
+        try:
+            with pd.ExcelFile(path, engine="openpyxl") as xls:
+                return [f"{path}{SHEET_SEP}{name}" for name in xls.sheet_names]
+        except Exception as exc:  # noqa: BLE001 - corrupt workbook: keep discovering
+            logger.warning("Cannot open workbook %s: %s", path.name, type(exc).__name__)
+            return [str(path)]
 
     def read(self, item: str, nrows: int | None = None) -> pd.DataFrame:
         path_s, sheet = split_item(item)
