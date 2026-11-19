@@ -76,7 +76,11 @@ def sources_list(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
 def sources_remove(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     """Revoke an authorized source."""
     if not remove_source(source, config_dir):
-        typer.echo(f"Error: source not listed: {source}", err=True)
+        listed = list_sources(config_dir)
+        hint = (
+            f"Authorized sources: {', '.join(listed)}" if listed else "No authorized sources."
+        )
+        typer.echo(f"Error: source not listed: {source}. {hint}", err=True)
         raise typer.Exit(1)
     typer.echo(f"Source removed: {source}")
 

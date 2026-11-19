@@ -107,3 +107,18 @@ def test_cli_sources_roundtrip(tmp_path: Path) -> None:
     assert runner.invoke(app, ["sources", "remove", str(data), *args]).exit_code == 0
     assert runner.invoke(app, ["sources", "remove", str(data), *args]).exit_code == 1
     assert runner.invoke(app, ["sources", "add", str(tmp_path / "x"), *args]).exit_code == 1
+
+
+def test_cli_sources_remove_unknown_lists_sources(tmp_path: Path) -> None:
+    cfg = tmp_path / "cfg"
+    data = tmp_path / "data"
+    data.mkdir()
+    args = ["--config-dir", str(cfg)]
+    res = runner.invoke(app, ["sources", "remove", str(tmp_path / "nope"), *args])
+    assert res.exit_code == 1
+    assert "No authorized sources." in res.output
+    runner.invoke(app, ["sources", "add", str(data), *args])
+    res = runner.invoke(app, ["sources", "remove", str(tmp_path / "nope"), *args])
+    assert res.exit_code == 1
+    assert f"Authorized sources: {data.resolve()}" in res.output
+    assert list_sources(cfg) == [str(data.resolve())]
