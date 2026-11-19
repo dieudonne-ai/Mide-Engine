@@ -223,7 +223,27 @@ def test_budget_action_single_move_keeps_short_text():
     mkt = {"marketing": Finding("marketing", {"move Radio": "500 to Email", "best channel": "Email"})}
     action = _actions(mkt, fr=True)[0]
     assert action.text == "Réallouer le budget depuis Radio"
-    assert action.evidence == "500 to Email; best channel: Email"
+    assert action.evidence == "500 to Email; meilleur canal: Email"
+
+
+def test_action_evidence_labels_follow_language():
+    from mide.agent.decision import Finding
+    from mide.report import _actions
+
+    f = {"customers": Finding("customers", {"churn": "4 customers"}),
+         "marketing": Finding("marketing", {"move Radio": "500 to Email", "best channel": "Email",
+                                            "attribution check": "2x"}),
+         "sales": Finding("sales", {"trend": "up", "forecast 30d": "100"})}
+    fr = [a.evidence for a in _actions(f, fr=True)]
+    assert fr == ["risque de départ: 4 customers",
+                  "500 to Email; meilleur canal: Email; contrôle d'attribution: 2x",
+                  "tendance: up; prévision à 30 jours: 100"]
+    en = [a.evidence for a in _actions(f, fr=False)]
+    assert en == ["churn: 4 customers",
+                  "500 to Email; best channel: Email; attribution check: 2x",
+                  "trend: up; forecast 30d: 100"]
+    only_best = {"marketing": Finding("marketing", {"best channel": "Email"})}
+    assert _actions(only_best, fr=True)[0].evidence == "meilleur canal: Email"
 
 
 @pytest.mark.parametrize("language", ["fr", "en"])
