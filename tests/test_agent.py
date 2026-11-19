@@ -227,6 +227,20 @@ def test_insights_orders_use_thousands_separator(data):
     assert "," in facts["orders"]
 
 
+def test_insights_average_order_value_cites_its_basis(data):
+    # "average order value: 43" alone does not say what it divides; cite revenue / orders.
+    facts = run_modules(["insights"], data)[0].facts
+    assert facts["average order value"] == "43 (735,907 / 17,037 orders)"
+
+
+def test_insights_average_order_value_basis_on_small_table():
+    days = pd.date_range("2024-01-01", periods=60, freq="D")
+    sales = pd.DataFrame({"date": days, "amount": [10.0] * 60,
+                          "order_id": [i // 2 for i in range(60)]})
+    facts = run_modules(["insights"], BusinessData(sales=sales))[0].facts
+    assert facts["average order value"] == "20 (600 / 30 orders)"
+
+
 def test_reallocation_estimate_is_flagged_as_upper_bound(data):
     # The extra revenue is a linear, optimistic estimate: the figure must say so
     # and cite the ROAS it is based on (explainability).
