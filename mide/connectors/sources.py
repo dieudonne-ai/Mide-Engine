@@ -66,3 +66,22 @@ def remove_source(source: str, config_dir: Path | None = None) -> bool:
     sources.remove(value)
     _save(sources, config_dir)
     return True
+
+
+def source_owning(path: Path, sources: list[str]) -> str | None:
+    """Return the authorized source that holds the existing file ``path``, if any.
+
+    Used before MIDE writes a file, so it never overwrites the user's data
+    (sources are read-only). SQL URLs hold no local file and are skipped.
+    """
+    target = Path(path).expanduser()
+    if not target.exists():
+        return None
+    target = target.resolve()
+    for src in sources:
+        if is_url(src):
+            continue
+        root = Path(src).expanduser().resolve()
+        if target == root or root in target.parents:
+            return src
+    return None

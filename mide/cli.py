@@ -17,7 +17,7 @@ from mide.automl.registry import save_model
 from mide.automl.trainer import train as train_model
 from mide.config import Config, ConfigError, load_config
 from mide.connectors.base import is_url
-from mide.connectors.sources import add_source, list_sources, remove_source
+from mide.connectors.sources import add_source, list_sources, remove_source, source_owning
 from mide.connectors.sql import SQLConnector
 from mide.connectors.tabular import TabularConnector
 from mide.hardware.profiler import profile_hardware
@@ -453,6 +453,21 @@ REPORT_FORMAT_OPTION = typer.Option("md", "--format", help="md or html.")
 REPORT_OUTPUT_OPTION = typer.Option(None, "--output", "-o", help="Output file (default: stdout).")
 
 
+def _refuse_source_overwrite(output: Path, sources: list[str], language: str) -> None:
+    """Exit with an error when ``output`` would overwrite a file of an authorized source."""
+    owner = source_owning(output, sources)
+    if owner is None:
+        return
+    if language == "fr":
+        msg = (f"Erreur : {output} fait partie de la source autorisée {owner}. "
+               "MIDE ne modifie jamais vos données ; choisissez un autre fichier de sortie.")
+    else:
+        msg = (f"Error: {output} belongs to the authorized source {owner}. "
+               "MIDE never modifies your data; choose another output file.")
+    typer.echo(msg, err=True)
+    raise typer.Exit(1)
+
+
 @app.command("report")
 def report_command(
     fmt: str = REPORT_FORMAT_OPTION,
@@ -466,7 +481,10 @@ def report_command(
         typer.echo("Format must be 'md' or 'html'.", err=True)
         raise typer.Exit(2)
     cfg = load_config(config_dir)
-    tables = detect_tables(_load_all_datasets(list_sources(config_dir)))
+    sources = list_sources(config_dir)
+    if output is not None:
+        _refuse_source_overwrite(output, sources, cfg.language)
+    tables = detect_tables(_load_all_datasets(sources))
     report = build_report(tables, cfg.language)
     text = render_html(report) if fmt == "html" else render_markdown(report)
     if output is None:
