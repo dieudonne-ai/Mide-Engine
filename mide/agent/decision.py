@@ -124,7 +124,8 @@ def _sales_finding(df: pd.DataFrame, products: pd.DataFrame | None = None) -> Fi
     if ranking is not None:
         names = sales.product_names(products) if products is not None else {}
         facts["top products"] = _product_list(ranking["top"], names)
-        facts["flop products"] = _product_list(ranking["flop"], names)
+        if not ranking["flop"].empty:
+            facts["flop products"] = _product_list(ranking["flop"], names)
     return Finding("sales", facts)
 
 

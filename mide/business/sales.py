@@ -116,7 +116,8 @@ def product_ranking(df: pd.DataFrame, n: int = 3, product_col: str = "product_id
     """Top and flop products by revenue, with their share of total revenue.
 
     With ``names`` (see :func:`product_names`), a ``name`` column is added; unknown ids
-    get an empty name.
+    get an empty name. A product is never both top and flop: with fewer than ``2 * n``
+    products, the flop list only holds those left after the top ``n`` (it can be empty).
     """
     revenue = (pd.to_numeric(df[amount_col], errors="coerce")
                .groupby(df[product_col]).sum().sort_values(ascending=False))
@@ -124,7 +125,9 @@ def product_ranking(df: pd.DataFrame, n: int = 3, product_col: str = "product_id
     table["share_pct"] = table["revenue"] / table["revenue"].sum() * 100
     if names:
         table.insert(0, "name", [names.get(str(pid), "") for pid in table.index])
-    return {"top": table.head(n), "flop": table.tail(n).iloc[::-1]}
+    top = table.head(n)
+    rest = table.iloc[len(top):]
+    return {"top": top, "flop": rest.tail(n).iloc[::-1]}
 
 
 # --------------------------------------------------------------------- trends

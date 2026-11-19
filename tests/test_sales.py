@@ -48,6 +48,15 @@ def test_product_ranking_finds_top_and_flop(sales):
     assert rank["top"]["share_pct"].iloc[0] > rank["flop"]["share_pct"].iloc[0]
 
 
+def test_product_ranking_never_lists_a_top_product_as_flop():
+    # With fewer than 2 * n products, the flop list holds only those left after the top.
+    df = pd.DataFrame({"product_id": ["A", "B", "C"], "amount": [300.0, 200.0, 100.0]})
+    rank = product_ranking(df, n=2)
+    assert list(rank["top"].index) == ["A", "B"]
+    assert list(rank["flop"].index) == ["C"]
+    assert product_ranking(df, n=3)["flop"].empty
+
+
 def test_trend_is_growing(sales):
     trend = sales_trend(sales)
     assert trend.direction == "up"
