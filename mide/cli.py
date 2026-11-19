@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -80,6 +81,13 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "Aucun modèle entraîné. Utilisez `mide train --dataset X --target Y`.",
         "en": "No trained models. Use `mide train --dataset X --target Y`.",
     },
+    "trained_line": {
+        "fr": "{name} v{version} [{task}] cible={target} {metric}={score} bat_reference={beats}",
+        "en": ("{name} v{version} [{task}] target={target} {metric}={score} "
+               "beats_baseline={beats}"),
+    },
+    "yes": {"fr": "oui", "en": "True"},
+    "no": {"fr": "non", "en": "False"},
     "report_format": {
         "fr": "Le format doit être 'md' ou 'html'.",
         "en": "Format must be 'md' or 'html'.",
@@ -356,18 +364,32 @@ def models_list(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
 @models_app.command("trained")
 def models_trained(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     """List the models trained by `mide train`."""
-    cfg = load_config(config_dir)
+    try:
+        cfg = load_config(config_dir)
+    except ConfigError as exc:
+        _echo_error(exc, _cli_language(config_dir))
+        raise typer.Exit(1) from exc
+    language = _language_of(cfg.language)
     records = list_trained_models(cfg.app_dir / "models_trained")
     if not records:
-        typer.echo(_sources_msg("no_models_hint", _language_of(cfg.language)))
+        typer.echo(_sources_msg("no_models_hint", language))
         return
     for r in records:
-        m = r.metadata
-        score = m["metrics"].get(m["primary_metric"])
-        typer.echo(
-            f"{r.name} v{r.version} [{m['task']}] target={m['target']} "
-            f"{m['primary_metric']}={score:.4g} beats_baseline={m['beats_baseline']}"
-        )
+        typer.echo(_trained_line(r.name, r.version, r.metadata, language))
+
+
+def _trained_line(name: str, version: int, meta: dict[str, Any], language: str) -> str:
+    """One line of ``mide models trained`` in ``language`` (task names localized)."""
+    task_key = f"task_{meta.get('task')}"
+    task = (_sources_msg(task_key, language) if task_key in SOURCES_MESSAGES
+            else str(meta.get("task")))
+    metric = str(meta.get("primary_metric"))
+    score = meta.get("metrics", {}).get(metric)
+    score_text = f"{score:.4g}" if isinstance(score, int | float) else "?"
+    beats = _sources_msg("yes" if meta.get("beats_baseline") else "no", language)
+    return _sources_msg("trained_line", language, name=name, version=str(version), task=task,
+                        target=str(meta.get("target")), metric=metric, score=score_text,
+                        beats=beats)
 
 
 @models_app.command("pull")

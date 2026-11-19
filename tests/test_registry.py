@@ -179,3 +179,42 @@ def test_cli_train_output_follows_language(demo_data, tmp_path, monkeypatch):
         assert res.exit_code == 0, res.output
         for line in lines:
             assert line in res.output, (language, line)
+
+
+def test_cli_models_trained_follows_language(demo_data, tmp_path, monkeypatch):
+    # `mide models trained` lines are localized; English keeps the historical format.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    runner = CliRunner()
+    opt = ["--config-dir", str(cfg)]
+    runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
+    res = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amount", *opt])
+    assert res.exit_code == 0, res.output
+    res = runner.invoke(app, ["models", "trained", *opt])
+    assert res.exit_code == 0, res.output
+    assert "sales-amount v1 [série temporelle] cible=amount " in res.output
+    assert "bat_reference=oui" in res.output
+    (cfg / "default.yaml").write_text("language: en\n", encoding="utf-8")
+    res = runner.invoke(app, ["models", "trained", *opt])
+    assert res.exit_code == 0, res.output
+    assert "sales-amount v1 [time_series] target=amount " in res.output
+    assert "beats_baseline=True" in res.output
+
+
+def test_cli_models_trained_invalid_config(tmp_path):
+    # A broken config gives a clear error instead of a traceback.
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    (cfg / "default.yaml").write_text("language: de\n", encoding="utf-8")
+    res = CliRunner().invoke(app, ["models", "trained", "--config-dir", str(cfg)])
+    assert res.exit_code == 1
+    assert "Erreur :" in res.output and "language" in res.output
+    assert res.exception is None or isinstance(res.exception, SystemExit)
+
+
+def test_trained_line_handles_missing_score():
+    from mide.cli import _trained_line
+
+    meta = {"task": "regression", "target": "y", "primary_metric": "mae",
+            "metrics": {}, "beats_baseline": False}
+    assert _trained_line("m", 2, meta, "fr") == "m v2 [régression] cible=y mae=? bat_reference=non"

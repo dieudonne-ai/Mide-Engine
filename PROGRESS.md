@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide models trained` follows the `language` setting and handles a broken config (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #92 was already merged; suite green at start (353 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). `mide models trained` printed raw English values ("[time_series] target=… beats_baseline=True") even with `language: fr`, crashed with a traceback on an invalid config, and would crash on a model whose metric is missing. In French each line now reads "sales-amount v1 [série temporelle] cible=amount mae=… bat_reference=oui"; English output is unchanged. An invalid config prints "Erreur : …" and exits with code 1; a missing score prints "?".
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_registry.py`
+- **Tests :** 356 passed, 2 skipped (3 new: FR/EN lines of `mide models trained`, invalid config, missing score; all three fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-tir5nq -> main
+- **Décisions techniques :** the line format lives in `SOURCES_MESSAGES` (`trained_line`, `yes`, `no`) and reuses the existing `task_*` names. The English line keeps the exact old format (`time_series`, `True`/`False`) so scripts parsing it still work.
+- **Problèmes / dette technique :** "Unknown profile" and "A time series task needs a date column" stay English (internal errors). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: `mide ui` errors follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #91 was already merged; suite green at start (349 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). `mide ui` printed "Streamlit is not installed: pip install 'mide-engine[ui]'" and "Dashboard not found: …" in English only, although `language` defaults to `fr`. In French they now read "Erreur : Streamlit n'est pas installé : pip install 'mide-engine[ui]'" and "Erreur : tableau de bord introuvable : …"; in English they get the same "Error: " prefix as the other CLI errors.
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_dashboard.py`
