@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: churn action names every at-risk customer it can (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #65 was already merged; suite green at start (312 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed the churn figure behind priority action 1 ("Relancer les clients à risque") as "4 customers at high risk (top: C0093, C0320, C0348, ...)": one of the four customers to contact was hidden behind "...", which saves no space. Now, when only one name would be hidden, all are named; when more are hidden, the text says how many ("top: L5, L4, L3, +3 more"). This shows up in `mide ask`, the agent figures, the LLM prompt and the report.
+- **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
+- **Tests :** 313 passed, 2 skipped (1 new test, 1 updated from "..." to "+3 more"; both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-1eiguh -> main
+- **Décisions techniques :** text-only change; `churn_risk` and the order of customers (most valuable first) are unchanged. The cap of 3 named customers stays, plus one when that names everyone.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged. Sandbox note: the Debian `cryptography` package needs `pip install --ignore-installed cffi cryptography` before `pypdf` imports work.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: average order value cites revenue / orders (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #64 was already merged; suite green at start (310 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed the KPI "average order value: 43" with nothing behind it, so the reader could not tell what was divided by what. It now reads "43 (735,907 / 17,037 orders)". This shows up in `mide ask`, the agent figures, the LLM prompt and the report's "Indicateurs clés".
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`

@@ -271,8 +271,16 @@ def _churn_sales(n_lost: int) -> pd.DataFrame:
 def test_churn_fact_names_most_valuable_at_risk_customers():
     from mide.agent.decision import _customers_finding
 
+    fact = _customers_finding(_churn_sales(6)).facts["churn"]
+    assert fact.startswith("6 customers at high risk (top: L5, L4, L3, +3 more)")
+
+
+def test_churn_fact_names_the_last_customer_instead_of_hiding_one():
+    from mide.agent.decision import _customers_finding
+
     fact = _customers_finding(_churn_sales(4)).facts["churn"]
-    assert fact.startswith("4 customers at high risk (top: L3, L2, L1, ...)")
+    assert fact.startswith("4 customers at high risk (top: L3, L2, L1, L0),")
+    assert "more" not in fact and "..." not in fact
 
 
 def test_churn_fact_without_overflow_has_no_ellipsis():
