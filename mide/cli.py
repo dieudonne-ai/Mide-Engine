@@ -123,6 +123,16 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
     },
     "models_ready": {"fr": "Modèle prêt : {value}", "en": "Model ready: {value}"},
     "error": {"fr": "Erreur : {value}", "en": "Error: {value}"},
+    "item_error": {"fr": "[erreur] {item} : {message}", "en": "[error] {item}: {message}"},
+    "index_done": {
+        "fr": ("Indexation : {new} nouveaux, {updated} mis à jour, {unchanged} inchangés, "
+               "{removed} retirés ({chunks} nouveaux extraits)."),
+        "en": ("Indexed: {new} new, {updated} updated, {unchanged} unchanged, "
+               "{removed} removed ({chunks} new chunks)."),
+    },
+    "scan_size": {"fr": " - {rows} lignes x {cols} colonnes", "en": " - {rows} rows x {cols} cols"},
+    "scan_dates": {"fr": "    colonnes de date : {value}", "en": "    date columns: {value}"},
+    "scan_targets": {"fr": "    cibles possibles : {value}", "en": "    target candidates: {value}"},
 }
 
 
@@ -192,20 +202,25 @@ def sources_remove(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> 
 def scan(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     """Show the catalog of datasets found in the authorized sources."""
     sources = list_sources(config_dir)
+    language = _cli_language(config_dir)
     if not sources:
-        typer.echo(_sources_msg("none_hint", _cli_language(config_dir)))
+        typer.echo(_sources_msg("none_hint", language))
         return
     for entry in build_catalog(sources):
         if entry.error:
-            typer.echo(f"[error] {entry.item}: {entry.error}")
+            typer.echo(_sources_msg("item_error", language, item=entry.item, message=entry.error))
             continue
-        size = "" if entry.rows is None else f" - {entry.rows} rows x {entry.n_columns} cols"
+        size = "" if entry.rows is None else _sources_msg(
+            "scan_size", language, rows=str(entry.rows), cols=str(entry.n_columns)
+        )
         typer.echo(f"[{entry.kind}] {entry.item}{size}")
         if entry.profile:
             if entry.profile.date_columns:
-                typer.echo(f"    date columns: {', '.join(entry.profile.date_columns)}")
+                value = ", ".join(entry.profile.date_columns)
+                typer.echo(_sources_msg("scan_dates", language, value=value))
             if entry.profile.target_candidates:
-                typer.echo(f"    target candidates: {', '.join(entry.profile.target_candidates)}")
+                value = ", ".join(entry.profile.target_candidates)
+                typer.echo(_sources_msg("scan_targets", language, value=value))
 
 
 models_app = typer.Typer(help="Manage local LLM weights.", no_args_is_help=True)
@@ -325,13 +340,20 @@ def index_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     except Exception as exc:
         _echo_error(exc, _language_of(cfg.language))
         raise typer.Exit(1) from exc
+    language = _language_of(cfg.language)
     typer.echo(
-        f"Indexed: {len(report.new_items)} new, {len(report.updated_items)} updated, "
-        f"{len(report.unchanged_items)} unchanged, {len(report.removed_items)} removed "
-        f"({report.new_chunks} new chunks)."
+        _sources_msg(
+            "index_done",
+            language,
+            new=str(len(report.new_items)),
+            updated=str(len(report.updated_items)),
+            unchanged=str(len(report.unchanged_items)),
+            removed=str(len(report.removed_items)),
+            chunks=str(report.new_chunks),
+        )
     )
     for item, message in report.errors.items():
-        typer.echo(f"[error] {item}: {message}")
+        typer.echo(_sources_msg("item_error", language, item=item, message=message))
 
 
 def _load_dataset(dataset: str, sources: list[str]):

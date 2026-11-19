@@ -120,6 +120,27 @@ def test_cli_index(tmp_path, monkeypatch, fake_embedder):
     runner = CliRunner()
     first = runner.invoke(cli.app, ["index", "--config-dir", str(cfg_dir)])
     assert first.exit_code == 0, first.output
-    assert "3 new" in first.output
+    assert "Indexation : 3 nouveaux" in first.output
     second = runner.invoke(cli.app, ["index", "--config-dir", str(cfg_dir)])
-    assert "0 new" in second.output and "0 new chunks" in second.output
+    assert "0 nouveaux" in second.output and "(0 nouveaux extraits)" in second.output
+
+
+def test_cli_index_summary_follows_language(tmp_path, monkeypatch, fake_embedder):
+    # The `mide index` summary and per-item error lines use the configured language.
+    src = _make_source(tmp_path)
+    (src / "broken.pdf").write_bytes(b"not a pdf")
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(cli, "_get_embedder", lambda cfg: fake_embedder)
+    cfg_dir = tmp_path / "cfg"
+    cfg_dir.mkdir()
+    (cfg_dir / "sources.yaml").write_text(f"sources:\n  - {src}\n")
+    args = ["index", "--config-dir", str(cfg_dir)]
+    fr = CliRunner().invoke(cli.app, args)
+    assert fr.exit_code == 0, fr.output
+    assert "Indexation : 3 nouveaux, 0 mis à jour, 0 inchangés, 0 retirés" in fr.output
+    assert "[erreur] " in fr.output and "broken.pdf : " in fr.output
+    (cfg_dir / "default.yaml").write_text("language: en\n", encoding="utf-8")
+    en = CliRunner().invoke(cli.app, args)
+    assert en.exit_code == 0, en.output
+    assert "Indexed: 0 new, 0 updated, 3 unchanged, 0 removed (0 new chunks)." in en.output
+    assert "[error] " in en.output and "broken.pdf: " in en.output
