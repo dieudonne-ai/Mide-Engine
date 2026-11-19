@@ -250,6 +250,11 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "La colonne cible '{column}' a moins de 2 valeurs distinctes",
         "en": "Target column '{column}' has fewer than 2 distinct values",
     },
+    "target_not_a_date": {
+        "fr": "La colonne '{column}' ne contient pas de dates : choisissez une colonne de date "
+              "pour --date-column",
+        "en": "Column '{column}' does not contain dates: pick a date column for --date-column",
+    },
     "column_kind_date": {"fr": "de date", "en": "date"},
     "llm_missing": {
         "fr": "Modèle non installé : lancez `mide models pull` ({value}).",

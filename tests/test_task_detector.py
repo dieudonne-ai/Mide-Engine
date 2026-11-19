@@ -67,6 +67,17 @@ def test_unknown_date_column_raises():
         detect_task(df, "a", date_column="nope")
 
 
+def test_explicit_date_column_must_hold_dates(demo_frames):
+    # Ids, numbers (read as nanosecond timestamps) and the target itself are refused.
+    sales = demo_frames["sales"]
+    for column, target in [("product_id", "amount"), ("unit_price", "amount"),
+                           ("amount", "amount"), ("product_id", "quantity")]:
+        with pytest.raises(TargetError, match="does not contain dates") as err:
+            detect_task(sales, target, date_column=column)
+        assert (err.value.code, err.value.column) == ("not_a_date", column)
+    assert detect_task(sales, "amount", date_column="date").task is TaskType.TIME_SERIES
+
+
 def test_constant_target_raises():
     with pytest.raises(ValueError, match="fewer than 2"):
         detect_task(pd.DataFrame({"a": ["x", "x", "x"]}), "a")

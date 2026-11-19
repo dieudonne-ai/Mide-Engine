@@ -195,6 +195,27 @@ def test_cli_train_target_errors_follow_language(tmp_path, monkeypatch):
         assert same_line in res.output, (language, res.output)
 
 
+def test_cli_train_non_date_column_follows_language(demo_data, tmp_path, monkeypatch):
+    # A --date-column without dates is refused instead of being ignored or misread.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    runner = CliRunner()
+    opt = ["--config-dir", str(cfg)]
+    runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
+    expected = {
+        "fr": "Erreur : La colonne 'unit_price' ne contient pas de dates",
+        "en": "Error: Column 'unit_price' does not contain dates",
+    }
+    for language, line in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        res = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amount",
+                                  "--date-column", "unit_price", *opt])
+        assert res.exit_code == 1
+        assert line in res.output, (language, res.output)
+    trained = tmp_path / "home" / "models_trained"
+    assert not trained.exists() or not any(trained.iterdir())
+
+
 def test_cli_train_unknown_dataset_follows_language(demo_data, tmp_path, monkeypatch):
     # The "dataset not found" error is fully in the configured language.
     monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
