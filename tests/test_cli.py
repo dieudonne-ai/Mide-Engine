@@ -101,3 +101,22 @@ def test_auto_without_rag_extra_still_retrains(tmp_path, monkeypatch) -> None:
     assert "Index: skipped (sentence-transformers is not installed)." in result.output
     assert len(calls) == 1 and any("sales.csv" in key for key in calls[0])
     assert "Aucun modèle entraîné" in result.output
+
+
+def test_error_prefix_follows_language(tmp_path, monkeypatch) -> None:
+    # Command failures use "Erreur :" in French (default) and "Error:" in English.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    args = ["--config-dir", str(cfg)]
+    for language, prefix in (("fr", "Erreur : "), ("en", "Error: ")):
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        result = runner.invoke(app, ["train", "--dataset", "nope", "--target", "y", *args])
+        assert result.exit_code == 1, language
+        assert result.output.startswith(prefix), (language, result.output)
+    # A broken config cannot give its language: the default (French) is used.
+    (cfg / "default.yaml").write_text("language: [\n", encoding="utf-8")
+    for command in (["models", "list"], ["index"], ["privacy"], ["auto"], ["finetune"]):
+        result = runner.invoke(app, [*command, *args])
+        assert result.exit_code == 1, command
+        assert result.output.startswith("Erreur : "), (command, result.output)
