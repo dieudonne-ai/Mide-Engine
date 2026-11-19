@@ -70,16 +70,19 @@ def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> l
             f"churn: {cust.facts['churn']}"))
     mkt = f.get("marketing")
     if mkt:
+        # The budget action rests on ROAS: carry the attribution caveat with it.
+        check = mkt.facts.get("attribution check")
+        caveat = f"; attribution check: {check}" if check else ""
         moves = [(k, v) for k, v in mkt.facts.items() if k.startswith("move ")]
         if moves:
             k, v = moves[0]
             out.append(Action(
                 (f"Réallouer le budget depuis {k[5:]}" if fr else f"Reallocate budget from {k[5:]}"),
-                f"{v}; best channel: {mkt.facts.get('best channel', '-')}"))
+                f"{v}; best channel: {mkt.facts.get('best channel', '-')}{caveat}"))
         elif "best channel" in mkt.facts:
             out.append(Action(
                 "Renforcer le canal le plus rentable" if fr else "Invest more in the best channel",
-                f"best channel: {mkt.facts['best channel']}"))
+                f"best channel: {mkt.facts['best channel']}{caveat}"))
     ins = f.get("insights")
     anomalies = [v for k, v in ins.facts.items() if k.startswith("anomaly ")] if ins else []
     anomalies = [a for a in anomalies if _is_recent(a, last_day)]
