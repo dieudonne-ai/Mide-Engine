@@ -23,12 +23,39 @@ def test_report_sections(tables):
         assert h in md
 
 
-def test_anomaly_action_cites_most_recent_alert(tables):
-    r = build_report(tables, "en")
-    anomalies = [a for a in r.alerts if a.startswith(("drop on", "spike on"))]
+def test_anomaly_action_cites_most_recent_anomaly(tables):
+    from mide.agent.decision import run_modules
+
+    facts = run_modules(["insights"], tables)[0].facts
+    anomalies = [v for k, v in facts.items() if k.startswith("anomaly ")]
     assert len(anomalies) >= 2
-    action = next(a for a in r.actions if "latest sales anomaly" in a.text)
+    action = next(a for a in build_report(tables, "en").actions
+                  if "latest sales anomaly" in a.text)
     assert action.evidence == anomalies[-1]
+
+
+def test_recent_anomaly_alerts_keeps_recent_and_counts_older():
+    from datetime import date
+
+    from mide.report import recent_anomaly_alerts
+
+    items = ["drop on 2024-06-01: 1 vs 9 expected (-89%)",
+             "spike on 2024-09-28 -> 2024-10-03: 9 vs 1 expected (+800%)",
+             "drop on 2024-12-20: 1 vs 9 expected (-89%)"]
+    last = date(2024, 12, 31)  # cutoff = 2024-10-02; a run counts by its last day
+    assert recent_anomaly_alerts(items, last, fr=False) == [
+        items[1], items[2], "1 older anomaly (before 2024-10-02) not listed"]
+    assert recent_anomaly_alerts(items[:1] * 2, last, fr=True) == [
+        "2 anomalie(s) plus ancienne(s) (avant le 2024-10-02) non listée(s)"]
+    assert recent_anomaly_alerts(items, None, fr=False) == items
+    assert recent_anomaly_alerts(["odd text"], last, fr=False) == ["odd text"]
+
+
+def test_report_alerts_skip_old_demo_anomalies(tables):
+    # Demo sales end 2024-12-31; the 4 anomalies all end before 2024-10-02.
+    alerts = build_report(tables, "en").alerts
+    assert not any(a.startswith(("drop on", "spike on")) for a in alerts)
+    assert "4 older anomalies (before 2024-10-02) not listed" in alerts
 
 
 def test_report_french_and_html(tables):
