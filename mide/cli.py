@@ -28,7 +28,7 @@ from mide.connectors.sources import (
     source_owning,
 )
 from mide.connectors.sql import SQLConnector
-from mide.connectors.tabular import TabularConnector
+from mide.connectors.tabular import TabularConnector, split_item
 from mide.hardware.profiler import profile_hardware
 from mide.ingestion.catalog import build_catalog
 from mide.llm.chat import ChatHistory
@@ -210,6 +210,12 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
     "dataset_not_found": {
         "fr": "Jeu de données introuvable dans les sources autorisées : {dataset}.{hint}",
         "en": "Dataset not found in authorized sources: {dataset}.{hint}",
+    },
+    "dataset_ambiguous": {
+        "fr": "Plusieurs jeux de données s'appellent '{dataset}' : {value}. "
+              "Indiquez le chemin complet avec --dataset.",
+        "en": "Several datasets are named '{dataset}': {value}. "
+              "Pass the full path with --dataset.",
     },
     "dataset_hint": {
         "fr": " Jeux de données disponibles : {value}",
@@ -591,34 +597,67 @@ def index_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
         typer.echo(_sources_msg("item_error", language, item=item, message=message))
 
 
+def dataset_label(item: str, source: str) -> str:
+    """Short, path-free name of a dataset item: file stem, ``file.xlsx::sheet`` or table."""
+    if is_url(source):
+        return item
+    path, sheet = split_item(item)
+    return Path(item).name if sheet else Path(path).stem
+
+
+def _dataset_connector(source: str, sources: list[str]) -> SQLConnector | TabularConnector | None:
+    """Connector for an authorized source, or ``None`` when the source is missing."""
+    if source_missing(source):
+        return None
+    if is_url(source):
+        return SQLConnector(source, sources)
+    if not Path(source).expanduser().exists():
+        return None
+    return TabularConnector(source, sources)
+
+
+def _read_item(source: str, sources: list[str], item: str):
+    conn = _dataset_connector(source, sources)
+    assert conn is not None
+    try:
+        return conn.read(item)
+    finally:
+        if isinstance(conn, SQLConnector):
+            conn.close()
+
+
 def _load_dataset(dataset: str, sources: list[str], language: str = "fr"):
     """Read one authorized dataset, matched by full item name or file/table name.
 
-    The "not found" error is written in ``language`` (``fr`` or ``en``).
+    Returns ``(item, label, frame)``. A full item name always wins; a short name that
+    matches several datasets is refused instead of silently taking the first one.
+    Errors are written in ``language`` (``fr`` or ``en``).
     """
-    from mide.connectors.tabular import split_item
-
     names: list[str] = []
+    matches: dict[str, str] = {}  # item -> source
     for source in sources:
-        if source_missing(source):
-            continue
-        conn: SQLConnector | TabularConnector | None = (
-            SQLConnector(source, sources) if is_url(source) else None
-        )
+        conn = _dataset_connector(source, sources)
         if conn is None:
-            if not Path(source).expanduser().exists():
-                continue
-            conn = TabularConnector(source, sources)
+            continue
         try:
-            for item in conn.discover():
-                base = Path(split_item(item)[0]).stem if not is_url(source) else item
-                if dataset in (item, base, Path(item).name):
-                    return item, conn.read(item)
-                names.append(base)
+            items = conn.discover()
         finally:
             if isinstance(conn, SQLConnector):
                 conn.close()
+        for item in items:
+            if dataset == item:
+                return item, dataset_label(item, source), _read_item(source, sources, item)
+            base = item if is_url(source) else Path(split_item(item)[0]).stem
+            if dataset in (base, Path(item).name):
+                matches.setdefault(item, source)
+            names.append(base)
     lang = _language_of(language)
+    if len(matches) > 1:
+        raise ValueError(_sources_msg(
+            "dataset_ambiguous", lang, dataset=dataset, value=", ".join(matches)))
+    if matches:
+        item, source = next(iter(matches.items()))
+        return item, dataset_label(item, source), _read_item(source, sources, item)
     hint = (_sources_msg("dataset_hint", lang, value=", ".join(sorted(set(names))))
             if names else "")
     raise ValueError(_sources_msg("dataset_not_found", lang, dataset=dataset, hint=hint))
@@ -649,7 +688,7 @@ def train_command(
     """Train a model on an authorized dataset and save it in the registry."""
     try:
         cfg = load_config(config_dir)
-        _item, df = _load_dataset(dataset, list_sources(config_dir), cfg.language)
+        item, label, df = _load_dataset(dataset, list_sources(config_dir), cfg.language)
         _check_columns(df, target, date_column, cfg.language)
         result = train_model(
             df, target, profile=profile_hardware().profile, seed=seed, date_column=date_column
@@ -658,8 +697,9 @@ def train_command(
         record = save_model(
             result,
             cfg.app_dir / "models_trained",
-            f"{dataset}-{target}",
-            {"evaluation": metrics, "dataset": dataset, "data_hash": fingerprint(df)},
+            f"{label}-{target}",
+            {"evaluation": metrics, "dataset": label, "item": item,
+             "data_hash": fingerprint(df)},
         )
     except Exception as exc:
         _echo_error(exc, _cli_language(config_dir))
