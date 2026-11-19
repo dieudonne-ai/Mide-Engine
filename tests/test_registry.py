@@ -84,7 +84,33 @@ def test_cli_train_and_list(demo_data, tmp_path, monkeypatch):
     assert "Jeux de données disponibles : sales" in bad.output
     bad = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amout", *opt])
     assert bad.exit_code == 1
-    assert "Available columns:" in bad.output and "amount" in bad.output
+    assert "Colonnes disponibles :" in bad.output and "amount" in bad.output
+
+
+def test_cli_train_unknown_column_follows_language(demo_data, tmp_path, monkeypatch):
+    # Wrong --target / --date-column errors are fully in the configured language.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    runner = CliRunner()
+    opt = ["--config-dir", str(cfg)]
+    runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
+    cases = {
+        "fr": [("Erreur : Colonne cible 'amout' introuvable dans le jeu de données. "
+                "Colonnes disponibles : "),
+               ("Erreur : Colonne de date 'jour' introuvable dans le jeu de données. "
+                "Colonnes disponibles : ")],
+        "en": ["Error: Target column 'amout' not found in dataset. Available columns: ",
+               "Error: Date column 'jour' not found in dataset. Available columns: "],
+    }
+    for language, (target_line, date_line) in cases.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        res = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amout", *opt])
+        assert res.exit_code == 1
+        assert target_line in res.output and "amount" in res.output, (language, res.output)
+        res = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amount",
+                                  "--date-column", "jour", *opt])
+        assert res.exit_code == 1
+        assert date_line in res.output and "amount" in res.output, (language, res.output)
 
 
 def test_cli_train_unknown_dataset_follows_language(demo_data, tmp_path, monkeypatch):
