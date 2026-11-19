@@ -27,7 +27,9 @@ def list_sources(config_dir: Path | None = None) -> list[str]:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         return SourcesConfig.model_validate(data).sources
     except Exception as exc:  # invalid yaml / schema
-        raise ConfigError(f"Invalid sources file {path}: {exc}") from exc
+        raise ConfigError(
+            f"Invalid sources file {path}: {exc}", "invalid_sources", path, str(exc)
+        ) from exc
 
 
 def _save(sources: list[str], config_dir: Path | None) -> None:

@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: config error details follow the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #94 was already merged; suite green at start (357 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). Config errors printed a French prefix with an English body ("Erreur : Invalid sources file …", "Erreur : Invalid YAML in …"). With `language: fr` they now read "Erreur : Fichier de sources invalide …", "YAML invalide dans …", "Configuration invalide dans …" or "… doit contenir un dictionnaire (clé: valeur) au premier niveau."; English output is unchanged.
+- **Fichiers principaux :** `mide/config.py`, `mide/connectors/sources.py`, `mide/cli.py`, `tests/test_cli.py`
+- **Tests :** 360 passed, 2 skipped (3 new parametrized cases: invalid YAML, non-mapping file and unknown key in `models.yaml`, FR and EN; `test_broken_sources_file_gives_clear_error` now expects the French text. All 4 fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-91munq -> main
+- **Décisions techniques :** `ConfigError` gets `code`, `path` and `detail`, like `TrainingError`; `_error_text` localizes it through `SOURCES_MESSAGES` (`config_*`). `str(exc)` keeps the exact English text. The `detail` (YAML parser / pydantic text) stays as is, since it is technical and points at the line or key.
+- **Problèmes / dette technique :** the Streamlit dashboard still shows "Configuration error: …" in English. "Unknown profile" and "A time series task needs a date column" stay English (internal errors the CLI cannot reach). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: a broken `sources.yaml` gives a clear error (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #93 was already merged; suite green at start (356 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). With a malformed `sources.yaml`, `mide scan`, `mide sources list/add/remove` fell through to the last-resort handler and printed the mixed "Error: Erreur inattendue : Invalid sources file …", always in French even with `language: en`. They now print "Erreur : Invalid sources file …" (or "Error: …" in English) and exit with code 1, without touching the file. The last-resort handler (`run_safely`) also uses the "Erreur :" prefix in French instead of always "Error:".
 - **Fichiers principaux :** `mide/cli.py`, `mide/utils/errors.py`, `tests/test_cli.py`, `tests/test_robustness.py`
