@@ -136,3 +136,25 @@ def test_catalog_corrupt_workbook_reports_only_that_file(tmp_path: Path) -> None
     csv_entry = next(e for e in entries if e.kind == "csv")
     assert csv_entry.rows == 60 and csv_entry.profile is not None
     assert any(e.kind == "document" for e in entries)
+
+
+def test_scan_warns_about_missing_source_in_language(tmp_path: Path) -> None:
+    # A source removed from disk is reported in the configured language, the others are scanned.
+    cfg = tmp_path / "config"
+    cfg.mkdir()
+    data = tmp_path / "data"
+    data.mkdir()
+    _sales_df().to_csv(data / "ventes.csv", index=False)
+    gone = tmp_path / "gone"
+    (cfg / "sources.yaml").write_text(f"sources:\n  - {data}\n  - {gone}\n", encoding="utf-8")
+    args = ["scan", "--config-dir", str(cfg)]
+    fr = runner.invoke(app, args)
+    assert fr.exit_code == 0, fr.output
+    assert f"Attention : source introuvable, ignorée : {gone}" in fr.output
+    assert "Source not found" not in fr.output
+    assert "ventes.csv" in fr.output
+    (cfg / "default.yaml").write_text("language: en\n", encoding="utf-8")
+    en = runner.invoke(app, args)
+    assert en.exit_code == 0, en.output
+    assert f"Warning: source not found, skipped: {gone}" in en.output
+    assert "ventes.csv" in en.output

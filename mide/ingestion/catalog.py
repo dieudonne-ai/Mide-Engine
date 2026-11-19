@@ -73,7 +73,7 @@ def build_catalog(sources: list[str]) -> list[CatalogEntry]:
                 entries.extend(_sql_entries(source, sources))
                 continue
             if not Path(source).expanduser().exists():
-                logger.warning("Source not found: %s", source)
+                logger.debug("Source not found: %s", source)
                 continue
             entries.extend(_tabular_entries(source, sources))
             entries.extend(_document_entries(source, sources))

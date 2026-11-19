@@ -152,7 +152,7 @@ def _scan_source(source, sources, old, process, chunk_size, overlap, max_mb) -> 
                 process(item, state, lambda t=table: summarize_table(conn.read(t), source, t))
         return
     if not Path(source).expanduser().exists():
-        logger.warning("Source not found: %s", source)
+        logger.debug("Source not found: %s", source)
         return
     tab = TabularConnector(source, sources)
     for item in tab.discover():

@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: missing-source warning of `mide scan` / `mide index` / `mide auto` follows the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #104 was already merged; suite green at start (408 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). When an authorized folder or file no longer exists, `mide scan`, `mide index` and `mide auto` printed the raw English log line "Source not found: <path>" even with `language: fr`. They now print "Attention : source introuvable, ignorée : <path>" in French and "Warning: source not found, skipped: <path>" in English (stderr); the other sources are still processed.
+- **Fichiers principaux :** `mide/cli.py`, `mide/ingestion/catalog.py`, `mide/rag/indexer.py`, `tests/test_ingestion.py`, `tests/test_store.py`
+- **Tests :** 410 passed, 0 skipped. 2 new: FR/EN missing-source warning for `mide scan` and `mide index` (both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-ay32c1 -> main
+- **Décisions techniques :** new CLI helper `_warn_missing_sources()` (message `source_missing` in `SOURCES_MESSAGES`), called before the catalog/index work; the library-level `logger.warning` in `catalog.py`/`indexer.py` became `logger.debug` so the English line is not printed twice. SQL URLs are not checked (their errors are already reported per source).
+- **Problèmes / dette technique :** "Unknown profile" and "A time series task needs a date column" stay English (internal errors). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: unusable target errors of `mide train` follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #103 was already merged; suite green at start (406 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `mide train` on an empty target column or a target with a single value printed "Erreur : Target column 'y' has no values" / "… has fewer than 2 distinct values" in English even with `language: fr`. In French it now reads "Erreur : La colonne cible 'y' ne contient aucune valeur" / "… a moins de 2 valeurs distinctes"; English output is unchanged.
 - **Fichiers principaux :** `mide/automl/task_detector.py`, `mide/cli.py`, `tests/test_task_detector.py`, `tests/test_registry.py`
