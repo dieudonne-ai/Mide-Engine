@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: average order value cites revenue / orders (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #64 was already merged; suite green at start (310 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed the KPI "average order value: 43" with nothing behind it, so the reader could not tell what was divided by what. It now reads "43 (735,907 / 17,037 orders)". This shows up in `mide ask`, the agent figures, the LLM prompt and the report's "Indicateurs clés".
+- **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
+- **Tests :** 312 passed, 2 skipped (2 new: exact text on the demo data and on a small synthetic table; both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-t9r5e8 -> main
+- **Décisions techniques :** text-only change; `compute_kpis` is unchanged. The order count is the same one the "orders" KPI shows (unique `order_id`, or rows if there is none).
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: weekly report budget action lists every suggested move (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #63 was already merged; suite green at start (309 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed that the report's alerts name two underperforming channels ("Radio, SMS"), but priority action 2 only said "Reallocate budget from Radio" and dropped the SMS move (6,396 to Email, est. up to 269,460) without a word. The action now lists every suggested move: "Reallocate budget from Radio, SMS", with each move cited as "Radio: ...; SMS: ...". With a single move the text is unchanged. Applies to `mide report` (Markdown/HTML) and `mide auto`.
 - **Fichiers principaux :** `mide/report.py`, `tests/test_report.py`

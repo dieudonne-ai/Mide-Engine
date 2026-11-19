@@ -204,7 +204,8 @@ def _insights_finding(df: pd.DataFrame) -> Finding:
               else f"{k.growth_30d:+.1%} (30 days to {k.end.date()} vs previous 30)")
     facts = {
         "revenue": f"{_money(k.total_revenue)} for {period}", "orders": f"{k.orders:,}",
-        "average order value": _money(k.avg_order_value),
+        "average order value": (f"{_money(k.avg_order_value)} "
+                                f"({_money(k.total_revenue)} / {k.orders:,} orders)"),
         "30d growth": growth,
     }
     # Keep the most recent anomalies (detection order is chronological).
