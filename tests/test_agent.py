@@ -354,6 +354,14 @@ def test_product_figure_without_catalog_cites_revenue():
     assert facts["top products"] == "A (4,500 = 75.0% of revenue), B (1,500 = 25.0% of revenue)"
 
 
+def test_no_flop_figure_when_every_product_is_already_top():
+    # Two products: both are top, so neither may be called a flop (A has 75% of revenue).
+    days = pd.date_range("2024-01-01", periods=60, freq="D")
+    df = pd.DataFrame({"date": days, "product_id": ["A", "A", "A", "B"] * 15, "amount": 100.0})
+    facts = run_modules(["sales"], BusinessData(sales=df))[0].facts
+    assert "flop products" not in facts
+
+
 def test_marketing_flags_attribution_above_total_sales(data):
     # Demo channels claim about twice total sales: the figures must say so.
     facts = run_modules(["marketing"], data)[0].facts

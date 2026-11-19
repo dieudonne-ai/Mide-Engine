@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: a top product is never also listed as a flop (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #67 was already merged; suite green at start (314 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. `product_ranking` took the top `n` and the bottom `n` products independently, so with fewer than `2 * n` products the same product was in both lists: with 2 products, `mide ask` said "flop products: B (25%), A (75%)", calling the best seller (75% of revenue) a flop. The dashboard (n=5) had the same overlap with fewer than 10 products. The flop list now only holds products left after the top; when none are left, the agent drops the "flop products" figure (the dashboard shows an empty table).
+- **Fichiers principaux :** `mide/business/sales.py`, `mide/agent/decision.py`, `tests/test_sales.py`, `tests/test_agent.py`
+- **Tests :** 316 passed, 2 skipped (2 new: 3 products with n=2 gives flop = [C] and n=3 gives no flop; 2 products give no "flop products" figure; both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-9fgpg3 -> main
+- **Décisions techniques :** the demo data (10 products) is unchanged: top 2 and flop 2 do not overlap there. Top products take priority over flop ones when the catalog is small.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: customer answer lists every RFM segment, including "At risk" (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #66 was already merged; suite green at start (313 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed that "Which customers are at risk of churn?" listed only the top 3 RFM segments by revenue (Champions, Needs attention, Loyal: 237 of 400 customers). The "At risk" segment (44 customers, 9.1% of revenue), the one the question is about, was hidden without a word, as were Hibernating and New / promising. RFM has at most six segments, so all of them are now listed. This shows up in `mide ask`, the agent figures and the LLM prompt.
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
