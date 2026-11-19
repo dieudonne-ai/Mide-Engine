@@ -10,7 +10,7 @@ import typer
 from mide import __version__
 from mide.agent.decision import Recommendation, detect_tables, recommend, run_modules
 from mide.agent.router import route_question
-from mide.automl.auto import AutoReport, fingerprint, retrain_if_changed
+from mide.automl.auto import AutoReport, ModelOutcome, fingerprint, retrain_if_changed
 from mide.automl.evaluator import evaluate
 from mide.automl.registry import list_models as list_trained_models
 from mide.automl.registry import save_model
@@ -133,6 +133,28 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
     "scan_size": {"fr": " - {rows} lignes x {cols} colonnes", "en": " - {rows} rows x {cols} cols"},
     "scan_dates": {"fr": "    colonnes de date : {value}", "en": "    date columns: {value}"},
     "scan_targets": {"fr": "    cibles possibles : {value}", "en": "    target candidates: {value}"},
+    "auto_scan": {
+        "fr": "Analyse : {value} jeux de données/documents.",
+        "en": "Scan: {value} datasets/documents.",
+    },
+    "auto_index": {"fr": "Indexation : {value}.", "en": "Index: {value}."},
+    "auto_index_counts": {
+        "fr": "{new} nouveaux, {updated} mis à jour, {unchanged} inchangés, {removed} retirés",
+        "en": "{new} new, {updated} updated, {unchanged} unchanged, {removed} removed",
+    },
+    "auto_index_skipped": {"fr": "ignorée ({value})", "en": "skipped ({value})"},
+    "auto_model": {"fr": "Modèle {name} : {status}", "en": "Model {name}: {status}"},
+    "auto_unchanged": {"fr": "inchangé", "en": "unchanged"},
+    "auto_kept": {"fr": "conservé", "en": "kept"},
+    "auto_promoted": {"fr": "remplacé", "en": "promoted"},
+    "auto_skipped": {"fr": "ignoré", "en": "skipped"},
+    "auto_error": {"fr": "erreur", "en": "error"},
+    "auto_detail_promoted": {"fr": "le nouveau modèle est meilleur", "en": "new model is better"},
+    "auto_detail_kept": {"fr": "l'ancien modèle est conservé", "en": "previous model kept"},
+    "auto_detail_skipped": {
+        "fr": "le jeu de données n'est plus disponible",
+        "en": "dataset no longer available",
+    },
 }
 
 
@@ -648,13 +670,16 @@ def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     if not sources:
         typer.echo(_sources_msg("none_hint", _language_of(cfg.language)))
         return
+    language = _language_of(cfg.language)
     report = AutoReport(n_datasets=len(build_catalog(sources)))
     try:
         try:
             embedder = _get_embedder(cfg)
         except EmbeddingError as exc:
             # Graceful degradation: without the `rag` extra, still retrain the models.
-            report.index_summary = f"skipped ({str(exc).rstrip('.')})"
+            report.index_summary = _sources_msg(
+                "auto_index_skipped", language, value=str(exc).rstrip(".")
+            )
         else:
             idx = index_sources(
                 sources,
@@ -664,9 +689,13 @@ def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
                 cfg.general.chunk_overlap,
                 cfg.general.max_file_size_mb,
             )
-            report.index_summary = (
-                f"{len(idx.new_items)} new, {len(idx.updated_items)} updated, "
-                f"{len(idx.unchanged_items)} unchanged, {len(idx.removed_items)} removed"
+            report.index_summary = _sources_msg(
+                "auto_index_counts",
+                language,
+                new=str(len(idx.new_items)),
+                updated=str(len(idx.updated_items)),
+                unchanged=str(len(idx.unchanged_items)),
+                removed=str(len(idx.removed_items)),
             )
         report.outcomes = retrain_if_changed(
             _load_all_datasets(sources),
@@ -675,15 +704,33 @@ def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
             profile=profile_hardware().profile,
         )
     except Exception as exc:
-        _echo_error(exc, _language_of(cfg.language))
+        _echo_error(exc, language)
         raise typer.Exit(1) from exc
-    typer.echo(f"Scan: {report.n_datasets} datasets/documents.")
-    typer.echo(f"Index: {report.index_summary}.")
+    typer.echo(_sources_msg("auto_scan", language, value=str(report.n_datasets)))
+    typer.echo(_sources_msg("auto_index", language, value=report.index_summary))
     if not report.outcomes:
-        typer.echo(_sources_msg("no_models_hint", _language_of(cfg.language)))
+        typer.echo(_sources_msg("no_models_hint", language))
     for o in report.outcomes:
-        scores = "" if o.new_score is None else f" ({o.old_score:.4g} -> {o.new_score:.4g})"
-        typer.echo(f"Model {o.name}: {o.status}{scores} {o.detail}".rstrip())
+        typer.echo(_auto_outcome_line(o, language))
+
+
+def _auto_outcome_line(outcome: ModelOutcome, language: str) -> str:
+    """One `mide auto` model line; status and known details follow ``language``."""
+    status_key = f"auto_{outcome.status}"
+    status = (
+        _sources_msg(status_key, language) if status_key in SOURCES_MESSAGES else outcome.status
+    )
+    line = _sources_msg("auto_model", language, name=outcome.name, status=status)
+    if outcome.new_score is not None:
+        line += f" ({outcome.old_score:.4g} -> {outcome.new_score:.4g})"
+    detail_key = f"auto_detail_{outcome.status}"
+    # Error details are exception texts: they are shown as they are.
+    detail = (
+        _sources_msg(detail_key, language) if detail_key in SOURCES_MESSAGES else outcome.detail
+    )
+    return f"{line} {detail}".rstrip()
+
+
 
 
 @app.command("chat")
