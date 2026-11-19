@@ -81,10 +81,29 @@ def test_cli_train_and_list(demo_data, tmp_path, monkeypatch):
     assert "sales-amount v1" in res.output
     bad = runner.invoke(app, ["train", "--dataset", "nope", "--target", "amount", *opt])
     assert bad.exit_code == 1
-    assert "Available datasets: sales" in bad.output
+    assert "Jeux de données disponibles : sales" in bad.output
     bad = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amout", *opt])
     assert bad.exit_code == 1
     assert "Available columns:" in bad.output and "amount" in bad.output
+
+
+def test_cli_train_unknown_dataset_follows_language(demo_data, tmp_path, monkeypatch):
+    # The "dataset not found" error is fully in the configured language.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    runner = CliRunner()
+    opt = ["--config-dir", str(cfg)]
+    runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
+    expected = {
+        "fr": "Erreur : Jeu de données introuvable dans les sources autorisées : nope. "
+              "Jeux de données disponibles : sales",
+        "en": "Error: Dataset not found in authorized sources: nope. Available datasets: sales",
+    }
+    for language, line in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        res = runner.invoke(app, ["train", "--dataset", "nope", "--target", "amount", *opt])
+        assert res.exit_code == 1
+        assert line in res.output, (language, res.output)
 
 
 def test_cli_train_output_follows_language(demo_data, tmp_path, monkeypatch):

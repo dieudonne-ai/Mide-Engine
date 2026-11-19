@@ -175,6 +175,18 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "le jeu de données n'est plus disponible",
         "en": "dataset no longer available",
     },
+    "dataset_not_found": {
+        "fr": "Jeu de données introuvable dans les sources autorisées : {dataset}.{hint}",
+        "en": "Dataset not found in authorized sources: {dataset}.{hint}",
+    },
+    "dataset_hint": {
+        "fr": " Jeux de données disponibles : {value}",
+        "en": " Available datasets: {value}",
+    },
+    "llm_missing": {
+        "fr": "Modèle non installé : lancez `mide models pull` ({value}).",
+        "en": "Model not installed: run `mide models pull` ({value}).",
+    },
 }
 
 
@@ -414,8 +426,11 @@ def index_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
         typer.echo(_sources_msg("item_error", language, item=item, message=message))
 
 
-def _load_dataset(dataset: str, sources: list[str]):
-    """Read one authorized dataset, matched by full item name or file/table name."""
+def _load_dataset(dataset: str, sources: list[str], language: str = "fr"):
+    """Read one authorized dataset, matched by full item name or file/table name.
+
+    The "not found" error is written in ``language`` (``fr`` or ``en``).
+    """
     from mide.connectors.tabular import split_item
 
     names: list[str] = []
@@ -436,8 +451,10 @@ def _load_dataset(dataset: str, sources: list[str]):
         finally:
             if isinstance(conn, SQLConnector):
                 conn.close()
-    hint = f" Available datasets: {', '.join(sorted(set(names)))}" if names else ""
-    raise ValueError(f"Dataset not found in authorized sources: {dataset}.{hint}")
+    lang = _language_of(language)
+    hint = (_sources_msg("dataset_hint", lang, value=", ".join(sorted(set(names))))
+            if names else "")
+    raise ValueError(_sources_msg("dataset_not_found", lang, dataset=dataset, hint=hint))
 
 
 @app.command("train")
@@ -451,7 +468,7 @@ def train_command(
     """Train a model on an authorized dataset and save it in the registry."""
     try:
         cfg = load_config(config_dir)
-        _item, df = _load_dataset(dataset, list_sources(config_dir))
+        _item, df = _load_dataset(dataset, list_sources(config_dir), cfg.language)
         result = train_model(
             df, target, profile=profile_hardware().profile, seed=seed, date_column=date_column
         )
@@ -487,7 +504,8 @@ def _get_llm(cfg: Config) -> LLM:
     spec = cfg.models.profiles[report.profile].llm  # type: ignore[index]
     path = model_path(cfg.app_dir / "models", spec)
     if not path.exists():
-        raise DownloadError(f"Model not installed: run `mide models pull` ({path.name}).")
+        raise DownloadError(
+            _sources_msg("llm_missing", _language_of(cfg.language), value=path.name))
     return load_llm(path, report)
 
 
@@ -837,7 +855,11 @@ def finetune_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
         typer.echo(reason)
         return
     docs = load_documents(list_sources(config_dir), cfg.general.max_file_size_mb)
-    llm = _get_llm(cfg)
+    try:
+        llm = _get_llm(cfg)
+    except DownloadError as exc:
+        _echo_error(exc, cfg.language)
+        raise typer.Exit(1) from exc
     base = spec.llm.repo.replace("-GGUF", "")  # type: ignore[union-attr]
     res = finetune(hw, allows, docs, llm, cfg.app_dir / "lora", peft_trainer(base),
                    lambda holdout, adapter: 0.0, cfg.language)

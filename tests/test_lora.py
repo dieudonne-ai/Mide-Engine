@@ -92,3 +92,25 @@ def test_cli_finetune_unavailable(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "profile_hardware", lambda *a, **k: CPU)
     r = CliRunner().invoke(cli.app, ["finetune", "--config-dir", str(tmp_path)])
     assert r.exit_code == 0 and "RAG" in r.output
+
+
+def test_cli_finetune_missing_llm_fails_cleanly_fr_en(tmp_path, monkeypatch):
+    # No LLM installed on a LoRA-capable machine: a clear message in the configured
+    # language and exit code 1, never a raw traceback or an English-only text in French.
+    _fake_torch(monkeypatch)
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(cli, "profile_hardware", lambda *a, **k: GPU)
+    monkeypatch.setattr(cli, "load_documents", lambda *a, **k: DOCS)
+    from mide.config import PACKAGED_DEFAULTS_DIR
+
+    (tmp_path / "models.yaml").write_bytes((PACKAGED_DEFAULTS_DIR / "models.yaml").read_bytes())
+    expected = {
+        "fr": "Erreur : Modèle non installé : lancez `mide models pull`",
+        "en": "Error: Model not installed: run `mide models pull`",
+    }
+    for language, line in expected.items():
+        (tmp_path / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        r = CliRunner().invoke(cli.app, ["finetune", "--config-dir", str(tmp_path)])
+        assert r.exit_code == 1, r.output
+        assert line in r.output, (language, r.output)
+        assert r.exception is None or isinstance(r.exception, SystemExit)
