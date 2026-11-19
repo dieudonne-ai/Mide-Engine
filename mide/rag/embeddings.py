@@ -9,6 +9,7 @@ from typing import Any, Protocol
 
 from mide.config import Config
 from mide.hardware.profiler import Profile
+from mide.utils.errors import MissingDependencyError
 
 DEFAULT_BATCH_SIZE = 32
 
@@ -18,6 +19,10 @@ BATCH_BY_PROFILE: dict[Profile, int] = {"tiny": 8, "small": 16, "medium": 32, "l
 
 class EmbeddingError(Exception):
     """Raised when the embedding model cannot be loaded or used."""
+
+
+class EmbeddingDependencyError(EmbeddingError, MissingDependencyError):
+    """``sentence-transformers`` is not installed (localized by the interfaces)."""
 
 
 class Embedder(Protocol):
@@ -56,10 +61,7 @@ class SentenceTransformerEmbedder:
             try:
                 from sentence_transformers import SentenceTransformer
             except ImportError as exc:
-                raise EmbeddingError(
-                    "sentence-transformers is not installed. Install it with "
-                    "`pip install mide-engine[rag]`."
-                ) from exc
+                raise EmbeddingDependencyError("sentence-transformers", "rag") from exc
             loader = SentenceTransformer
         self.model_name = model_name
         self.batch_size = batch_size

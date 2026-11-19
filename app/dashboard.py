@@ -106,13 +106,13 @@ def page_ask(data: dd.DashboardData, config_dir, lang: str) -> None:
     question = st.text_input(dd.ui_text("your_question", lang))
     if not question:
         return
-    from mide.cli import ask_answer
+    from mide.cli import _error_text, ask_answer
 
     try:
         with st.spinner(dd.ui_text("thinking", lang)):
             answer, used, sources = ask_answer(question, config_dir)
     except Exception as exc:  # noqa: BLE001 - show any engine error to the user
-        st.error(str(exc))
+        st.error(_error_text(exc, lang))
         return
     st.write(answer)
     if used:

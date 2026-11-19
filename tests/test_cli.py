@@ -262,3 +262,81 @@ def test_broken_models_file_error_follows_language(
         assert result.output.startswith(prefix), (language, result.output)
         assert text in result.output and other not in result.output, (language, result.output)
         assert "models.yaml" in result.output
+
+
+def test_missing_dependency_messages_follow_language(tmp_path, monkeypatch) -> None:
+    # `mide index`, `mide auto` and `mide chat` explain a missing optional extra in the
+    # configured language, without the "unexpected error" wording.
+    from mide import cli
+    from mide.llm.runtime import LLMDependencyError
+    from mide.rag.embeddings import EmbeddingDependencyError
+
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "sales.csv").write_text("x,amount\n1,2\n2,4\n", encoding="utf-8")
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    args = ["--config-dir", str(cfg)]
+    assert runner.invoke(app, ["sources", "add", str(data), *args]).exit_code == 0
+
+    def no_embedder(_cfg):
+        raise EmbeddingDependencyError("sentence-transformers", "rag")
+
+    def no_llm(_cfg):
+        raise LLMDependencyError("llama-cpp-python", "llm")
+
+    class OneDoc:
+        def __init__(self, *_a, **_k) -> None:
+            pass
+
+        def count(self) -> int:
+            return 1
+
+    monkeypatch.setattr(cli, "_get_embedder", no_embedder)
+    monkeypatch.setattr(cli, "_get_llm", no_llm)
+    monkeypatch.setattr(cli, "retrain_if_changed", lambda *a, **k: [])
+    monkeypatch.setattr(cli, "VectorStore", OneDoc)
+    expected = {
+        "fr": (("Erreur : sentence-transformers n'est pas installé. Installez-le avec "
+               "`pip install mide-engine[rag]`."),
+               ("Indexation : ignorée (sentence-transformers n'est pas installé. Installez-le "
+               "avec `pip install mide-engine[rag]`).")),
+        "en": (("Error: sentence-transformers is not installed. Install it with "
+               "`pip install mide-engine[rag]`."),
+               ("Index: skipped (sentence-transformers is not installed. Install it with "
+               "`pip install mide-engine[rag]`).")),
+    }
+    for language, (index_error, auto_line) in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        result = runner.invoke(app, ["index", *args])
+        assert result.exit_code == 1
+        assert index_error in result.output
+        assert "inattendue" not in result.output and "Unexpected" not in result.output
+        result = runner.invoke(app, ["auto", *args])
+        assert result.exit_code == 0, result.output
+        assert auto_line in result.output
+        result = runner.invoke(app, ["chat", *args], input="exit\n")
+        assert result.exit_code == 1
+        assert index_error in result.output
+
+
+def test_ask_without_llama_cpp_and_no_figures_gives_clear_error(tmp_path, monkeypatch) -> None:
+    # Documents-only question, no llama-cpp-python: a localized error, exit code 1.
+    from mide import cli
+    from mide.llm.runtime import LLMDependencyError
+
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+
+    def no_llm(_cfg):
+        raise LLMDependencyError("llama-cpp-python", "llm")
+
+    monkeypatch.setattr(cli, "_get_llm", no_llm)
+    monkeypatch.setattr(cli, "ask_answer", lambda *a, **k: cli._get_llm(None))
+    (cfg / "default.yaml").write_text("language: fr\n", encoding="utf-8")
+    result = runner.invoke(app, ["ask", "Que dit le rapport annuel ?", "--config-dir", str(cfg)])
+    assert result.exit_code == 1
+    assert ("Erreur : llama-cpp-python n'est pas installé. Installez-le avec "
+            "`pip install mide-engine[llm]`.") in result.output

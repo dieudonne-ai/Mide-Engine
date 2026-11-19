@@ -29,11 +29,12 @@ from mide.llm.chat import ChatHistory
 from mide.llm.downloader import DownloadError, download_model, list_models, model_path
 from mide.llm.lora import finetune, load_documents, peft_trainer, unavailable_reason
 from mide.llm.prompts import build_rag_prompt, sources_footer
-from mide.llm.runtime import LLM, load_llm
+from mide.llm.runtime import LLM, LLMError, load_llm
 from mide.rag.embeddings import Embedder, EmbeddingError, load_embedder
 from mide.rag.indexer import index_sources
 from mide.rag.retriever import Retriever
 from mide.rag.store import VectorStore
+from mide.utils.errors import MissingDependencyError, friendly_message
 from mide.utils.privacy import build_privacy_report
 
 logger = logging.getLogger(__name__)
@@ -340,11 +341,14 @@ def _task_line(info: TaskInfo, language: str) -> str:
 
 
 def _error_text(exc: BaseException, language: str) -> str:
-    """Text of ``exc`` in ``language``: coded target/training/config errors are localized."""
+    """Text of ``exc`` in ``language``: coded target/training/config errors and missing
+    optional dependencies are localized."""
     if isinstance(exc, TrainingError) and f"training_{exc.code}" in SOURCES_MESSAGES:
         return _sources_msg(f"training_{exc.code}", language, n=str(exc.n_rows))
     if isinstance(exc, TargetError) and f"target_{exc.code}" in SOURCES_MESSAGES:
         return _sources_msg(f"target_{exc.code}", language, column=exc.column)
+    if isinstance(exc, MissingDependencyError):
+        return friendly_message(exc, language)
     if isinstance(exc, ConfigError) and f"config_{exc.code}" in SOURCES_MESSAGES:
         return _sources_msg(f"config_{exc.code}", language, path=str(exc.path),
                             detail=exc.detail)
@@ -766,11 +770,12 @@ def ask_answer(question: str, config_dir: Path | None = None, source: str | None
             passages = Retriever(store, _get_embedder(cfg), top_k).retrieve(question, source=source)
     try:
         llm = _get_llm(cfg)
-    except DownloadError as exc:
+    except (DownloadError, LLMError) as exc:
         if not findings:
             raise
         # Graceful degradation: the figures are computed without the LLM.
-        rec = Recommendation(_no_llm_note(str(exc), cfg.language), findings, passages)
+        note = _no_llm_note(_error_text(exc, _language_of(cfg.language)), cfg.language)
+        rec = Recommendation(note, findings, passages)
         return rec.text, rec.data_used(cfg.language), sources_footer(passages)
     if findings:
         rec = recommend(question, findings, llm, passages, cfg.language)
@@ -791,8 +796,8 @@ def ask_command(
     """Answer a question: documents (RAG), business modules, or both (agent)."""
     try:
         answer, used, footer = ask_answer(question, config_dir, source, top_k)
-    except (ConfigError, DownloadError, EmptyIndexError, EmptyQuestionError,
-            UnknownSourceError) as exc:
+    except (ConfigError, DownloadError, EmbeddingError, EmptyIndexError, EmptyQuestionError,
+            LLMError, UnknownSourceError) as exc:
         plain = isinstance(exc, EmptyIndexError | EmptyQuestionError | UnknownSourceError)
         if plain:
             typer.echo(str(exc), err=True)
@@ -906,7 +911,7 @@ def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
         except EmbeddingError as exc:
             # Graceful degradation: without the `rag` extra, still retrain the models.
             report.index_summary = _sources_msg(
-                "auto_index_skipped", language, value=str(exc).rstrip(".")
+                "auto_index_skipped", language, value=_error_text(exc, language).rstrip(".")
             )
         else:
             idx = index_sources(
@@ -984,7 +989,7 @@ def chat_command(
             raise typer.Exit(1) from exc
         retriever = Retriever(store, _get_embedder(cfg), top_k)
         llm = _get_llm(cfg)
-    except (ConfigError, DownloadError) as exc:
+    except (ConfigError, DownloadError, EmbeddingError, LLMError) as exc:
         _echo_error(exc, _cli_language(config_dir))
         raise typer.Exit(1) from exc
     history = ChatHistory()

@@ -426,3 +426,28 @@ def test_data_used_labels_follow_language():
     assert "- [marketing] move Radio: 6,840" in en and "top products: P001" in en
     assert fact_label("30d growth", "fr") == "croissance sur 30 jours"
     assert fact_label("trend", "xx") == "tendance"
+
+
+def test_ask_without_llama_cpp_shows_figures_in_language(tmp_path, monkeypatch, demo_data):
+    # A downloaded model but no llama-cpp-python: still the figures, with a localized reason.
+    from typer.testing import CliRunner
+
+    from mide.llm.runtime import LLMDependencyError
+
+    def no_runtime(cfg):
+        raise LLMDependencyError("llama-cpp-python", "llm")
+
+    expected = {
+        "fr": (("LLM local indisponible (llama-cpp-python n'est pas installé. Installez-le avec "
+               "`pip install mide-engine[llm]`)"), "Données utilisées"),
+        "en": (("Local LLM unavailable (llama-cpp-python is not installed. Install it with "
+               "`pip install mide-engine[llm]`)"), "Data used"),
+    }
+    for language, (note, used) in expected.items():
+        (tmp_path / language).mkdir()
+        cli, cfg_dir = _business_cfg(tmp_path / language, monkeypatch, demo_data, language)
+        monkeypatch.setattr(cli, "_get_llm", no_runtime)
+        res = CliRunner().invoke(cli.app, ["ask", "Quel canal marketing a le meilleur ROI ?",
+                                           "--config-dir", str(cfg_dir)])
+        assert res.exit_code == 0, res.output
+        assert note in res.output and used in res.output
