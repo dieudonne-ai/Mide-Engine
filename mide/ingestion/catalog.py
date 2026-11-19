@@ -8,6 +8,7 @@ from pathlib import Path
 
 from mide.connectors.base import is_url
 from mide.connectors.files import DocumentConnector
+from mide.connectors.sources import source_missing
 from mide.connectors.sql import SQLConnector
 from mide.connectors.tabular import EXCEL_EXTENSIONS, TabularConnector, split_item
 from mide.ingestion.profiling import DatasetProfile, profile_dataframe
@@ -69,11 +70,11 @@ def build_catalog(sources: list[str]) -> list[CatalogEntry]:
     entries: list[CatalogEntry] = []
     for source in sources:
         try:
+            if source_missing(source):
+                logger.debug("Source not found: %s", source)
+                continue
             if is_url(source):
                 entries.extend(_sql_entries(source, sources))
-                continue
-            if not Path(source).expanduser().exists():
-                logger.debug("Source not found: %s", source)
                 continue
             entries.extend(_tabular_entries(source, sources))
             entries.extend(_document_entries(source, sources))

@@ -158,3 +158,21 @@ def test_scan_warns_about_missing_source_in_language(tmp_path: Path) -> None:
     assert en.exit_code == 0, en.output
     assert f"Warning: source not found, skipped: {gone}" in en.output
     assert "ventes.csv" in en.output
+
+
+def test_scan_skips_deleted_sqlite_database_without_recreating_it(tmp_path: Path) -> None:
+    cfg = tmp_path / "config"
+    cfg.mkdir()
+    data = tmp_path / "data"
+    data.mkdir()
+    _sales_df().to_csv(data / "ventes.csv", index=False)
+    gone = tmp_path / "gone.db"
+    url = f"sqlite:///{gone}"
+    (cfg / "sources.yaml").write_text(f"sources:\n  - {data}\n  - {url}\n", encoding="utf-8")
+    res = runner.invoke(app, ["scan", "--config-dir", str(cfg)])
+    assert res.exit_code == 0, res.output
+    assert f"Attention : source introuvable, ignorée : {url}" in res.output
+    assert "ventes.csv" in res.output
+    assert not gone.exists()
+    assert all(e.source != url for e in build_catalog([str(data), url]))
+    assert not gone.exists()
