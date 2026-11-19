@@ -28,6 +28,105 @@ def config_error_message(exc: BaseException, config_dir: Path | None) -> str:
     return SOURCES_MESSAGES["dashboard_config_error"][language].format(value=value)
 
 
+PAGE_KEYS = ["home", "sales", "customers", "marketing", "ask", "sources", "hardware"]
+
+UI_TEXT: dict[str, dict[str, str]] = {
+    "page_home": {"fr": "Accueil", "en": "Home"},
+    "page_sales": {"fr": "Ventes", "en": "Sales"},
+    "page_customers": {"fr": "Clients", "en": "Customers"},
+    "page_marketing": {"fr": "Marketing", "en": "Marketing"},
+    "page_ask": {"fr": "Poser une question", "en": "Ask a question"},
+    "page_sources": {"fr": "Sources de données", "en": "Data sources"},
+    "page_hardware": {"fr": "Matériel & modèles", "en": "Hardware & models"},
+    "sidebar_page": {"fr": "Page", "en": "Page"},
+    "refresh": {"fr": "Actualiser les données", "en": "Refresh data"},
+    "loading": {"fr": "Chargement des données...", "en": "Loading data..."},
+    "no_data": {
+        "fr": "Aucune donnée {what} trouvée. Ajoutez une source dans la page *{page}*.",
+        "en": "No {what} data found. Add a source in the *{page}* page.",
+    },
+    "what_sales": {"fr": "de ventes", "en": "sales"},
+    "what_customers": {"fr": "clients", "en": "customer"},
+    "what_marketing": {"fr": "marketing", "en": "marketing"},
+    "revenue": {"fr": "Chiffre d'affaires", "en": "Revenue"},
+    "orders": {"fr": "Commandes", "en": "Orders"},
+    "avg_order": {"fr": "Panier moyen", "en": "Average order"},
+    "last_30d": {"fr": "30 derniers jours", "en": "Last 30 days"},
+    "anomalies": {"fr": "Anomalies", "en": "Anomalies"},
+    "no_anomaly": {"fr": "Aucun jour anormal détecté.", "en": "No abnormal day detected."},
+    "forecast": {"fr": "Prévision {h} j", "en": "Forecast {h} d"},
+    "monthly_revenue": {"fr": "Chiffre d'affaires mensuel", "en": "Monthly revenue"},
+    "trend": {"fr": "Tendance : {value}", "en": "Trend: {value}"},
+    "trend_up": {"fr": "hausse", "en": "up"},
+    "trend_down": {"fr": "baisse", "en": "down"},
+    "trend_flat": {"fr": "stable", "en": "flat"},
+    "seasonality": {
+        "fr": "Mois le plus fort : **{peak}**, le plus faible : **{trough}**, "
+              "meilleur jour : **{weekday}**",
+        "en": "Peak month: **{peak}**, trough: **{trough}**, best weekday: **{weekday}**",
+    },
+    "top_products": {"fr": "Meilleurs produits", "en": "Top products"},
+    "flop_products": {"fr": "Produits les plus faibles", "en": "Flop products"},
+    "rfm_segments": {"fr": "Segments RFM", "en": "RFM segments"},
+    "revenue_at_risk": {"fr": "Chiffre d'affaires à risque", "en": "Revenue at risk"},
+    "high_risk": {"fr": "{n} clients à risque élevé", "en": "{n} high-risk customers"},
+    "reallocation": {"fr": "Réallocation de budget suggérée",
+                     "en": "Suggested budget reallocation"},
+    "no_reallocation": {"fr": "Aucune réallocation nécessaire.",
+                        "en": "No reallocation needed."},
+    "move": {
+        "fr": "- {src} → {dst} : **{amount}** ({reason} ; jusqu'à +{extra} de chiffre "
+              "d'affaires, borne haute linéaire)",
+        "en": "- {src} → {dst}: **{amount}** ({reason}; up to +{extra} revenue, "
+              "linear upper bound)",
+    },
+    "your_question": {"fr": "Votre question", "en": "Your question"},
+    "thinking": {"fr": "Réflexion...", "en": "Thinking..."},
+    "sources_caption": {"fr": "MIDE ne lit que les sources listées ici (lecture seule).",
+                        "en": "MIDE only reads the sources listed here (read-only)."},
+    "remove": {"fr": "Retirer", "en": "Remove"},
+    "add_prompt": {"fr": "Ajouter un dossier, un fichier ou une URL SQL",
+                   "en": "Add a folder, file or SQL URL"},
+    "add": {"fr": "Ajouter", "en": "Add"},
+    "datasets": {"fr": "Jeux de données", "en": "Datasets"},
+    "dataset_line": {"fr": "**{name}** - {rows} lignes x {cols} colonnes",
+                     "en": "**{name}** - {rows} rows x {cols} columns"},
+    "gpu_none": {"fr": "aucun", "en": "none"},
+    "hardware_line": {
+        "fr": "RAM {ram} Go - {cores} cœurs - {os} - GPU : {gpu} - disque libre {disk} Go",
+        "en": "RAM {ram} GB - {cores} cores - {os} - GPU: {gpu} - disk free {disk} GB",
+    },
+    "gpu_vram": {"fr": "{name} ({vram} Go)", "en": "{name} ({vram} GB)"},
+    "profile": {"fr": "Profil", "en": "Profile"},
+    "llm_weights": {"fr": "Poids du LLM", "en": "LLM weights"},
+    "installed": {"fr": "installé", "en": "installed"},
+    "not_installed": {"fr": "non installé", "en": "not installed"},
+    "trained_models": {"fr": "Modèles entraînés", "en": "Trained models"},
+    "trained_line": {"fr": "{name} v{version} [{task}] cible={target}",
+                     "en": "{name} v{version} [{task}] target={target}"},
+    "no_trained": {"fr": "Aucun pour l'instant. Utilisez `mide train`.",
+                   "en": "None yet. Use `mide train`."},
+}
+
+
+def ui_text(key: str, language: str, **values: object) -> str:
+    """Dashboard label ``key`` in ``language`` (``fr`` when unknown), formatted with values."""
+    texts = UI_TEXT[key]
+    return texts.get(language, texts["fr"]).format(**values)
+
+
+def page_labels(language: str) -> dict[str, str]:
+    """Sidebar label of each page, keyed by its stable id from ``PAGE_KEYS``."""
+    return {key: ui_text(f"page_{key}", language) for key in PAGE_KEYS}
+
+
+def dashboard_language(config_dir: Path | None) -> str:
+    """Language of the dashboard: ``language`` of the config, ``fr`` if unreadable."""
+    from mide.cli import _cli_language
+
+    return _cli_language(config_dir)
+
+
 def config_dir_from_env() -> Path | None:
     """Config folder passed by `mide ui --config-dir` (None = repo default)."""
     value = os.environ.get(CONFIG_ENV)

@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: dashboard UI follows the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #97 was already merged; suite green at start (366 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). The Streamlit dashboard (page names, headers, KPI labels, buttons, messages) was English only. With `language: fr` it now shows "Accueil", "Ventes", "Clients", "Marketing", "Poser une question", "Sources de données", "Matériel & modèles" and French labels everywhere; English output is unchanged. Pages are selected by a stable id, not by their label.
+- **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
+- **Tests :** 377 passed, 0 skipped (`streamlit` installed this session, so the Streamlit `AppTest` tests ran too). 9 new: every label has FR and EN with the same placeholders, French fallback, page labels FR/EN, language from config and from a broken config, French/English dashboard header, info message and sidebar. The FR dashboard test fails without the fix. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-9nfumz -> main
+- **Décisions techniques :** labels live in `dashboard_data.UI_TEXT` (testable without Streamlit), read with `ui_text(key, language, **values)`. `dashboard_language` reuses the CLI's `_cli_language`, so a broken `sources.yaml` still uses `default.yaml`'s language. The loading spinner moved from `st.cache_data` to `st.spinner` so its text can be translated.
+- **Problèmes / dette technique :** values computed by the business modules stay English in the dashboard (anomaly descriptions, budget move reasons, table column names). "Unknown profile" and "A time series task needs a date column" stay English (internal errors). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: Ctrl+C in `mide chat` exits cleanly (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #96 was already merged; suite green at start (363 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). Pressing Ctrl+C in `mide chat` (at the `>` prompt or while the answer is being generated) ended with a Python `KeyboardInterrupt` traceback. It now prints "Au revoir." (or "Goodbye." with `language: en`) and exits with code 0, like `exit`.
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_chat.py`
