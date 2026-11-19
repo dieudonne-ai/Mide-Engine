@@ -330,6 +330,24 @@ class EmptyQuestionError(ValueError):
     """The question is blank, so there is nothing to answer."""
 
 
+class UnknownSourceError(ValueError):
+    """``--source`` names no indexed item, so the search would find nothing."""
+
+
+def _check_source(store: VectorStore, source: str | None, language: str) -> None:
+    """Fail clearly when ``source`` is not an indexed item, listing the valid ones."""
+    if source is None:
+        return
+    items = store.items()
+    if source in items:
+        return
+    if language == "fr":
+        hint = f"Sources indexées : {', '.join(items)}" if items else "Index vide. Lancez `mide index`."
+        raise UnknownSourceError(f"Source non indexée : {source}. {hint}")
+    hint = f"Indexed sources: {', '.join(items)}" if items else "Empty index. Run `mide index`."
+    raise UnknownSourceError(f"Source not indexed: {source}. {hint}")
+
+
 def _no_llm_note(reason: str, language: str) -> str:
     """Answer shown when no LLM is installed but business figures are available."""
     reason = reason.rstrip(".")
@@ -347,6 +365,8 @@ def ask_answer(question: str, config_dir: Path | None = None, source: str | None
         raise EmptyQuestionError(
             "Question vide. Exemple : mide ask \"Quels produits se vendent le mieux ?\"" if cfg.language == "fr"
             else "Empty question. Example: mide ask \"Which products sell best?\"")
+    if source is not None:
+        _check_source(VectorStore(cfg.app_dir / "index"), source, cfg.language)
     route = route_question(question)
     passages: list = []
     findings: list = []
@@ -382,15 +402,16 @@ def ask_answer(question: str, config_dir: Path | None = None, source: str | None
 @app.command("ask")
 def ask_command(
     question: str,
-    source: str | None = typer.Option(None, help="Restrict to one indexed source."),
+    source: str | None = typer.Option(None, help="Restrict to one indexed item (its full path)."),
     top_k: int = typer.Option(5, "--top-k", "-k", min=1, help="Number of excerpts."),
     config_dir: Path | None = CONFIG_DIR_OPTION,
 ) -> None:
     """Answer a question: documents (RAG), business modules, or both (agent)."""
     try:
         answer, used, footer = ask_answer(question, config_dir, source, top_k)
-    except (ConfigError, DownloadError, EmptyIndexError, EmptyQuestionError) as exc:
-        plain = isinstance(exc, EmptyIndexError | EmptyQuestionError)
+    except (ConfigError, DownloadError, EmptyIndexError, EmptyQuestionError,
+            UnknownSourceError) as exc:
+        plain = isinstance(exc, EmptyIndexError | EmptyQuestionError | UnknownSourceError)
         typer.echo(str(exc) if plain else f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
     typer.echo(answer)
@@ -507,7 +528,7 @@ def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
 
 @app.command("chat")
 def chat_command(
-    source: str | None = typer.Option(None, help="Restrict to one indexed source."),
+    source: str | None = typer.Option(None, help="Restrict to one indexed item (its full path)."),
     top_k: int = typer.Option(5, "--top-k", "-k", min=1, help="Number of excerpts."),
     config_dir: Path | None = CONFIG_DIR_OPTION,
 ) -> None:
@@ -521,6 +542,11 @@ def chat_command(
                 else "Empty index. Run `mide index`."
             )
             raise typer.Exit(1)
+        try:
+            _check_source(store, source, cfg.language)
+        except UnknownSourceError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
         retriever = Retriever(store, _get_embedder(cfg), top_k)
         llm = _get_llm(cfg)
     except (ConfigError, DownloadError) as exc:
