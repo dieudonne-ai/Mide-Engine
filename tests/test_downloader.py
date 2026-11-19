@@ -130,3 +130,17 @@ def test_cli_pull_requires_confirmation(tmp_path: Path, monkeypatch: pytest.Monk
         cli.app, ["models", "list", "--config-dir", str(_cfg_dir := tmp_path / "config")]
     )
     assert "[installed]" in listing.output and _cfg_dir.exists()
+
+
+def test_cli_pull_unknown_profile_lists_configured_profiles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    calls: list[str] = []
+    monkeypatch.setattr(downloader, "_default_opener", opener_for(DATA, calls=calls))
+    args = ["models", "pull", "--profile", "large", "--yes", "--config-dir", str(_cfg(tmp_path))]
+    result = CliRunner().invoke(cli.app, args)
+    assert result.exit_code == 1
+    assert "no model configured for profile 'large'" in result.output
+    assert "Configured profiles: tiny" in result.output
+    assert calls == []
