@@ -81,3 +81,7 @@ def test_cli_train_and_list(demo_data, tmp_path, monkeypatch):
     assert "sales-amount v1" in res.output
     bad = runner.invoke(app, ["train", "--dataset", "nope", "--target", "amount", *opt])
     assert bad.exit_code == 1
+    assert "Available datasets: sales" in bad.output
+    bad = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amout", *opt])
+    assert bad.exit_code == 1
+    assert "Available columns:" in bad.output and "amount" in bad.output
