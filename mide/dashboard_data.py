@@ -154,6 +154,33 @@ COLUMN_LABELS: dict[str, dict[str, str]] = {
 }
 
 
+# Display names of cell values, per column: RFM segments and churn risk levels.
+VALUE_LABELS: dict[str, dict[str, dict[str, str]]] = {
+    "segment": {
+        "Champions": {"fr": "Champions", "en": "Champions"},
+        "Loyal": {"fr": "Fidèles", "en": "Loyal"},
+        "New / promising": {"fr": "Nouveaux / prometteurs", "en": "New / promising"},
+        "At risk": {"fr": "À risque", "en": "At risk"},
+        "Hibernating": {"fr": "En sommeil", "en": "Hibernating"},
+        "Needs attention": {"fr": "À surveiller", "en": "Needs attention"},
+    },
+    "risk_level": {
+        "low": {"fr": "faible", "en": "low"},
+        "medium": {"fr": "moyen", "en": "medium"},
+        "high": {"fr": "élevé", "en": "high"},
+    },
+}
+
+
+def value_label(column: object, value: object, language: str) -> object:
+    """Display name of a cell ``value`` of ``column``; unknown values are kept as is."""
+    labels = VALUE_LABELS.get(column) if isinstance(column, str) else None
+    texts = labels.get(value) if labels is not None and isinstance(value, str) else None
+    if texts is None:
+        return value
+    return texts.get(language, texts["fr"])
+
+
 def column_label(column: object, language: str) -> object:
     """Display name of a table column in ``language``; unknown columns are kept as is."""
     texts = COLUMN_LABELS.get(column) if isinstance(column, str) else None
@@ -163,8 +190,18 @@ def column_label(column: object, language: str) -> object:
 
 
 def display_table(df: pd.DataFrame, language: str) -> pd.DataFrame:
-    """Copy of ``df`` with column and index names translated for display (data unchanged)."""
-    out = df.rename(columns=lambda c: column_label(c, language))
+    """Copy of ``df`` with column names, index name and known labels translated for display.
+
+    Numbers are unchanged; only labels listed in ``VALUE_LABELS`` (segments, risk levels)
+    are translated, in the columns and in the index.
+    """
+    out = df.copy()
+    for column in out.columns:
+        if column in VALUE_LABELS:
+            out[column] = out[column].map(lambda v, c=column: value_label(c, v, language))
+    if df.index.name in VALUE_LABELS:
+        out.index = out.index.map(lambda v: value_label(df.index.name, v, language))
+    out = out.rename(columns=lambda c: column_label(c, language))
     out.index = out.index.rename(column_label(df.index.name, language))
     return out
 
