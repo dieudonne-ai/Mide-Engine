@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide models pull` lists the configured profiles when the profile is unknown (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #74 was already merged; suite green at start (323 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed (`cryptography`/`cffi` reinstalled with pip because the Debian build was broken in the sandbox). `mide models pull --profile <name>` with a profile that has no model in `config/models.yaml` (a typo, or a profile removed from the file) only said "no model configured for profile '<name>'". The error now adds "Configured profiles: tiny, small, ..." (or "none"), in the same way as the fixes in #73 and #74.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_downloader.py`
+- **Tests :** 324 passed, 2 skipped (1 new: an unknown profile exits 1, lists the configured profiles and opens no network connection; it fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-e5mrrg -> main
+- **Décisions techniques :** only `models.yaml` is read. Nothing is downloaded on this error path and the exit code is still 1.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: `mide sources remove` lists the authorized sources when the source is not listed (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #73 was already merged; suite green at start (322 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. `mide sources remove <path>` with a path that is not listed (a typo, or a different spelling of the path) only said "Error: source not listed: <path>", so the user had to run `mide sources list` to find the exact stored value. The error now adds "Authorized sources: <a>, <b>" (or "No authorized sources." when the list is empty), in the same way as the `mide train` fix in #73.
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_connectors_base.py`

@@ -158,7 +158,11 @@ def models_pull(
     name = profile or profile_hardware().profile
     models = cfg.models.profiles.get(name)  # type: ignore[call-overload]
     if models is None:
-        typer.echo(f"Error: no model configured for profile '{name}'.", err=True)
+        configured = ", ".join(cfg.models.profiles) or "none"
+        typer.echo(
+            f"Error: no model configured for profile '{name}'. Configured profiles: {configured}",
+            err=True,
+        )
         raise typer.Exit(1)
 
     def confirm(url: str, size: int | None) -> bool:
