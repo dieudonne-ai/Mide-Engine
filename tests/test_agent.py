@@ -353,3 +353,17 @@ def test_marketing_no_attribution_check_when_consistent_or_no_sales():
     alone = run_modules(["marketing"], BusinessData(campaigns=campaigns))
     assert "attribution check" not in consistent[0].facts
     assert "attribution check" not in alone[0].facts
+
+
+def test_churn_fact_cites_share_of_revenue_and_customer_base():
+    from mide.agent.decision import _customers_finding
+
+    # 5 regular buyers (53 x 10 = 530 each) + 2 lost (5 x 100, 5 x 200): 1,500 of 4,150.
+    fact = _customers_finding(_churn_sales(2)).facts["churn"]
+    assert fact.endswith("1,500 past revenue at risk (36.1% of revenue; 2 of 7 customers)")
+
+
+def test_churn_fact_on_demo_data_cites_its_scale(data):
+    fact = run_modules(["customers"], data)[0].facts["churn"]
+    assert fact.endswith(
+        "2,344 past revenue at risk (0.3% of revenue; 4 of 400 customers)")

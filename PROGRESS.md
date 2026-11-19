@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: churn figure cites its share of revenue and of the customer base (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #62 was already merged; suite green at start (307 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed the weekly report's priority action 1 as "churn: 4 customers at high risk (top: ...), 2,344 past revenue at risk". It did not say that this is 0.3% of revenue and 4 of 400 customers, so the reader could not judge why it ranks above a budget move worth far more. The churn figure now ends with "(0.3% of revenue; 4 of 400 customers)". This shows up in `mide ask`, the agent figures, the LLM prompt and the report's alert and action 1.
+- **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
+- **Tests :** 309 passed, 2 skipped (2 new: exact scale text on a synthetic table and on the demo data). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-5ya21d -> main
+- **Décisions techniques :** text-only change; churn scoring and the order of the report actions are unchanged. The share uses the revenue of all scored customers, which is the same basis as the RFM segment shares.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size. Ranking the actions by estimated value would be a behaviour change, so it is left for Dieudonné to decide. The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: weekly report stock action cites the 30d forecast (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #61 was already merged; suite green at start (305 passed, 2 skipped for missing `streamlit`). Running `scripts/demo.sh` showed that priority action 3, "Surveiller la tendance des ventes et ajuster les stocks", cited only the past trend ("up, ... last 3 months +70.7%"). The report's own 30d forecast is -9.3%. Stock is bought for the coming weeks, so the action read as "stock up" when the forecast points down (the demo peaks in December). The action now ends with "; forecast 30d: 45,871 for 2025-01-01 -> 2025-01-30 (-9.3% vs previous 30d)" when a forecast exists. Applies to `mide report` (Markdown/HTML) and `mide auto`.
 - **Fichiers principaux :** `mide/report.py`, `tests/test_report.py`

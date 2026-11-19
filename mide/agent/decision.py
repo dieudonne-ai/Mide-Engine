@@ -131,6 +131,15 @@ def _sales_finding(df: pd.DataFrame, products: pd.DataFrame | None = None) -> Fi
 _MAX_CHURN_NAMED = 3
 
 
+def _churn_scale(churn: customers.ChurnReport) -> str:
+    """' (0.3% of revenue; 4 of 350 customers)': how big the risk is against the whole base."""
+    total = float(churn.scores["monetary"].sum())
+    if churn.scores.empty or total <= 0:
+        return ""
+    share = 100 * churn.revenue_at_risk / total
+    return f" ({share:.1f}% of revenue; {len(churn.high_risk)} of {len(churn.scores)} customers)"
+
+
 def _customers_finding(df: pd.DataFrame) -> Finding:
     summary = customers.segment_summary(customers.rfm_segments(df))
     churn = customers.churn_risk(df)
@@ -143,7 +152,8 @@ def _customers_finding(df: pd.DataFrame) -> Finding:
         more = ", ..." if len(churn.high_risk) > len(top) else ""
         named = f" (top: {', '.join(map(str, top))}{more})"
     facts["churn"] = (f"{len(churn.high_risk)} customers at high risk{named}, "
-                      f"{_money(churn.revenue_at_risk)} past revenue at risk")
+                      f"{_money(churn.revenue_at_risk)} past revenue at risk"
+                      f"{_churn_scale(churn)}")
     return Finding("customers", facts)
 
 
