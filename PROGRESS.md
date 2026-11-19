@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide auto` summary follows the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #86 was already merged; suite green at start (342 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). The `mide auto` summary ("Scan: …", "Index: …", "Model <name>: <status> …") was English-only although `language` defaults to `fr` (CLAUDE.md section 6; listed as debt). In French it now prints "Analyse : n jeux de données/documents.", "Indexation : 3 nouveaux, 0 mis à jour, … retirés." / "Indexation : ignorée (…)." and "Modèle <name> : remplacé|conservé|inchangé|ignoré|erreur (old -> new) <detail>"; English unchanged when `language: en`.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_cli.py`
+- **Tests :** 343 passed, 2 skipped (1 new test covering every outcome status in FR and EN; it fails without the fix. The assertion of `test_auto_without_rag_extra_still_retrains` updated to French because it runs with the default language). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-0e9aq3 -> main
+- **Décisions techniques :** `mide/automl/auto.py` is unchanged: it still returns the status codes and English details, and the CLI translates them (new `auto_*` keys in `SOURCES_MESSAGES`, helper `_auto_outcome_line`). The three known details (promoted, kept, skipped) are translated; an `error` detail is an exception text and is shown as it is. Unknown statuses fall back to the raw code.
+- **Problèmes / dette technique :** the task-detector reasons and the exception texts are still English-only. The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: one corrupt workbook no longer hides the rest of its folder (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #85 was already merged; suite green at start (339 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). Fixed the bug logged last session: `TabularConnector.discover()` opened every `.xlsx` to list its sheets, so one corrupt workbook raised and the whole folder was lost. `mide scan` reported the folder as one error, and `mide index` / `mide auto` skipped every file in it, including CSVs and documents. Now an unreadable workbook stays a single item. Only its own read fails, and it is reported as `[erreur] <path>/bad.xlsx : …` (kind `excel`), while the other files of the folder are scanned and indexed normally.
 - **Fichiers principaux :** `mide/connectors/tabular.py`, `mide/ingestion/catalog.py`, `tests/test_tabular.py`, `tests/test_ingestion.py`, `tests/test_store.py`

@@ -98,7 +98,7 @@ def test_auto_without_rag_extra_still_retrains(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(cli, "retrain_if_changed", lambda datasets, *a, **k: calls.append(datasets) or [])
     result = runner.invoke(app, ["auto", "--config-dir", str(cfg)])
     assert result.exit_code == 0, result.output
-    assert "Index: skipped (sentence-transformers is not installed)." in result.output
+    assert "Indexation : ignorée (sentence-transformers is not installed)." in result.output
     assert len(calls) == 1 and any("sales.csv" in key for key in calls[0])
     assert "Aucun modèle entraîné" in result.output
 
@@ -120,3 +120,57 @@ def test_error_prefix_follows_language(tmp_path, monkeypatch) -> None:
         result = runner.invoke(app, [*command, *args])
         assert result.exit_code == 1, command
         assert result.output.startswith("Erreur : "), (command, result.output)
+
+
+def test_auto_summary_follows_language(tmp_path, monkeypatch) -> None:
+    # The `mide auto` scan/index/model lines use the configured language.
+    from mide import cli
+    from mide.automl.auto import ModelOutcome
+    from mide.rag.embeddings import EmbeddingError
+
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "sales.csv").write_text("x,amount\n1,2\n2,4\n", encoding="utf-8")
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    args = ["--config-dir", str(cfg)]
+    assert runner.invoke(app, ["sources", "add", str(data), *args]).exit_code == 0
+
+    def no_embedder(_cfg):
+        raise EmbeddingError("sentence-transformers is not installed.")
+
+    outcomes = [
+        ModelOutcome("a", "promoted", "new model is better", 3.0, 2.0),
+        ModelOutcome("b", "kept", "previous model kept", 2.0, 2.5),
+        ModelOutcome("c", "unchanged"),
+        ModelOutcome("d", "skipped", "dataset no longer available"),
+        ModelOutcome("e", "error", "boom"),
+    ]
+    monkeypatch.setattr(cli, "_get_embedder", no_embedder)
+    monkeypatch.setattr(cli, "retrain_if_changed", lambda *a, **k: outcomes)
+    expected = {
+        "fr": [
+            "Analyse : 1 jeux de données/documents.",
+            "Indexation : ignorée (sentence-transformers is not installed).",
+            "Modèle a : remplacé (3 -> 2) le nouveau modèle est meilleur",
+            "Modèle b : conservé (2 -> 2.5) l'ancien modèle est conservé",
+            "Modèle c : inchangé",
+            "Modèle d : ignoré le jeu de données n'est plus disponible",
+            "Modèle e : erreur boom",
+        ],
+        "en": [
+            "Scan: 1 datasets/documents.",
+            "Index: skipped (sentence-transformers is not installed).",
+            "Model a: promoted (3 -> 2) new model is better",
+            "Model b: kept (2 -> 2.5) previous model kept",
+            "Model c: unchanged",
+            "Model d: skipped dataset no longer available",
+            "Model e: error boom",
+        ],
+    }
+    for language, lines in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        result = runner.invoke(app, ["auto", *args])
+        assert result.exit_code == 0, result.output
+        assert result.output.splitlines() == lines, language
