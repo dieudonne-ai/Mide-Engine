@@ -1,5 +1,6 @@
 """Tests for the CSV / Excel connector."""
 
+import zipfile
 from pathlib import Path
 
 import pandas as pd
@@ -83,3 +84,17 @@ def test_read_only(tmp_path: Path) -> None:
     before = f.read_bytes()
     conn(folder).read(str(f))
     assert f.read_bytes() == before
+
+
+def test_corrupt_workbook_does_not_hide_other_files(tmp_path: Path) -> None:
+    # A corrupt .xlsx stays one item (its read fails alone); the other files are still found.
+    folder = make(tmp_path)
+    pd.DataFrame({"a": [1, 2]}).to_csv(folder / "good.csv", index=False)
+    (folder / "bad.xlsx").write_bytes(b"not an excel file")
+    c = conn(folder)
+    items = c.discover()
+    assert str((folder / "bad.xlsx").resolve()) in items
+    good = str((folder / "good.csv").resolve())
+    assert good in items and len(c.read(good)) == 2
+    with pytest.raises(zipfile.BadZipFile):
+        c.read(str((folder / "bad.xlsx").resolve()))
