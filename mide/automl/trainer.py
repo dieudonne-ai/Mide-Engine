@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from mide.automl.task_detector import TaskInfo, TaskType, detect_task
+from mide.automl.task_detector import TargetError, TaskInfo, TaskType, detect_task
 from mide.hardware.profiler import Profile
 
 ID_UNIQUE_RATIO = 0.9  # text columns with this share of unique values are treated as identifiers
@@ -238,6 +238,13 @@ def train(
 
     classes: list[Any] | None = None
     if info.task is TaskType.CLASSIFICATION:
+        if int(work[target].value_counts().max()) < 2:
+            raise TargetError(
+                "unique_values",
+                f"Every value of target column '{target}' is unique (an identifier?): "
+                "pick a column whose values repeat",
+                target,
+            )
         codes, uniques = pd.factorize(work[target], sort=True)
         y = codes
         classes = list(uniques)

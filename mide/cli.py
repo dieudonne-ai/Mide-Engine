@@ -250,6 +250,12 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "La colonne cible '{column}' a moins de 2 valeurs distinctes",
         "en": "Target column '{column}' has fewer than 2 distinct values",
     },
+    "target_unique_values": {
+        "fr": "Chaque valeur de la colonne cible '{column}' est unique (un identifiant ?) : "
+              "choisissez une colonne dont les valeurs se répètent",
+        "en": "Every value of target column '{column}' is unique (an identifier?): "
+              "pick a column whose values repeat",
+    },
     "target_not_a_date": {
         "fr": "La colonne '{column}' ne contient pas de dates : choisissez une colonne de date "
               "pour --date-column",
