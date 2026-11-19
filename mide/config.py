@@ -22,7 +22,24 @@ PROFILE_NAMES = ("tiny", "small", "medium", "large")
 
 
 class ConfigError(Exception):
-    """Raised when a configuration file is missing, unreadable or invalid."""
+    """Raised when a configuration file is missing, unreadable or invalid.
+
+    ``code`` (``invalid_yaml``, ``not_mapping``, ``invalid_config`` or ``invalid_sources``),
+    ``path`` and ``detail`` let the CLI localize the message. The English message stays
+    the ``str()`` of the exception; ``detail`` (parser / validator text) is never translated.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        code: str | None = None,
+        path: Path | None = None,
+        detail: str = "",
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.path = path
+        self.detail = detail
 
 
 class _Strict(BaseModel):
@@ -72,11 +89,13 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
-        raise ConfigError(f"Invalid YAML in {path}: {exc}") from exc
+        raise ConfigError(
+            f"Invalid YAML in {path}: {exc}", "invalid_yaml", path, str(exc)
+        ) from exc
     if data is None:
         return {}
     if not isinstance(data, dict):
-        raise ConfigError(f"{path} must contain a mapping at top level.")
+        raise ConfigError(f"{path} must contain a mapping at top level.", "not_mapping", path)
     return data
 
 
@@ -87,7 +106,9 @@ def _validate(model: type[BaseModel], data: dict[str, Any], path: Path) -> Any:
         details = "; ".join(
             f"{'.'.join(str(p) for p in e['loc']) or '<root>'}: {e['msg']}" for e in exc.errors()
         )
-        raise ConfigError(f"Invalid configuration in {path}: {details}") from exc
+        raise ConfigError(
+            f"Invalid configuration in {path}: {details}", "invalid_config", path, details
+        ) from exc
 
 
 def seed_default_config(config_dir: Path) -> None:

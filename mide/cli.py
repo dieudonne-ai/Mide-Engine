@@ -206,6 +206,22 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "en": "{kind_cap} column '{column}' not found in dataset. Available columns: {columns}",
     },
     "column_kind_target": {"fr": "cible", "en": "target"},
+    "config_invalid_yaml": {
+        "fr": "YAML invalide dans {path} : {detail}",
+        "en": "Invalid YAML in {path}: {detail}",
+    },
+    "config_not_mapping": {
+        "fr": "{path} doit contenir un dictionnaire (clé: valeur) au premier niveau.",
+        "en": "{path} must contain a mapping at top level.",
+    },
+    "config_invalid_config": {
+        "fr": "Configuration invalide dans {path} : {detail}",
+        "en": "Invalid configuration in {path}: {detail}",
+    },
+    "config_invalid_sources": {
+        "fr": "Fichier de sources invalide {path} : {detail}",
+        "en": "Invalid sources file {path}: {detail}",
+    },
     "training_not_enough_rows": {
         "fr": "Pas assez de lignes pour entraîner ({n}) ; il en faut au moins 20",
         "en": "Not enough rows to train ({n}); at least 20 are needed",
@@ -284,9 +300,12 @@ def _task_line(info: TaskInfo, language: str) -> str:
 
 
 def _error_text(exc: BaseException, language: str) -> str:
-    """Text of ``exc`` in ``language``: coded training errors are localized, others as is."""
+    """Text of ``exc`` in ``language``: coded training/config errors are localized."""
     if isinstance(exc, TrainingError) and f"training_{exc.code}" in SOURCES_MESSAGES:
         return _sources_msg(f"training_{exc.code}", language, n=str(exc.n_rows))
+    if isinstance(exc, ConfigError) and f"config_{exc.code}" in SOURCES_MESSAGES:
+        return _sources_msg(f"config_{exc.code}", language, path=str(exc.path),
+                            detail=exc.detail)
     return str(exc)
 
 

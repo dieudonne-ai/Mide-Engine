@@ -1,3 +1,4 @@
+import pytest
 from typer.testing import CliRunner
 
 from mide import __version__
@@ -225,12 +226,39 @@ def test_broken_sources_file_gives_clear_error(tmp_path, monkeypatch) -> None:
     args = ["--config-dir", str(cfg)]
     commands = (["scan"], ["sources", "list"], ["sources", "add", str(tmp_path)],
                 ["sources", "remove", str(tmp_path)])
-    for language, prefix in (("fr", "Erreur : "), ("en", "Error: ")):
+    for language, prefix in (("fr", "Erreur : Fichier de sources invalide"),
+                             ("en", "Error: Invalid sources file")):
         (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
         for command in commands:
             result = runner.invoke(app, [*command, *args])
             assert result.exit_code == 1, (language, command, result.output)
-            assert result.output.startswith(prefix + "Invalid sources file"), (
+            assert result.output.startswith(prefix), (
                 language, command, result.output)
             assert "inattendue" not in result.output and "Unexpected" not in result.output
     assert (cfg / "sources.yaml").read_text(encoding="utf-8") == "sources: [\n"
+
+
+@pytest.mark.parametrize(
+    ("models_yaml", "fr_text", "en_text"),
+    [
+        ("profiles: [\n", "YAML invalide dans", "Invalid YAML in"),
+        ("- a\n- b\n", "doit contenir un dictionnaire", "must contain a mapping at top level"),
+        ("unknown_key: 1\n", "Configuration invalide dans", "Invalid configuration in"),
+    ],
+)
+def test_broken_models_file_error_follows_language(
+    tmp_path, monkeypatch, models_yaml: str, fr_text: str, en_text: str
+) -> None:
+    # The details of config errors follow the language read from default.yaml.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    (cfg / "models.yaml").write_text(models_yaml, encoding="utf-8")
+    for language, prefix, text, other in (("fr", "Erreur : ", fr_text, en_text),
+                                          ("en", "Error: ", en_text, fr_text)):
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        result = runner.invoke(app, ["privacy", "--config-dir", str(cfg)])
+        assert result.exit_code == 1, (language, result.output)
+        assert result.output.startswith(prefix), (language, result.output)
+        assert text in result.output and other not in result.output, (language, result.output)
+        assert "models.yaml" in result.output
