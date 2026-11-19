@@ -315,6 +315,10 @@ class EmptyIndexError(Exception):
     """The vector index is empty and no business data can answer."""
 
 
+class EmptyQuestionError(ValueError):
+    """The question is blank, so there is nothing to answer."""
+
+
 def _no_llm_note(reason: str, language: str) -> str:
     """Answer shown when no LLM is installed but business figures are available."""
     reason = reason.rstrip(".")
@@ -328,6 +332,10 @@ def ask_answer(question: str, config_dir: Path | None = None, source: str | None
                top_k: int = 5) -> tuple[str, str, str]:
     """Answer a question; returns (answer, figures used, sources footer)."""
     cfg = load_config(config_dir)
+    if not question.strip():
+        raise EmptyQuestionError(
+            "Question vide. Exemple : mide ask \"Quels produits se vendent le mieux ?\"" if cfg.language == "fr"
+            else "Empty question. Example: mide ask \"Which products sell best?\"")
     route = route_question(question)
     passages: list = []
     findings: list = []
@@ -370,8 +378,9 @@ def ask_command(
     """Answer a question: documents (RAG), business modules, or both (agent)."""
     try:
         answer, used, footer = ask_answer(question, config_dir, source, top_k)
-    except (ConfigError, DownloadError, EmptyIndexError) as exc:
-        typer.echo(f"Error: {exc}" if not isinstance(exc, EmptyIndexError) else str(exc), err=True)
+    except (ConfigError, DownloadError, EmptyIndexError, EmptyQuestionError) as exc:
+        plain = isinstance(exc, EmptyIndexError | EmptyQuestionError)
+        typer.echo(str(exc) if plain else f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
     typer.echo(answer)
     if used:

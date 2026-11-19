@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide ask` rejects a blank question clearly (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #71 was already merged; suite green at start (320 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. `mide ask ""` (or a question of spaces) was routed to the documents: with an empty index it said "Index vide. Lancez `mide index`.", and with an index it sent an empty query to the retriever and the LLM. A blank question now stops before any data is loaded with "Question vide. Exemple : mide ask \"Quels produits se vendent le mieux ?\"" (English: "Empty question. Example: ...") and exit code 1. The dashboard uses the same `ask_answer` and shows the same message.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_retriever.py`
+- **Tests :** 321 passed, 2 skipped (1 new: on an indexed workspace, `mide ask "   "` exits 1 with "Question vide" in French and "Empty question" in English, and never calls the LLM; it fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-81djxj -> main
+- **Décisions techniques :** the check lives in `ask_answer` (shared by CLI and dashboard) as a new `EmptyQuestionError`; `mide chat` already skipped blank lines.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: `mide auto` still retrains without the `[rag]` extra (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #70 was already merged; suite green at start (319 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Without `sentence-transformers` (the optional `[rag]` extra, also skipped by `MIDE_DEMO_SKIP_RAG=1` in the demo), `mide auto` stopped with "Error: sentence-transformers is not installed" before the retraining step, so the scheduled auto-learning did nothing at all on such a machine. This broke the graceful-degradation rule (CLAUDE.md §2.4). Now indexing is skipped with the reason ("Index: skipped (sentence-transformers is not installed. Install it with `pip install mide-engine[rag]`).") and the models are still checked and retrained.
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_cli.py`
