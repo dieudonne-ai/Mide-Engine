@@ -120,6 +120,55 @@ UI_TEXT: dict[str, dict[str, str]] = {
 }
 
 
+COLUMN_LABELS: dict[str, dict[str, str]] = {
+    "product_id": {"fr": "Produit", "en": "Product"},
+    "name": {"fr": "Nom", "en": "Name"},
+    "revenue": {"fr": "Chiffre d'affaires", "en": "Revenue"},
+    "share_pct": {"fr": "Part (%)", "en": "Share (%)"},
+    "segment": {"fr": "Segment", "en": "Segment"},
+    "customers": {"fr": "Clients", "en": "Customers"},
+    "avg_recency_days": {"fr": "Récence moy. (jours)", "en": "Avg recency (days)"},
+    "avg_frequency": {"fr": "Fréquence moy.", "en": "Avg frequency"},
+    "revenue_share_pct": {"fr": "Part du CA (%)", "en": "Revenue share (%)"},
+    "customer": {"fr": "Client", "en": "Customer"},
+    "last_purchase": {"fr": "Dernier achat", "en": "Last purchase"},
+    "first_purchase": {"fr": "Premier achat", "en": "First purchase"},
+    "frequency": {"fr": "Fréquence", "en": "Frequency"},
+    "monetary": {"fr": "Montant total", "en": "Monetary"},
+    "recency_days": {"fr": "Récence (jours)", "en": "Recency (days)"},
+    "typical_gap_days": {"fr": "Écart habituel (jours)", "en": "Typical gap (days)"},
+    "expected_gap_days": {"fr": "Écart attendu (jours)", "en": "Expected gap (days)"},
+    "risk": {"fr": "Risque", "en": "Risk"},
+    "risk_level": {"fr": "Niveau de risque", "en": "Risk level"},
+    "channel": {"fr": "Canal", "en": "Channel"},
+    "campaigns": {"fr": "Campagnes", "en": "Campaigns"},
+    "spend": {"fr": "Dépenses", "en": "Spend"},
+    "impressions": {"fr": "Impressions", "en": "Impressions"},
+    "clicks": {"fr": "Clics", "en": "Clicks"},
+    "conversions": {"fr": "Conversions", "en": "Conversions"},
+    "roi": {"fr": "ROI", "en": "ROI"},
+    "roas": {"fr": "ROAS", "en": "ROAS"},
+    "cost_per_conversion": {"fr": "Coût par conversion", "en": "Cost per conversion"},
+    "conversion_rate": {"fr": "Taux de conversion", "en": "Conversion rate"},
+    "ctr": {"fr": "Taux de clic", "en": "CTR"},
+}
+
+
+def column_label(column: object, language: str) -> object:
+    """Display name of a table column in ``language``; unknown columns are kept as is."""
+    texts = COLUMN_LABELS.get(column) if isinstance(column, str) else None
+    if texts is None:
+        return column
+    return texts.get(language, texts["fr"])
+
+
+def display_table(df: pd.DataFrame, language: str) -> pd.DataFrame:
+    """Copy of ``df`` with column and index names translated for display (data unchanged)."""
+    out = df.rename(columns=lambda c: column_label(c, language))
+    out.index = out.index.rename(column_label(df.index.name, language))
+    return out
+
+
 def ui_text(key: str, language: str, **values: object) -> str:
     """Dashboard label ``key`` in ``language`` (``fr`` when unknown), formatted with values."""
     texts = UI_TEXT[key]

@@ -303,3 +303,62 @@ def test_dashboard_marketing_reasons_follow_language(cfg_dir, monkeypatch, langu
     moves = [m.value for m in at.markdown if "→" in m.value]
     assert moves, "the demo data has a budget move"
     assert all(word in m for m in moves)
+
+
+def test_column_labels_have_fr_and_en():
+    assert all(set(texts) == {"fr", "en"} for texts in dd.COLUMN_LABELS.values())
+
+
+def test_display_table_translates_columns_and_index():
+    import pandas as pd
+
+    df = pd.DataFrame({"name": ["Rice"], "revenue": [10.0], "custom": [1]},
+                      index=pd.Index(["P001"], name="product_id"))
+    fr = dd.display_table(df, "fr")
+    assert list(fr.columns) == ["Nom", "Chiffre d'affaires", "custom"]
+    assert fr.index.name == "Produit"
+    assert fr.loc["P001", "Nom"] == "Rice"
+    en = dd.display_table(df, "en")
+    assert list(en.columns) == ["Name", "Revenue", "custom"]
+    assert list(df.columns) == ["name", "revenue", "custom"], "input is not modified"
+
+
+def test_display_table_covers_dashboard_tables(cfg_dir):
+    data = dd.load_dashboard_data(cfg_dir)
+    sv = dd.sales_view(data.tables.sales, data.tables.products)
+    cv = dd.customers_view(data.tables.sales)
+    tables = [sv["products"]["top"], cv["segments"], cv["churn"].scores,
+              dd.marketing_view(data.tables.campaigns)["channels"]]
+    for table in tables:
+        names = [table.index.name, *table.columns]
+        assert all(n in dd.COLUMN_LABELS for n in names), names
+
+
+@pytest.mark.parametrize(("language", "column"), [("fr", "Dépenses"), ("en", "Spend")])
+def test_dashboard_marketing_columns_follow_language(cfg_dir, monkeypatch, language, column):
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    (cfg_dir / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+    monkeypatch.setenv(dd.CONFIG_ENV, str(cfg_dir))
+    at = AppTest.from_file(str(APP), default_timeout=120).run()
+    at.sidebar.radio[0].set_value(dd.page_labels(language)["marketing"]).run()
+    assert not at.exception, at.exception
+    assert column in list(at.dataframe[0].value.columns)
+
+
+@pytest.mark.parametrize(("language", "column"), [("fr", "Niveau de risque"),
+                                                  ("en", "Risk level")])
+def test_dashboard_customer_columns_follow_language(cfg_dir, monkeypatch, language, column):
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    (cfg_dir / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+    monkeypatch.setenv(dd.CONFIG_ENV, str(cfg_dir))
+    at = AppTest.from_file(str(APP), default_timeout=120).run()
+    at.sidebar.radio[0].set_value(dd.page_labels(language)["customers"]).run()
+    assert not at.exception, at.exception
+    churn = at.dataframe[1].value
+    assert column in list(churn.columns)
+    risk = dd.column_label("risk", language)
+    assert list(churn[risk]) == sorted(churn[risk], reverse=True), "riskiest first"

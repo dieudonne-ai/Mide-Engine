@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: dashboard table column names follow the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #100 was already merged; suite green at start (388 passed after `pip install -e ".[dev,ui]"`). The tables of the dashboard (top/flop products, RFM segments, churn scores, channel performance) showed raw English column names (`share_pct`, `avg_recency_days`, `cost_per_conversion`…) even with `language: fr`. They now show readable labels in French ("Part (%)", "Récence moy. (jours)", "Coût par conversion") or English ("Share (%)", "Avg recency (days)", "Cost per conversion"). The index names (product, segment, customer, channel) are translated too.
+- **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
+- **Tests :** 395 passed, 0 skipped. 7 new: every column label has FR and EN, `display_table` translates columns and index and keeps unknown columns and the input unchanged, every column of the four dashboard tables has a label, FR/EN columns on the marketing page, FR/EN columns on the customers page (with riskiest customers first). The 4 AppTest cases fail without the fix. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-2uftvp -> main
+- **Décisions techniques :** new `dashboard_data.COLUMN_LABELS`, `column_label()` and `display_table()`; the translation is applied only at display time, so the business modules, charts and the report keep their stable English column names. The churn table is now sorted explicitly by `risk` instead of "the last column" (same order today, but no longer depends on column order).
+- **Problèmes / dette technique :** cell values stay English (RFM segment names such as "Champions", risk levels `low/medium/high`, chart series names). "Unknown profile" and "A time series task needs a date column" stay English (internal errors). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: dashboard budget move reasons follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #99 was already merged; suite green at start (383 passed). On the dashboard marketing page, the reason of each suggested budget move was English even with `language: fr` ("radio ROI -0.20 vs median 1.50; whatsapp returns 4.00 revenue per unit spent"). In French it now reads "ROI de radio -0.20 contre une médiane de 1.50 ; whatsapp rapporte 4.00 de chiffre d'affaires par unité dépensée"; English output is unchanged.
 - **Fichiers principaux :** `mide/business/marketing.py`, `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
