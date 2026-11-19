@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: weekly report warns when the data is stale (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #53 was already merged; suite green at start (288 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Fixed the debt noted in the last sessions: nothing warned that the data was old. On the demo data the report dated 2026-11-19 describes sales that end on 2024-12-31. When the last sale is more than 30 days before the report date, the "Alertes" section now starts with "données anciennes : dernière vente le 2024-12-31, 688 jours avant ce rapport ; les chiffres décrivent cette période, pas aujourd'hui" (EN: "stale data: last sale on 2024-12-31, 688 days before this report; figures describe that period, not today"). Shows up in `mide report` (Markdown and HTML) and in `mide auto`.
+- **Fichiers principaux :** `mide/report.py`, `tests/test_report.py`
+- **Tests :** 290 passed, 2 skipped (2 new: exact FR/EN alert text, 30-day threshold and missing sales table; alert comes first on the demo data and is absent when the data is fresh). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-qhkwpq -> main
+- **Décisions techniques :** threshold is a module constant (`STALE_AFTER_DAYS = 30`), not a config key, to avoid a config change without validation. Unparseable dates are ignored. The alert is only added to the report, not to `mide ask` answers.
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged. The weekly report "Alertes" still lists every historical anomaly (the last 5), not only recent ones.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-18 — Maintenance: revenue and 30d growth cite the dates they cover (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #52 was already merged; suite green at start (286 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed (pip copies of `PyYAML`, `cryptography`, `cffi` over the Debian ones). Running `scripts/demo.sh` showed the KPIs "revenue: 735,907" and "30d growth: +10.4%" in a report dated 2026-11-18. Neither said which dates it covered: the total is all history and the growth is the last 30 days of data (to 2024-12-31), which a reader could take as the last 30 days before today. They now read "735,907 for 2023-01-01 -> 2024-12-31" and "+10.4% (30 days to 2024-12-31 vs previous 30)". This also shows how old the data is (part of the "data is stale" debt noted earlier). The change shows up in `mide ask`, the agent figures and the weekly report "Indicateurs clés" section.
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`

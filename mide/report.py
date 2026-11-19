@@ -6,9 +6,12 @@ import html
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
+import pandas as pd
+
 from mide.agent.decision import BusinessData, Finding, run_modules
 
 _ACTION_LIMIT = 3
+STALE_AFTER_DAYS = 30  # older sales data gets a warning at the top of the alerts
 
 _T = {
     "fr": {"title": "Rapport hebdomadaire MIDE", "kpis": "Indicateurs clés", "forecast": "Prévisions",
@@ -86,6 +89,29 @@ def _actions(f: dict[str, Finding], fr: bool) -> list[Action]:
     return out[:_ACTION_LIMIT]
 
 
+def _last_sale_day(data: BusinessData) -> date | None:
+    """Latest valid date in the sales table, or None if there is none."""
+    if data.sales is None or "date" not in data.sales.columns:
+        return None
+    last = pd.to_datetime(data.sales["date"], errors="coerce").max()
+    return None if pd.isna(last) else last.date()
+
+
+def stale_data_alert(data: BusinessData, today: date, fr: bool) -> str | None:
+    """Warn when the latest sale is more than STALE_AFTER_DAYS before the report date."""
+    last = _last_sale_day(data)
+    if last is None:
+        return None
+    age = (today - last).days
+    if age <= STALE_AFTER_DAYS:
+        return None
+    if fr:
+        return (f"données anciennes : dernière vente le {last.isoformat()}, {age} jours avant ce "
+                "rapport ; les chiffres décrivent cette période, pas aujourd'hui")
+    return (f"stale data: last sale on {last.isoformat()}, {age} days before this report; "
+            "figures describe that period, not today")
+
+
 def build_report(data: BusinessData, language: str = "fr", today: date | None = None) -> Report:
     """Build the report from the business tables (missing tables are skipped)."""
     lang = language if language in _T else "fr"
@@ -105,6 +131,9 @@ def build_report(data: BusinessData, language: str = "fr", today: date | None = 
         report.alerts.append(
             f"marketing underperforming: {findings['marketing'].facts['underperforming']}")
     report.actions = _actions(findings, lang == "fr")
+    stale = stale_data_alert(data, report.generated, lang == "fr")
+    if stale and not report.empty:
+        report.alerts.insert(0, stale)
     return report
 
 
