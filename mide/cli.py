@@ -27,7 +27,7 @@ from mide.llm.downloader import DownloadError, download_model, list_models, mode
 from mide.llm.lora import finetune, load_documents, peft_trainer, unavailable_reason
 from mide.llm.prompts import build_rag_prompt, sources_footer
 from mide.llm.runtime import LLM, load_llm
-from mide.rag.embeddings import Embedder, load_embedder
+from mide.rag.embeddings import Embedder, EmbeddingError, load_embedder
 from mide.rag.indexer import index_sources
 from mide.rag.retriever import Retriever
 from mide.rag.store import VectorStore
@@ -449,18 +449,24 @@ def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
         return
     report = AutoReport(n_datasets=len(build_catalog(sources)))
     try:
-        idx = index_sources(
-            sources,
-            cfg.app_dir / "index",
-            _get_embedder(cfg),
-            cfg.general.chunk_size,
-            cfg.general.chunk_overlap,
-            cfg.general.max_file_size_mb,
-        )
-        report.index_summary = (
-            f"{len(idx.new_items)} new, {len(idx.updated_items)} updated, "
-            f"{len(idx.unchanged_items)} unchanged, {len(idx.removed_items)} removed"
-        )
+        try:
+            embedder = _get_embedder(cfg)
+        except EmbeddingError as exc:
+            # Graceful degradation: without the `rag` extra, still retrain the models.
+            report.index_summary = f"skipped ({str(exc).rstrip('.')})"
+        else:
+            idx = index_sources(
+                sources,
+                cfg.app_dir / "index",
+                embedder,
+                cfg.general.chunk_size,
+                cfg.general.chunk_overlap,
+                cfg.general.max_file_size_mb,
+            )
+            report.index_summary = (
+                f"{len(idx.new_items)} new, {len(idx.updated_items)} updated, "
+                f"{len(idx.unchanged_items)} unchanged, {len(idx.removed_items)} removed"
+            )
         report.outcomes = retrain_if_changed(
             _load_all_datasets(sources),
             cfg.app_dir / "models_trained",
