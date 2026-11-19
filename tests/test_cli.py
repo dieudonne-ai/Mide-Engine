@@ -174,3 +174,42 @@ def test_auto_summary_follows_language(tmp_path, monkeypatch) -> None:
         result = runner.invoke(app, ["auto", *args])
         assert result.exit_code == 0, result.output
         assert result.output.splitlines() == lines, language
+
+
+def test_train_task_line_follows_language():
+    # The "Task: <task> - <reason>" line of `mide train` is translated in French.
+    import pandas as pd
+
+    from mide.automl.task_detector import TaskInfo, TaskType, detect_task
+    from mide.cli import _task_line
+
+    dated = pd.DataFrame({
+        "date": pd.date_range("2025-01-01", periods=12, freq="D"),
+        "amount": [1.5 * i + 0.25 for i in range(12)],
+    })
+    cases = {
+        "fr": [
+            (detect_task(dated, "amount"),
+             "Tâche : série temporelle - cible numérique avec la colonne de date 'date'"),
+            (detect_task(dated.drop(columns=["date"]), "amount"),
+             "Tâche : régression - cible numérique continue, pas de colonne de date utilisable"),
+            (detect_task(pd.DataFrame({"y": ["a", "b", "a"]}), "y"),
+             "Tâche : classification - cible non numérique avec 2 classes"),
+            (detect_task(pd.DataFrame({"y": [0, 1, 2, 1]}), "y"),
+             "Tâche : classification - cible entière avec seulement 3 valeurs"),
+        ],
+        "en": [
+            (detect_task(dated, "amount"),
+             "Task: time_series - numeric target with date column 'date'"),
+            (detect_task(dated.drop(columns=["date"]), "amount"),
+             "Task: regression - continuous numeric target, no usable date column"),
+            (detect_task(pd.DataFrame({"y": ["a", "b", "a"]}), "y"),
+             "Task: classification - non-numeric target with 2 classes"),
+        ],
+    }
+    for language, pairs in cases.items():
+        for info, expected in pairs:
+            assert _task_line(info, language) == expected
+    # Without a known code, the English reason is kept as it is.
+    legacy = TaskInfo(TaskType.REGRESSION, "y", "some reason")
+    assert _task_line(legacy, "fr") == "Tâche : régression - some reason"
