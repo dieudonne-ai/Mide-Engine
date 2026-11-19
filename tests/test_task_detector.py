@@ -70,3 +70,12 @@ def test_unknown_date_column_raises():
 def test_constant_target_raises():
     with pytest.raises(ValueError, match="fewer than 2"):
         detect_task(pd.DataFrame({"a": ["x", "x", "x"]}), "a")
+
+
+def test_reason_code_names_the_detection_rule(demo_frames):
+    # Each rule sets a stable code so interfaces can translate the reason.
+    sales = demo_frames["sales"]
+    assert detect_task(sales, "amount").reason_code == "dated"
+    assert detect_task(sales.drop(columns=["date"]), "amount").reason_code == "continuous"
+    assert detect_task(pd.DataFrame({"y": ["a", "b", "a"]}), "y").reason_code == "non_numeric"
+    assert detect_task(pd.DataFrame({"y": [0, 1, 1, 0]}), "y").reason_code == "few_integers"

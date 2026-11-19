@@ -31,6 +31,9 @@ class TaskInfo:
     date_column: str | None = None
     frequency: str | None = None  # pandas offset alias for time series (D, W, MS...)
     n_classes: int | None = None
+    # Stable code of the detection rule, so interfaces can translate ``reason``:
+    # "non_numeric", "few_integers", "dated" or "continuous".
+    reason_code: str = ""
 
 
 def _is_class_like_numeric(series: pd.Series) -> bool:
@@ -90,14 +93,16 @@ def detect_task(
         if n < 2:
             raise ValueError(f"Target column '{target}' has fewer than 2 distinct values")
         return TaskInfo(
-            TaskType.CLASSIFICATION, target, f"non-numeric target with {n} classes", n_classes=n
+            TaskType.CLASSIFICATION, target, f"non-numeric target with {n} classes", n_classes=n,
+            reason_code="non_numeric",
         )
     if _is_class_like_numeric(series):
         n = int(series.nunique(dropna=True))
         if n < 2:
             raise ValueError(f"Target column '{target}' has fewer than 2 distinct values")
         return TaskInfo(
-            TaskType.CLASSIFICATION, target, f"integer target with only {n} values", n_classes=n
+            TaskType.CLASSIFICATION, target, f"integer target with only {n} values", n_classes=n,
+            reason_code="few_integers",
         )
 
     date_col = _find_date_column(df, target, date_column)
@@ -110,5 +115,11 @@ def detect_task(
                 f"numeric target with date column '{date_col}'",
                 date_column=date_col,
                 frequency=_infer_frequency(parsed),
+                reason_code="dated",
             )
-    return TaskInfo(TaskType.REGRESSION, target, "continuous numeric target, no usable date column")
+    return TaskInfo(
+        TaskType.REGRESSION,
+        target,
+        "continuous numeric target, no usable date column",
+        reason_code="continuous",
+    )

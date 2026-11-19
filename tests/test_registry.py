@@ -95,7 +95,7 @@ def test_cli_train_output_follows_language(demo_data, tmp_path, monkeypatch):
     opt = ["--config-dir", str(cfg)]
     runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
     expected = {
-        "fr": ["Tâche : ", "Modèle enregistré : sales-amount v1", "  VC ", "(référence ",
+        "fr": ["Tâche : série temporelle - cible numérique avec la colonne de date ", "Modèle enregistré : sales-amount v1", "  VC ", "(référence ",
                "Le modèle bat la référence.", "Variables principales : "],
         "en": ["Task: ", "Saved sales-amount v2", "  CV ", "(baseline ",
                "The model beats the baseline.", "Top features: "],

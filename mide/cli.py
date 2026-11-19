@@ -14,6 +14,7 @@ from mide.automl.auto import AutoReport, ModelOutcome, fingerprint, retrain_if_c
 from mide.automl.evaluator import evaluate
 from mide.automl.registry import list_models as list_trained_models
 from mide.automl.registry import save_model
+from mide.automl.task_detector import TaskInfo
 from mide.automl.trainer import train as train_model
 from mide.config import Config, ConfigError, load_config
 from mide.connectors.base import is_url
@@ -84,6 +85,25 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
     },
     "report_written": {"fr": "Rapport écrit : {value}", "en": "Report written: {value}"},
     "train_task": {"fr": "Tâche : {task} - {reason}", "en": "Task: {task} - {reason}"},
+    "task_regression": {"fr": "régression", "en": "regression"},
+    "task_classification": {"fr": "classification", "en": "classification"},
+    "task_time_series": {"fr": "série temporelle", "en": "time_series"},
+    "reason_non_numeric": {
+        "fr": "cible non numérique avec {n} classes",
+        "en": "non-numeric target with {n} classes",
+    },
+    "reason_few_integers": {
+        "fr": "cible entière avec seulement {n} valeurs",
+        "en": "integer target with only {n} values",
+    },
+    "reason_dated": {
+        "fr": "cible numérique avec la colonne de date '{date}'",
+        "en": "numeric target with date column '{date}'",
+    },
+    "reason_continuous": {
+        "fr": "cible numérique continue, pas de colonne de date utilisable",
+        "en": "continuous numeric target, no usable date column",
+    },
     "train_saved": {
         "fr": "Modèle enregistré : {name} v{version}",
         "en": "Saved {name} v{version}",
@@ -173,6 +193,22 @@ def _language_of(language: str) -> str:
 
 def _sources_msg(key: str, language: str, **values: str) -> str:
     return SOURCES_MESSAGES[key][language].format(**values)
+
+
+def _task_line(info: TaskInfo, language: str) -> str:
+    """The "Task: <task> - <reason>" line of ``mide train`` in ``language``.
+
+    Unknown task types or reason codes fall back to the raw value / English reason.
+    """
+    task_key = f"task_{info.task.value}"
+    task = (_sources_msg(task_key, language) if task_key in SOURCES_MESSAGES
+            else info.task.value)
+    reason_key = f"reason_{info.reason_code}"
+    reason = info.reason
+    if info.reason_code and reason_key in SOURCES_MESSAGES:
+        reason = _sources_msg(reason_key, language, n=str(info.n_classes),
+                              date=str(info.date_column))
+    return _sources_msg("train_task", language, task=task, reason=reason)
 
 
 def _echo_error(exc: BaseException, language: str) -> None:
@@ -430,9 +466,7 @@ def train_command(
         _echo_error(exc, _cli_language(config_dir))
         raise typer.Exit(1) from exc
     language = _language_of(cfg.language)
-    typer.echo(_sources_msg(
-        "train_task", language, task=result.task.task.value, reason=result.task.reason
-    ))
+    typer.echo(_task_line(result.task, language))
     typer.echo(_sources_msg(
         "train_saved", language, name=record.name, version=str(record.version)
     ))
