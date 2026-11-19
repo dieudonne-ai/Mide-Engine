@@ -221,6 +221,7 @@ def _load_dataset(dataset: str, sources: list[str]):
     """Read one authorized dataset, matched by full item name or file/table name."""
     from mide.connectors.tabular import split_item
 
+    names: list[str] = []
     for source in sources:
         conn: SQLConnector | TabularConnector | None = (
             SQLConnector(source, sources) if is_url(source) else None
@@ -234,10 +235,12 @@ def _load_dataset(dataset: str, sources: list[str]):
                 base = Path(split_item(item)[0]).stem if not is_url(source) else item
                 if dataset in (item, base, Path(item).name):
                     return item, conn.read(item)
+                names.append(base)
         finally:
             if isinstance(conn, SQLConnector):
                 conn.close()
-    raise ValueError(f"Dataset not found in authorized sources: {dataset}")
+    hint = f" Available datasets: {', '.join(sorted(set(names)))}" if names else ""
+    raise ValueError(f"Dataset not found in authorized sources: {dataset}.{hint}")
 
 
 @app.command("train")

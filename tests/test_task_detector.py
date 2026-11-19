@@ -53,6 +53,14 @@ def test_unknown_target_raises():
         detect_task(pd.DataFrame({"a": [1.5, 2.5]}), "b")
 
 
+def test_unknown_column_errors_list_available_columns():
+    df = pd.DataFrame({"amount": [1.5, 2.5], "date": ["2026-01-01", "2026-02-01"]})
+    with pytest.raises(ValueError, match="Available columns: amount, date"):
+        detect_task(df, "amout")
+    with pytest.raises(ValueError, match="Available columns: amount, date"):
+        detect_task(df, "amount", date_column="day")
+
+
 def test_unknown_date_column_raises():
     df = pd.DataFrame({"a": [1.5, 2.5, 3.5, 9.9, 8.8, 7.7, 6.6, 5.5, 4.4, 3.3, 2.2, 1.1]})
     with pytest.raises(ValueError, match="Date column"):

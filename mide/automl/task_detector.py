@@ -53,10 +53,17 @@ def _infer_frequency(dates: pd.Series) -> str:
     return "D"
 
 
+def _columns_hint(df: pd.DataFrame) -> str:
+    """List the dataset's columns so the user can fix a mistyped name."""
+    return "Available columns: " + ", ".join(str(c) for c in df.columns)
+
+
 def _find_date_column(df: pd.DataFrame, target: str, date_column: str | None) -> str | None:
     if date_column is not None:
         if date_column not in df.columns:
-            raise ValueError(f"Date column '{date_column}' not found in dataset")
+            raise ValueError(
+                f"Date column '{date_column}' not found in dataset. {_columns_hint(df)}"
+            )
         return date_column
     dates = [c for c in profile_dataframe(df).date_columns if c != target]
     return dates[0] if dates else None
@@ -73,7 +80,7 @@ def detect_task(
     - otherwise -> regression.
     """
     if target not in df.columns:
-        raise ValueError(f"Target column '{target}' not found in dataset")
+        raise ValueError(f"Target column '{target}' not found in dataset. {_columns_hint(df)}")
     series = df[target]
     if series.dropna().empty:
         raise ValueError(f"Target column '{target}' has no values")

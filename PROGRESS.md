@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide train` lists valid names when a dataset or column is mistyped (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #72 was already merged; suite green at start (321 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. A mistyped `--target`, `--date-column` or `--dataset` in `mide train` only said "not found", so the user had to run `mide scan` to look up the right name. The errors now list the valid names, e.g. "Target column 'nope' not found in dataset. Available columns: order_id, date, customer_id, ..." and "Dataset not found in authorized sources: nope. Available datasets: campaigns, customers, products, sales".
+- **Fichiers principaux :** `mide/automl/task_detector.py`, `mide/cli.py`, `tests/test_task_detector.py`, `tests/test_registry.py`
+- **Tests :** 322 passed, 2 skipped (1 new test: unknown target and date column errors list the columns; `test_cli_train_and_list` now checks both CLI messages. Both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-i5xori -> main
+- **Décisions techniques :** only names from authorized sources are listed (datasets that were already discovered while searching), so nothing outside the consented sources is read. Exit code is still 1.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: `mide ask` rejects a blank question clearly (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #71 was already merged; suite green at start (320 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. `mide ask ""` (or a question of spaces) was routed to the documents: with an empty index it said "Index vide. Lancez `mide index`.", and with an index it sent an empty query to the retriever and the LLM. A blank question now stops before any data is loaded with "Question vide. Exemple : mide ask \"Quels produits se vendent le mieux ?\"" (English: "Empty question. Example: ...") and exit code 1. The dashboard uses the same `ask_answer` and shows the same message.
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_retriever.py`
