@@ -13,6 +13,19 @@ MAX_CLASSES_NUMERIC = 10  # integer-valued targets with <= this many values are 
 MIN_DATES_FOR_SERIES = 10  # distinct timestamps needed to talk about a series
 
 
+class TargetError(ValueError):
+    """A target column that cannot be learned, with a stable ``code`` for localized messages.
+
+    ``code`` is ``no_values`` (the column is empty) or ``single_value`` (fewer than 2
+    distinct values). The English message stays the ``str()`` of the exception.
+    """
+
+    def __init__(self, code: str, message: str, column: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.column = column
+
+
 class TaskType(str, Enum):
     """Supported learning tasks."""
 
@@ -56,6 +69,12 @@ def _infer_frequency(dates: pd.Series) -> str:
     return "D"
 
 
+def _single_value(target: str) -> TargetError:
+    return TargetError(
+        "single_value", f"Target column '{target}' has fewer than 2 distinct values", target
+    )
+
+
 def _columns_hint(df: pd.DataFrame) -> str:
     """List the dataset's columns so the user can fix a mistyped name."""
     return "Available columns: " + ", ".join(str(c) for c in df.columns)
@@ -86,12 +105,12 @@ def detect_task(
         raise ValueError(f"Target column '{target}' not found in dataset. {_columns_hint(df)}")
     series = df[target]
     if series.dropna().empty:
-        raise ValueError(f"Target column '{target}' has no values")
+        raise TargetError("no_values", f"Target column '{target}' has no values", target)
 
     if not pd.api.types.is_numeric_dtype(series) or pd.api.types.is_bool_dtype(series):
         n = int(series.nunique(dropna=True))
         if n < 2:
-            raise ValueError(f"Target column '{target}' has fewer than 2 distinct values")
+            raise _single_value(target)
         return TaskInfo(
             TaskType.CLASSIFICATION, target, f"non-numeric target with {n} classes", n_classes=n,
             reason_code="non_numeric",
@@ -99,7 +118,7 @@ def detect_task(
     if _is_class_like_numeric(series):
         n = int(series.nunique(dropna=True))
         if n < 2:
-            raise ValueError(f"Target column '{target}' has fewer than 2 distinct values")
+            raise _single_value(target)
         return TaskInfo(
             TaskType.CLASSIFICATION, target, f"integer target with only {n} values", n_classes=n,
             reason_code="few_integers",
