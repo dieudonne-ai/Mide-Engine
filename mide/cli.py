@@ -231,8 +231,32 @@ def _cli_language(config_dir: Path | None) -> str:
     try:
         language = load_config(config_dir, create_app_dir=False).language
     except Exception:  # noqa: BLE001 - a broken config must not block source management
-        return "fr"
+        return _default_yaml_language(config_dir)
     return _language_of(language)
+
+
+def _default_yaml_language(config_dir: Path | None) -> str:
+    """``language`` read from ``default.yaml`` alone (another config file may be broken)."""
+    import yaml
+
+    from mide.config import DEFAULT_CONFIG_DIR
+
+    path = (Path(config_dir) if config_dir else DEFAULT_CONFIG_DIR) / "default.yaml"
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 - unreadable file: French default
+        return "fr"
+    language = data.get("language") if isinstance(data, dict) else None
+    return _language_of(language) if isinstance(language, str) else "fr"
+
+
+def _authorized_sources(config_dir: Path | None, language: str) -> list[str]:
+    """Authorized sources; a broken ``sources.yaml`` prints a clear error and exits 1."""
+    try:
+        return list_sources(config_dir)
+    except ConfigError as exc:
+        _echo_error(exc, language)
+        raise typer.Exit(1) from exc
 
 
 def _language_of(language: str) -> str:
@@ -278,6 +302,9 @@ def sources_add(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> Non
     language = _cli_language(config_dir)
     try:
         value = add_source(source, config_dir)
+    except ConfigError as exc:
+        _echo_error(exc, language)
+        raise typer.Exit(1) from exc
     except FileNotFoundError as exc:
         typer.echo(_sources_msg("missing_path", language, value=source), err=True)
         raise typer.Exit(1) from exc
@@ -290,9 +317,10 @@ def sources_add(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> Non
 @sources_app.command("list")
 def sources_list(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     """List authorized sources."""
-    sources = list_sources(config_dir)
+    language = _cli_language(config_dir)
+    sources = _authorized_sources(config_dir, language)
     if not sources:
-        typer.echo(_sources_msg("none", _cli_language(config_dir)))
+        typer.echo(_sources_msg("none", language))
     for src in sources:
         typer.echo(src)
 
@@ -301,8 +329,13 @@ def sources_list(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
 def sources_remove(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     """Revoke an authorized source."""
     language = _cli_language(config_dir)
-    if not remove_source(source, config_dir):
-        listed = list_sources(config_dir)
+    try:
+        removed = remove_source(source, config_dir)
+    except ConfigError as exc:
+        _echo_error(exc, language)
+        raise typer.Exit(1) from exc
+    if not removed:
+        listed = _authorized_sources(config_dir, language)
         hint = (
             _sources_msg("listed", language, value=", ".join(listed))
             if listed else _sources_msg("none", language)
@@ -315,8 +348,8 @@ def sources_remove(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> 
 @app.command()
 def scan(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     """Show the catalog of datasets found in the authorized sources."""
-    sources = list_sources(config_dir)
     language = _cli_language(config_dir)
+    sources = _authorized_sources(config_dir, language)
     if not sources:
         typer.echo(_sources_msg("none_hint", language))
         return
@@ -991,7 +1024,7 @@ def run() -> None:
     try:
         language = load_config().language
     except Exception:  # noqa: BLE001 - config may be what is broken
-        language = "fr"
+        language = _default_yaml_language(None)
     raise SystemExit(run_safely(app, language))
 
 

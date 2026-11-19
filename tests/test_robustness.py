@@ -41,7 +41,9 @@ def test_run_safely_reports_clean_error(capsys):
         raise MemoryError
 
     assert run_safely(boom, "en") == 1
-    assert "Not enough memory" in capsys.readouterr().err
+    assert capsys.readouterr().err.startswith("Error: Not enough memory")
+    assert run_safely(boom, "fr") == 1
+    assert capsys.readouterr().err.startswith("Erreur : Mémoire insuffisante")
     assert run_safely(lambda: None) == 0
 
 
