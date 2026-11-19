@@ -206,3 +206,46 @@ def test_budget_action_single_move_keeps_short_text():
     action = _actions(mkt, fr=True)[0]
     assert action.text == "Réallouer le budget depuis Radio"
     assert action.evidence == "500 to Email; best channel: Email"
+
+
+@pytest.mark.parametrize("language", ["fr", "en"])
+def test_cli_report_never_overwrites_source_file(tmp_path, monkeypatch, demo_data, language):
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    (cfg / "default.yaml").write_text(f"language: {language}\n")
+    folder = tmp_path / "data"
+    folder.mkdir()
+    sales = folder / "sales.csv"
+    sales.write_bytes(demo_data["sales"].read_bytes())
+    (cfg / "sources.yaml").write_text(f"sources:\n  - {folder}\n  - {demo_data['campaigns']}\n")
+    before_sales = sales.read_bytes()
+    before_campaigns = demo_data["campaigns"].read_bytes()
+    for target in (sales, demo_data["campaigns"]):
+        res = CliRunner().invoke(cli.app, ["report", "-o", str(target), "--config-dir", str(cfg)])
+        assert res.exit_code == 1
+        word = "source autorisée" if language == "fr" else "authorized source"
+        assert word in res.output
+    assert sales.read_bytes() == before_sales
+    assert demo_data["campaigns"].read_bytes() == before_campaigns
+    # A new file, even inside a source folder, is still allowed.
+    new = folder / "report.md"
+    res = CliRunner().invoke(cli.app, ["report", "-o", str(new), "--config-dir", str(cfg)])
+    assert res.exit_code == 0 and new.read_text(encoding="utf-8").startswith("#")
+
+
+def test_source_owning(tmp_path):
+    from mide.connectors.sources import source_owning
+
+    folder = tmp_path / "data"
+    folder.mkdir()
+    f = folder / "a.csv"
+    f.write_text("x\n1\n")
+    other = tmp_path / "other.csv"
+    other.write_text("x\n")
+    sources = ["sqlite:///db.sqlite", str(folder)]
+    assert source_owning(f, sources) == str(folder)
+    assert source_owning(folder, sources) == str(folder)
+    assert source_owning(other, sources) is None
+    assert source_owning(folder / "missing.md", sources) is None
+    assert source_owning(other, [str(other)]) == str(other)
