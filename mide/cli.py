@@ -74,6 +74,15 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "en": ("Error: do not put a password in the URL; use an environment variable "
                "(e.g. ${{DB_PASSWORD}})."),
     },
+    "no_models_hint": {
+        "fr": "Aucun modèle entraîné. Utilisez `mide train --dataset X --target Y`.",
+        "en": "No trained models. Use `mide train --dataset X --target Y`.",
+    },
+    "report_format": {
+        "fr": "Le format doit être 'md' ou 'html'.",
+        "en": "Format must be 'md' or 'html'.",
+    },
+    "report_written": {"fr": "Rapport écrit : {value}", "en": "Report written: {value}"},
 }
 
 
@@ -181,7 +190,7 @@ def models_trained(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     cfg = load_config(config_dir)
     records = list_trained_models(cfg.app_dir / "models_trained")
     if not records:
-        typer.echo("No trained models. Use `mide train --dataset X --target Y`.")
+        typer.echo(_sources_msg("no_models_hint", _language_of(cfg.language)))
         return
     for r in records:
         m = r.metadata
@@ -527,7 +536,7 @@ def report_command(
     from mide.report import build_report, render_html, render_markdown
 
     if fmt not in ("md", "html"):
-        typer.echo("Format must be 'md' or 'html'.", err=True)
+        typer.echo(_sources_msg("report_format", _cli_language(config_dir)), err=True)
         raise typer.Exit(2)
     cfg = load_config(config_dir)
     sources = list_sources(config_dir)
@@ -540,7 +549,7 @@ def report_command(
         typer.echo(text)
     else:
         output.write_text(text, encoding="utf-8")
-        typer.echo(f"Report written: {output}")
+        typer.echo(_sources_msg("report_written", _language_of(cfg.language), value=str(output)))
 
 
 @app.command("auto")
@@ -587,7 +596,7 @@ def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     typer.echo(f"Scan: {report.n_datasets} datasets/documents.")
     typer.echo(f"Index: {report.index_summary}.")
     if not report.outcomes:
-        typer.echo("No trained models. Use `mide train --dataset X --target Y`.")
+        typer.echo(_sources_msg("no_models_hint", _language_of(cfg.language)))
     for o in report.outcomes:
         scores = "" if o.new_score is None else f" ({o.old_score:.4g} -> {o.new_score:.4g})"
         typer.echo(f"Model {o.name}: {o.status}{scores} {o.detail}".rstrip())
