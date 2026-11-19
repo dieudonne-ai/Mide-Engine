@@ -122,6 +122,7 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "en": "Download {url} ({size}) from the internet?",
     },
     "models_ready": {"fr": "Modèle prêt : {value}", "en": "Model ready: {value}"},
+    "error": {"fr": "Erreur : {value}", "en": "Error: {value}"},
 }
 
 
@@ -140,6 +141,11 @@ def _language_of(language: str) -> str:
 
 def _sources_msg(key: str, language: str, **values: str) -> str:
     return SOURCES_MESSAGES[key][language].format(**values)
+
+
+def _echo_error(exc: BaseException, language: str) -> None:
+    """Print ``exc`` on stderr behind the "Erreur :" / "Error:" prefix of ``language``."""
+    typer.echo(_sources_msg("error", _language_of(language), value=str(exc)), err=True)
 
 
 @sources_app.command("add")
@@ -217,7 +223,7 @@ def models_list(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     try:
         cfg = load_config(config_dir)
     except ConfigError as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        _echo_error(exc, _cli_language(config_dir))
         raise typer.Exit(1) from exc
     language = _language_of(cfg.language)
     for info in list_models(cfg.models.profiles, cfg.app_dir / "models"):
@@ -253,7 +259,7 @@ def models_pull(
     try:
         cfg = load_config(config_dir)
     except ConfigError as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        _echo_error(exc, _cli_language(config_dir))
         raise typer.Exit(1) from exc
     language = _language_of(cfg.language)
     name = profile or profile_hardware().profile
@@ -285,7 +291,7 @@ def models_pull(
     try:
         path = download_model(models.llm, cfg.app_dir / "models", confirm, progress=progress)
     except DownloadError as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        _echo_error(exc, language)
         raise typer.Exit(1) from exc
     typer.echo(_sources_msg("models_ready", language, value=str(path)))
 
@@ -301,7 +307,7 @@ def index_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     try:
         cfg = load_config(config_dir)
     except ConfigError as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        _echo_error(exc, _cli_language(config_dir))
         raise typer.Exit(1) from exc
     sources = list_sources(config_dir)
     if not sources:
@@ -317,7 +323,7 @@ def index_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
             cfg.general.max_file_size_mb,
         )
     except Exception as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        _echo_error(exc, _language_of(cfg.language))
         raise typer.Exit(1) from exc
     typer.echo(
         f"Indexed: {len(report.new_items)} new, {len(report.updated_items)} updated, "
@@ -377,7 +383,7 @@ def train_command(
             {"evaluation": metrics, "dataset": dataset, "data_hash": fingerprint(df)},
         )
     except Exception as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        _echo_error(exc, _cli_language(config_dir))
         raise typer.Exit(1) from exc
     language = _language_of(cfg.language)
     typer.echo(_sources_msg(
@@ -523,7 +529,10 @@ def ask_command(
     except (ConfigError, DownloadError, EmptyIndexError, EmptyQuestionError,
             UnknownSourceError) as exc:
         plain = isinstance(exc, EmptyIndexError | EmptyQuestionError | UnknownSourceError)
-        typer.echo(str(exc) if plain else f"Error: {exc}", err=True)
+        if plain:
+            typer.echo(str(exc), err=True)
+        else:
+            _echo_error(exc, _cli_language(config_dir))
         raise typer.Exit(1) from exc
     typer.echo(answer)
     if used:
@@ -611,7 +620,7 @@ def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     try:
         cfg = load_config(config_dir)
     except ConfigError as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        _echo_error(exc, _cli_language(config_dir))
         raise typer.Exit(1) from exc
     sources = list_sources(config_dir)
     if not sources:
@@ -644,7 +653,7 @@ def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
             profile=profile_hardware().profile,
         )
     except Exception as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        _echo_error(exc, _language_of(cfg.language))
         raise typer.Exit(1) from exc
     typer.echo(f"Scan: {report.n_datasets} datasets/documents.")
     typer.echo(f"Index: {report.index_summary}.")
@@ -679,7 +688,7 @@ def chat_command(
         retriever = Retriever(store, _get_embedder(cfg), top_k)
         llm = _get_llm(cfg)
     except (ConfigError, DownloadError) as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        _echo_error(exc, _cli_language(config_dir))
         raise typer.Exit(1) from exc
     history = ChatHistory()
     typer.echo(
@@ -715,7 +724,7 @@ def finetune_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     try:
         cfg = load_config(config_dir)
     except ConfigError as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        _echo_error(exc, _cli_language(config_dir))
         raise typer.Exit(1) from exc
     hw = profile_hardware()
     spec = cfg.models.profiles.get(hw.profile)  # type: ignore[call-overload]
@@ -747,7 +756,7 @@ def privacy_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     try:
         cfg = load_config(config_dir)
     except ConfigError as exc:
-        typer.echo(f"Error: {exc}", err=True)
+        _echo_error(exc, _cli_language(config_dir))
         raise typer.Exit(1) from exc
     typer.echo(build_privacy_report(cfg, config_dir).to_text(cfg.language))
 

@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: the generic "Error: …" prefix follows the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #83 was already merged; suite green at start (336 passed, 2 skipped for missing `streamlit`) once the dev dependencies were installed (`pip install -e ".[dev]"`, then `python3.13 -m pytest`). The generic error prefix printed by every command on failure (`models list/pull`, `index`, `train`, `ask`, `auto`, `chat`, `finetune`, `privacy`) was always "Error: …" although `language` defaults to `fr` (CLAUDE.md section 6; listed as debt). It is now "Erreur : …" in French and unchanged "Error: …" in English.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_cli.py`
+- **Tests :** 337 passed, 2 skipped (1 new test: `train` on an unknown dataset in FR and EN, plus five commands with a broken config. It fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-0llnye -> main
+- **Décisions techniques :** one helper `_echo_error(exc, language)` with the `error` message in `SOURCES_MESSAGES`. When the config itself cannot be loaded (or may not have been loaded yet, e.g. in `train`/`chat`/`ask`), the language comes from `_cli_language()`, which falls back to French for a broken config. Only the prefix is translated: the exception texts (downloader, connectors, trainer) keep their English wording. Exit codes are unchanged.
+- **Problèmes / dette technique :** the `index`/`auto` progress lines, the `scan` catalog lines, the task-detector reasons and the exception texts behind the prefix are still English-only. The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: `mide models list/pull` messages follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #82 was already merged; suite green at start (334 passed, 2 skipped for missing `streamlit`) once the dev dependencies were installed (note: in this sandbox `python` is 3.11 while `pip` installs for 3.13, so tests must be run with `python3.13 -m pytest`). `mide models list` and `mide models pull` were English-only although `language` defaults to `fr` (CLAUDE.md section 6; listed as debt). They now print "[installé]" / "[non installé]", the confirmation prompt "Télécharger <url> (<n> Go) depuis internet ?", "Modèle prêt : …" and "Erreur : aucun modèle configuré pour le profil '…'. Profils configurés : …" in French; English unchanged when `language: en`.
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_downloader.py`
