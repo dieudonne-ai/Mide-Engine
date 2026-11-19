@@ -63,10 +63,18 @@ def _save_state(path: Path, state: dict[str, str]) -> None:
     path.write_text(json.dumps(state, indent=2, sort_keys=True), "utf-8")
 
 
-def _find_frame(frames: dict[str, pd.DataFrame], dataset: str) -> pd.DataFrame | None:
-    """Match a model's dataset label (file stem or table) to a loaded frame."""
-    for item, df in frames.items():
-        if dataset in (item, Path(item.split("::")[0]).stem, Path(item).name):
+def _find_frame(
+    frames: dict[str, pd.DataFrame], dataset: str, item: str | None = None
+) -> pd.DataFrame | None:
+    """Match a model's dataset to a loaded frame.
+
+    A model that recorded its exact ``item`` only matches that item (never another file
+    with the same name); older models without it are matched by label (file stem or table).
+    """
+    if item is not None:
+        return frames.get(item)
+    for key, df in frames.items():
+        if dataset in (key, Path(key.split("::")[0]).stem, Path(key).name):
             return df
     return None
 
@@ -99,7 +107,7 @@ def retrain_if_changed(
     outcomes: list[ModelOutcome] = []
     for name, meta in sorted(latest.items()):
         dataset = meta.get("dataset") or name.rsplit("-", 1)[0]
-        df = _find_frame(frames, dataset)
+        df = _find_frame(frames, dataset, meta.get("item"))
         if df is None:
             outcomes.append(ModelOutcome(name, "skipped", "dataset no longer available"))
             continue
@@ -119,7 +127,8 @@ def retrain_if_changed(
             )
             new_score = candidate.metrics.get(old_primary)
             if _is_better(candidate, old_score, old_primary):
-                extra = {"evaluation": evaluate(candidate, df), "dataset": dataset, "data_hash": digest}
+                extra = {"evaluation": evaluate(candidate, df), "dataset": dataset, "data_hash": digest,
+                         **({"item": meta["item"]} if meta.get("item") else {})}
                 save_model(candidate, registry_dir, name, extra)
                 outcomes.append(ModelOutcome(name, "promoted", "new model is better", old_score, new_score))
             else:

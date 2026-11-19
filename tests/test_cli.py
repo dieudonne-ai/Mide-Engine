@@ -340,3 +340,63 @@ def test_ask_without_llama_cpp_and_no_figures_gives_clear_error(tmp_path, monkey
     assert result.exit_code == 1
     assert ("Erreur : llama-cpp-python n'est pas installé. Installez-le avec "
             "`pip install mide-engine[llm]`.") in result.output
+
+
+def _write_sales(folder, rows: int = 40) -> None:
+    folder.mkdir(parents=True)
+    lines = ["x,amount"] + [f"{i},{2 * i + i % 3}" for i in range(rows)]
+    (folder / "sales.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def test_train_refuses_ambiguous_dataset_name(tmp_path, monkeypatch) -> None:
+    # Two authorized files named sales.csv: the short name is refused (FR/EN) and lists
+    # both paths; the full path picks one and the model gets the short, path-free name.
+    import json
+
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    first, second = tmp_path / "a", tmp_path / "b"
+    _write_sales(first)
+    _write_sales(second)
+    args = ["--config-dir", str(cfg)]
+    for folder in (first, second):
+        assert runner.invoke(app, ["sources", "add", str(folder), *args]).exit_code == 0
+    expected = {
+        "fr": "Plusieurs jeux de données s'appellent 'sales'",
+        "en": "Several datasets are named 'sales'",
+    }
+    for language, text in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        result = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amount", *args])
+        assert result.exit_code == 1, result.output
+        assert text in result.output
+        assert str(first / "sales.csv") in result.output
+        assert str(second / "sales.csv") in result.output
+    assert not any((tmp_path / "home" / "models_trained").glob("*"))
+
+    full = str((second / "sales.csv").resolve())
+    result = runner.invoke(app, ["train", "--dataset", full, "--target", "amount", *args])
+    assert result.exit_code == 0, result.output
+    assert "sales-amount v1" in result.output
+    meta = json.loads(
+        (tmp_path / "home" / "models_trained" / "sales-amount" / "v1" / "metadata.json")
+        .read_text(encoding="utf-8"))
+    assert meta["dataset"] == "sales" and meta["item"] == full
+
+
+def test_train_model_name_is_the_same_whatever_the_dataset_spelling(tmp_path, monkeypatch) -> None:
+    # `sales`, `sales.csv` and the full path are one dataset: one model, new versions.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    folder = tmp_path / "data"
+    _write_sales(folder)
+    args = ["--config-dir", str(cfg)]
+    assert runner.invoke(app, ["sources", "add", str(folder), *args]).exit_code == 0
+    full = str((folder / "sales.csv").resolve())
+    for version, spelling in enumerate(("sales", "sales.csv", full), start=1):
+        result = runner.invoke(app, ["train", "--dataset", spelling, "--target", "amount", *args])
+        assert result.exit_code == 0, result.output
+        assert f"sales-amount v{version}" in result.output
+    assert [p.name for p in (tmp_path / "home" / "models_trained").iterdir()] == ["sales-amount"]

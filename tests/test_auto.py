@@ -60,3 +60,18 @@ def test_missing_dataset_skipped(setup):
     _df, reg, state = setup
     out = auto.retrain_if_changed({}, reg, state, profile="tiny")
     assert out[0].status == "skipped"
+
+
+def test_recorded_item_is_matched_exactly(tmp_path):
+    # A model that recorded its exact file is retrained on it, never on another file
+    # with the same name; when that file is gone the model is skipped.
+    df = pd.DataFrame({"x": range(60), "amount": [2.0 * i for i in range(60)]})
+    reg = tmp_path / "reg"
+    save_model(train(df, "amount", profile="tiny", seed=1), reg, "sales-amount",
+               {"dataset": "sales", "item": "/a/sales.csv", "data_hash": auto.fingerprint(df)})
+    other = df.assign(amount=df.amount + 5)
+    out = auto.retrain_if_changed({"/b/sales.csv": other}, reg, tmp_path / "s.json", "tiny")
+    assert [o.status for o in out] == ["skipped"]
+    out = auto.retrain_if_changed(
+        {"/b/sales.csv": other, "/a/sales.csv": df}, reg, tmp_path / "s.json", "tiny")
+    assert [o.status for o in out] == ["unchanged"]
