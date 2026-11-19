@@ -59,3 +59,26 @@ def test_ask_with_empty_index_fails_cleanly(tmp_path, monkeypatch):
     monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
     res = CliRunner().invoke(cli.app, ["ask", "hello"])
     assert res.exit_code == 1
+
+
+def test_ask_blank_question_fails_clearly(tmp_path, monkeypatch, fake_embedder):
+    src, _ = _indexed(tmp_path, fake_embedder)
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(cli, "_get_embedder", lambda cfg: fake_embedder)
+
+    def no_llm(cfg):
+        raise AssertionError("a blank question must not reach the LLM")
+
+    monkeypatch.setattr(cli, "_get_llm", no_llm)
+    cfg_dir = tmp_path / "cfg"
+    cfg_dir.mkdir()
+    (cfg_dir / "sources.yaml").write_text(f"sources:\n  - {src}\n")
+    runner = CliRunner()
+    assert runner.invoke(cli.app, ["index", "--config-dir", str(cfg_dir)]).exit_code == 0
+    res = runner.invoke(cli.app, ["ask", "   ", "--config-dir", str(cfg_dir)])
+    assert res.exit_code == 1
+    assert "Question vide" in res.output and "Index vide" not in res.output
+    (cfg_dir / "default.yaml").write_text("language: en\n")
+    res = runner.invoke(cli.app, ["ask", "", "--config-dir", str(cfg_dir)])
+    assert res.exit_code == 1
+    assert "Empty question" in res.output
