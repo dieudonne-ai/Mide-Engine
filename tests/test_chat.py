@@ -1,3 +1,4 @@
+import pytest
 from typer.testing import CliRunner
 
 from mide import cli
@@ -62,3 +63,42 @@ def test_chat_loop_remembers_previous_turn(tmp_path, monkeypatch, fake_embedder)
 def test_chat_empty_index_fails_cleanly(tmp_path, monkeypatch):
     monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
     assert CliRunner().invoke(cli.app, ["chat"]).exit_code == 1
+
+
+def _chat_cfg(tmp_path, monkeypatch, fake_embedder, llm):
+    src, _ = _indexed(tmp_path, fake_embedder)
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(cli, "_get_embedder", lambda cfg: fake_embedder)
+    monkeypatch.setattr(cli, "_get_llm", lambda cfg: llm)
+    cfg_dir = tmp_path / "cfg"
+    cfg_dir.mkdir()
+    (cfg_dir / "sources.yaml").write_text(f"sources:\n  - {src}\n")
+    assert CliRunner().invoke(cli.app, ["index", "--config-dir", str(cfg_dir)]).exit_code == 0
+    return cfg_dir
+
+
+def _interrupt(*args, **kwargs):
+    raise KeyboardInterrupt
+
+
+@pytest.mark.parametrize("language, goodbye", [("fr", "Au revoir."), ("en", "Goodbye.")])
+def test_chat_ctrl_c_at_prompt_exits_cleanly(tmp_path, monkeypatch, fake_embedder, language,
+                                             goodbye):
+    cfg_dir = _chat_cfg(tmp_path, monkeypatch, fake_embedder, FakeLLM("ok"))
+    (cfg_dir / "default.yaml").write_text(f"language: {language}\n")
+    monkeypatch.setattr("builtins.input", _interrupt)
+    res = CliRunner().invoke(cli.app, ["chat", "--config-dir", str(cfg_dir)])
+    assert res.exit_code == 0, res.output
+    assert res.exception is None
+    assert goodbye in res.output and "Traceback" not in res.output
+
+
+def test_chat_ctrl_c_during_answer_exits_cleanly(tmp_path, monkeypatch, fake_embedder):
+    llm = FakeLLM("ok")
+    monkeypatch.setattr(llm, "generate", _interrupt)
+    cfg_dir = _chat_cfg(tmp_path, monkeypatch, fake_embedder, llm)
+    res = CliRunner().invoke(
+        cli.app, ["chat", "--config-dir", str(cfg_dir)], input="marketing budget\n"
+    )
+    assert res.exit_code == 0, res.output
+    assert res.exception is None and "Au revoir." in res.output

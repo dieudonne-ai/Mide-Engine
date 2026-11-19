@@ -952,6 +952,16 @@ def chat_command(
         if cfg.language == "fr"
         else "Ask your questions (`exit` to quit, `/clear` to forget)."
     )
+    try:
+        _chat_loop(cfg.language, history, retriever, llm, source)
+    except KeyboardInterrupt:
+        typer.echo("\n" + ("Au revoir." if cfg.language == "fr" else "Goodbye."))
+
+
+def _chat_loop(
+    language: str, history: ChatHistory, retriever: Retriever, llm: Any, source: str | None
+) -> None:
+    """Read questions until `exit` or end of input; Ctrl+C is handled by the caller."""
     while True:
         try:
             question = input("> ").strip()
@@ -965,7 +975,7 @@ def chat_command(
         if not question:
             continue
         passages = retriever.retrieve(question, source=source)
-        prompt = build_rag_prompt(question, passages, cfg.language, history.render(cfg.language))
+        prompt = build_rag_prompt(question, passages, language, history.render(language))
         answer = llm.generate(prompt, max_tokens=512, temperature=0.2).strip()
         history.add(question, answer)
         typer.echo(answer)
