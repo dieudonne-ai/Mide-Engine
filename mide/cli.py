@@ -83,6 +83,24 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "en": "Format must be 'md' or 'html'.",
     },
     "report_written": {"fr": "Rapport écrit : {value}", "en": "Report written: {value}"},
+    "train_task": {"fr": "Tâche : {task} - {reason}", "en": "Task: {task} - {reason}"},
+    "train_saved": {
+        "fr": "Modèle enregistré : {name} v{version}",
+        "en": "Saved {name} v{version}",
+    },
+    "train_cv": {
+        "fr": "  VC {metric} : {value} (référence {baseline})",
+        "en": "  CV {metric}: {value} (baseline {baseline})",
+    },
+    "train_beats": {
+        "fr": "Le modèle bat la référence.",
+        "en": "The model beats the baseline.",
+    },
+    "train_not_beats": {
+        "fr": "Le modèle ne bat PAS la référence.",
+        "en": "The model does NOT beat the baseline.",
+    },
+    "train_top": {"fr": "Variables principales : {value}", "en": "Top features: {value}"},
 }
 
 
@@ -334,14 +352,22 @@ def train_command(
     except Exception as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
-    typer.echo(f"Task: {result.task.task.value} - {result.task.reason}")
-    typer.echo(f"Saved {record.name} v{record.version}")
+    language = _language_of(cfg.language)
+    typer.echo(_sources_msg(
+        "train_task", language, task=result.task.task.value, reason=result.task.reason
+    ))
+    typer.echo(_sources_msg(
+        "train_saved", language, name=record.name, version=str(record.version)
+    ))
     for key, value in result.metrics.items():
-        typer.echo(f"  CV {key}: {value:.4g} (baseline {result.baseline_metrics[key]:.4g})")
-    verdict = "beats" if result.beats_baseline else "does NOT beat"
-    typer.echo(f"The model {verdict} the baseline.")
+        typer.echo(_sources_msg(
+            "train_cv", language, metric=key, value=f"{value:.4g}",
+            baseline=f"{result.baseline_metrics[key]:.4g}",
+        ))
+    typer.echo(_sources_msg("train_beats" if result.beats_baseline else "train_not_beats",
+                            language))
     top = ", ".join(f"{k} ({v:.0%})" for k, v in list(result.feature_importance.items())[:5])
-    typer.echo(f"Top features: {top}")
+    typer.echo(_sources_msg("train_top", language, value=top))
 
 
 def _get_llm(cfg: Config) -> LLM:
