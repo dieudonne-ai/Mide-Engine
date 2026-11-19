@@ -43,21 +43,25 @@ def evaluate(model: TrainedModel, df: pd.DataFrame) -> dict[str, float]:
     target = model.task.target
     pred = model.predict(work)
     if model.task.task is TaskType.CLASSIFICATION:
-        y = work[target].to_numpy(dtype=object)
-        out = {
-            "accuracy": float(accuracy_score(y, pred)),
-            "f1_macro": float(f1_score(y, pred, average="macro", zero_division=0)),
-        }
         classes = model.classes or []
+        # Score on class codes: object arrays of integer labels (e.g. a ``quantity`` target)
+        # are rejected by sklearn as an "unknown" target type. Unseen labels get code -1.
+        index = pd.Index(classes)
+        y = index.get_indexer(work[target])
+        pred_codes = index.get_indexer(pd.Series(pred, dtype=object))
+        out = {
+            "accuracy": float(accuracy_score(y, pred_codes)),
+            "f1_macro": float(f1_score(y, pred_codes, average="macro", zero_division=0)),
+        }
         if len(classes) >= 2 and len(set(y)) >= 2:
             proba = model.model.predict_proba(model.prep.transform(work))
             try:
                 if len(classes) == 2:
-                    out["auc"] = float(roc_auc_score(y == classes[1], proba[:, 1]))
+                    out["auc"] = float(roc_auc_score(y == 1, proba[:, 1]))
                 else:
-                    out["auc"] = float(
-                        roc_auc_score(y, proba, multi_class="ovr", labels=classes)
-                    )
+                    out["auc"] = float(roc_auc_score(
+                        y, proba, multi_class="ovr", labels=list(range(len(classes)))
+                    ))
             except ValueError:
                 pass  # AUC undefined for this sample
         return out

@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide train` no longer crashes on integer class targets (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #105 was already merged; suite green at start (410 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Bug found while exercising the CLI on the demo data: `mide train --dataset sales --target quantity` (an integer target with few values, so a classification task) trained the model and then failed with the cryptic "Erreur : unknown is not supported". `evaluate()` cast labels to an `object` array, which sklearn rejects when the labels are integers (text labels worked). It now scores on class codes (indices into `model.classes`, -1 for unseen labels), so integer and text labels both work, AUC included.
+- **Fichiers principaux :** `mide/automl/evaluator.py`, `tests/test_registry.py`
+- **Tests :** 413 passed, 0 skipped. 3 new: `evaluate` on binary and multi-class integer labels (accuracy + AUC), `mide train` on `sales.quantity` end to end (all 3 fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-gjfg3f -> main
+- **Décisions techniques :** fix in the evaluator, not the trainer: `TrainedModel.predict` still returns the original labels, so saved models and callers are unchanged. Metric values for text labels are identical to before.
+- **Problèmes / dette technique :** on the demo data `quantity` reaches accuracy 1 because `amount = quantity × unit_price` leaks the target; MIDE does not detect target leakage yet (possible backlog item). A non-date `--date-column` (e.g. `product_id`) is silently ignored for classification/regression. "Unknown profile" and "A time series task needs a date column" stay English (internal errors). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: missing-source warning of `mide scan` / `mide index` / `mide auto` follows the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #104 was already merged; suite green at start (408 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). When an authorized folder or file no longer exists, `mide scan`, `mide index` and `mide auto` printed the raw English log line "Source not found: <path>" even with `language: fr`. They now print "Attention : source introuvable, ignorée : <path>" in French and "Warning: source not found, skipped: <path>" in English (stderr); the other sources are still processed.
 - **Fichiers principaux :** `mide/cli.py`, `mide/ingestion/catalog.py`, `mide/rag/indexer.py`, `tests/test_ingestion.py`, `tests/test_store.py`
