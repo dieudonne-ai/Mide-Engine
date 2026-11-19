@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide train` result output follows the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #80 was already merged; suite green at start (332 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed (`PyYAML`/`cryptography`/`cffi` reinstalled with `--ignore-installed` because of the Debian builds). The `mide train` result lines were English-only although `language` defaults to `fr` (CLAUDE.md section 6; listed as debt by the previous session). They now print "Tâche : …", "Modèle enregistré : <name> v<n>", "  VC <metric> : … (référence …)", "Le modèle bat la référence." / "Le modèle ne bat PAS la référence." and "Variables principales : …" in French; English unchanged when `language: en`.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_registry.py`
+- **Tests :** 333 passed, 2 skipped (1 new test covering every train line in FR and EN; the assertion of `test_cli_train_and_list` updated from English to French because it runs with the default language. Both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-hc8a78 -> main
+- **Décisions techniques :** the messages live in `SOURCES_MESSAGES` (`train_task`, `train_saved`, `train_cv`, `train_beats`, `train_not_beats`, `train_top`). The task reason produced by `automl/task_detector.py` (e.g. "numeric target with date column 'date'") is still English; translating it needs a change in the detector API, left for a later session. Behaviour and exit codes are unchanged.
+- **Problèmes / dette technique :** `doctor`, `models list/pull`, the `index`/`auto` progress lines, the task-detector reasons and the generic "Error: …" prefix are still English-only. The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: `mide models trained`, `mide auto` and `mide report` messages follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #79 was already merged; suite green at start (331 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. The "No trained models. Use `mide train --dataset X --target Y`." hint (`mide models trained`, `mide auto`) and the `mide report` messages ("Format must be 'md' or 'html'.", "Report written: …") were English-only although `language` defaults to `fr` (CLAUDE.md section 6; follow-up of the previous session). They now print "Aucun modèle entraîné. Utilisez `mide train --dataset X --target Y`.", "Le format doit être 'md' ou 'html'." and "Rapport écrit : …" in French, English unchanged when `language: en`.
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_cli.py`

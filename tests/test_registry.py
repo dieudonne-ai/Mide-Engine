@@ -76,7 +76,7 @@ def test_cli_train_and_list(demo_data, tmp_path, monkeypatch):
     runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
     res = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amount", *opt])
     assert res.exit_code == 0, res.output
-    assert "Saved sales-amount v1" in res.output
+    assert "Modèle enregistré : sales-amount v1" in res.output
     res = runner.invoke(app, ["models", "trained", *opt])
     assert "sales-amount v1" in res.output
     bad = runner.invoke(app, ["train", "--dataset", "nope", "--target", "amount", *opt])
@@ -85,3 +85,24 @@ def test_cli_train_and_list(demo_data, tmp_path, monkeypatch):
     bad = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amout", *opt])
     assert bad.exit_code == 1
     assert "Available columns:" in bad.output and "amount" in bad.output
+
+
+def test_cli_train_output_follows_language(demo_data, tmp_path, monkeypatch):
+    # `mide train` result lines use the configured language (default fr).
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    runner = CliRunner()
+    opt = ["--config-dir", str(cfg)]
+    runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
+    expected = {
+        "fr": ["Tâche : ", "Modèle enregistré : sales-amount v1", "  VC ", "(référence ",
+               "Le modèle bat la référence.", "Variables principales : "],
+        "en": ["Task: ", "Saved sales-amount v2", "  CV ", "(baseline ",
+               "The model beats the baseline.", "Top features: "],
+    }
+    for language, lines in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        res = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amount", *opt])
+        assert res.exit_code == 0, res.output
+        for line in lines:
+            assert line in res.output, (language, line)
