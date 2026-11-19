@@ -16,8 +16,9 @@ MIN_DATES_FOR_SERIES = 10  # distinct timestamps needed to talk about a series
 class TargetError(ValueError):
     """A target column that cannot be learned, with a stable ``code`` for localized messages.
 
-    ``code`` is ``no_values`` (the column is empty) or ``single_value`` (fewer than 2
-    distinct values). The English message stays the ``str()`` of the exception.
+    ``code`` is ``no_values`` (the column is empty), ``single_value`` (fewer than 2
+    distinct values) or ``not_a_date`` (an explicit date column that does not hold dates;
+    ``column`` is then that date column). The English message stays the ``str()``.
     """
 
     def __init__(self, code: str, message: str, column: str) -> None:
@@ -80,12 +81,26 @@ def _columns_hint(df: pd.DataFrame) -> str:
     return "Available columns: " + ", ".join(str(c) for c in df.columns)
 
 
+def _check_date_column(df: pd.DataFrame, target: str, date_column: str) -> None:
+    """Reject an explicit date column that does not hold dates (ids, prices, the target).
+
+    Numbers are never accepted: ``pd.to_datetime`` would read them as nanosecond
+    timestamps and the series would collapse into a single period.
+    """
+    kind = profile_dataframe(df[[date_column]]).columns[0].kind
+    if date_column == target or kind != "date":
+        raise TargetError(
+            "not_a_date", f"Column '{date_column}' does not contain dates", date_column
+        )
+
+
 def _find_date_column(df: pd.DataFrame, target: str, date_column: str | None) -> str | None:
     if date_column is not None:
         if date_column not in df.columns:
             raise ValueError(
                 f"Date column '{date_column}' not found in dataset. {_columns_hint(df)}"
             )
+        _check_date_column(df, target, date_column)
         return date_column
     dates = [c for c in profile_dataframe(df).date_columns if c != target]
     return dates[0] if dates else None
@@ -103,6 +118,8 @@ def detect_task(
     """
     if target not in df.columns:
         raise ValueError(f"Target column '{target}' not found in dataset. {_columns_hint(df)}")
+    if date_column is not None:
+        _find_date_column(df, target, date_column)
     series = df[target]
     if series.dropna().empty:
         raise TargetError("no_values", f"Target column '{target}' has no values", target)
