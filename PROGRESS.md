@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: weekly report budget action lists every suggested move (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #63 was already merged; suite green at start (309 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed that the report's alerts name two underperforming channels ("Radio, SMS"), but priority action 2 only said "Reallocate budget from Radio" and dropped the SMS move (6,396 to Email, est. up to 269,460) without a word. The action now lists every suggested move: "Reallocate budget from Radio, SMS", with each move cited as "Radio: ...; SMS: ...". With a single move the text is unchanged. Applies to `mide report` (Markdown/HTML) and `mide auto`.
+- **Fichiers principaux :** `mide/report.py`, `tests/test_report.py`
+- **Tests :** 310 passed, 2 skipped (1 new: single move keeps the short text; the demo-data test now checks both moves and fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-hmetoj -> main
+- **Décisions techniques :** text-only change; the reallocation plan, the moves and the order of the actions are unchanged.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: churn figure cites its share of revenue and of the customer base (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #62 was already merged; suite green at start (307 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed the weekly report's priority action 1 as "churn: 4 customers at high risk (top: ...), 2,344 past revenue at risk". It did not say that this is 0.3% of revenue and 4 of 400 customers, so the reader could not judge why it ranks above a budget move worth far more. The churn figure now ends with "(0.3% of revenue; 4 of 400 customers)". This shows up in `mide ask`, the agent figures, the LLM prompt and the report's alert and action 1.
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`

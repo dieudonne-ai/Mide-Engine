@@ -157,9 +157,11 @@ def test_budget_action_carries_attribution_check(tables):
     # Demo channels claim ~1.96x total sales: the ROAS-based action must say so.
     action = next(a for a in build_report(tables, "en").actions
                   if a.text.startswith("Reallocate budget from"))
+    assert action.text == "Reallocate budget from Radio, SMS"
     assert action.evidence == (
-        "6,840 to Email, est. extra revenue up to 285,353 (linear, at Email ROAS 42.54; "
-        "returns diminish); best channel: Email; attribution check: channels report "
+        "Radio: 6,840 to Email, est. extra revenue up to 285,353 (linear, at Email ROAS 42.54; "
+        "returns diminish); SMS: 6,396 to Email, est. extra revenue up to 269,460 (linear, at "
+        "Email ROAS 42.54; returns diminish); best channel: Email; attribution check: channels report "
         "1,443,825 revenue, 1.96x total sales 735,907; the same sale is likely counted by "
         "several channels, so compare ROI/ROAS between channels rather than as absolute returns")
 
@@ -194,3 +196,13 @@ def test_trend_action_without_forecast():
     sal["sales"].facts["forecast 30d"] = "100 (-5% vs previous 30d)"
     assert _actions(sal, fr=False)[0].evidence == (
         "trend: up; forecast 30d: 100 (-5% vs previous 30d)")
+
+
+def test_budget_action_single_move_keeps_short_text():
+    from mide.agent.decision import Finding
+    from mide.report import _actions
+
+    mkt = {"marketing": Finding("marketing", {"move Radio": "500 to Email", "best channel": "Email"})}
+    action = _actions(mkt, fr=True)[0]
+    assert action.text == "Réallouer le budget depuis Radio"
+    assert action.evidence == "500 to Email; best channel: Email"
