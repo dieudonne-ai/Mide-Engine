@@ -60,6 +60,13 @@ class VectorStore:
             metadatas=[{**c.metadata, "item": item} for c in chunks],
         )
 
+    def items(self) -> list[str]:
+        """Sorted names of the indexed items (the values accepted by ``source``)."""
+        if self.count() == 0:
+            return []
+        metas = self._collection.get(include=["metadatas"])["metadatas"] or []
+        return sorted({str(m["item"]) for m in metas if m and "item" in m})
+
     def delete_item(self, item: str) -> None:
         """Remove every chunk of an item."""
         self._collection.delete(where={"item": item})
