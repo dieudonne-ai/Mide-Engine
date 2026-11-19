@@ -18,7 +18,7 @@ class TargetError(ValueError):
 
     ``code`` is ``no_values`` (the column is empty), ``single_value`` (fewer than 2
     distinct values), ``unique_values`` (a class target where no value repeats, raised by
-    the trainer) or ``not_a_date`` (an explicit date column that does not hold dates;
+    the trainer), ``target_is_date`` (the target itself is a date column) or ``not_a_date`` (an explicit date column that does not hold dates;
     ``column`` is then that date column). The English message stays the ``str()``.
     """
 
@@ -95,6 +95,14 @@ def _check_date_column(df: pd.DataFrame, target: str, date_column: str) -> None:
         )
 
 
+def _check_target_not_date(df: pd.DataFrame, target: str) -> None:
+    """Reject a date column as target: predicting dates as classes is never useful."""
+    if profile_dataframe(df[[target]]).columns[0].kind == "date":
+        raise TargetError(
+            "target_is_date", f"Target column '{target}' contains dates", target
+        )
+
+
 def _find_date_column(df: pd.DataFrame, target: str, date_column: str | None) -> str | None:
     if date_column is not None:
         if date_column not in df.columns:
@@ -124,6 +132,7 @@ def detect_task(
     series = df[target]
     if series.dropna().empty:
         raise TargetError("no_values", f"Target column '{target}' has no values", target)
+    _check_target_not_date(df, target)
 
     if not pd.api.types.is_numeric_dtype(series) or pd.api.types.is_bool_dtype(series):
         n = int(series.nunique(dropna=True))

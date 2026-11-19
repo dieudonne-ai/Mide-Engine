@@ -216,6 +216,26 @@ def test_cli_train_non_date_column_follows_language(demo_data, tmp_path, monkeyp
     assert not trained.exists() or not any(trained.iterdir())
 
 
+def test_cli_train_date_target_follows_language(demo_data, tmp_path, monkeypatch):
+    # A date column as target is refused before training; no model is saved.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    runner = CliRunner()
+    opt = ["--config-dir", str(cfg)]
+    runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
+    expected = {
+        "fr": "Erreur : La colonne cible 'date' contient des dates",
+        "en": "Error: Target column 'date' contains dates",
+    }
+    for language, line in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        res = runner.invoke(app, ["train", "--dataset", "sales", "--target", "date", *opt])
+        assert res.exit_code == 1
+        assert line in res.output, (language, res.output)
+    trained = tmp_path / "home" / "models_trained"
+    assert not trained.exists() or not any(trained.iterdir())
+
+
 def test_cli_train_identifier_target_follows_language(demo_data, tmp_path, monkeypatch):
     # An id column as target gets a clear message instead of a raw sklearn error.
     monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))

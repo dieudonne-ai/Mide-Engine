@@ -256,6 +256,12 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "en": "Every value of target column '{column}' is unique (an identifier?): "
               "pick a column whose values repeat",
     },
+    "target_target_is_date": {
+        "fr": "La colonne cible '{column}' contient des dates : choisissez une colonne à "
+              "prédire (montant, quantité…) et passez la date avec --date-column",
+        "en": "Target column '{column}' contains dates: pick a column to predict "
+              "(amount, quantity…) and pass the date with --date-column",
+    },
     "target_not_a_date": {
         "fr": "La colonne '{column}' ne contient pas de dates : choisissez une colonne de date "
               "pour --date-column",

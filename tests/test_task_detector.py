@@ -78,6 +78,18 @@ def test_explicit_date_column_must_hold_dates(demo_frames):
     assert detect_task(sales, "amount", date_column="date").task is TaskType.TIME_SERIES
 
 
+def test_date_target_is_refused(demo_frames):
+    # A date column as target would train a useless classifier over dates.
+    sales = demo_frames["sales"]
+    with pytest.raises(TargetError, match="contains dates") as err:
+        detect_task(sales, "date")
+    assert (err.value.code, err.value.column) == ("target_is_date", "date")
+    parsed = sales.assign(date=pd.to_datetime(sales["date"]))
+    with pytest.raises(TargetError, match="contains dates"):
+        detect_task(parsed, "date")
+    assert detect_task(sales, "city").task is TaskType.CLASSIFICATION
+
+
 def test_constant_target_raises():
     with pytest.raises(ValueError, match="fewer than 2"):
         detect_task(pd.DataFrame({"a": ["x", "x", "x"]}), "a")
