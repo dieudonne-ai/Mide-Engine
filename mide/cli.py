@@ -15,6 +15,7 @@ from mide.automl.evaluator import evaluate
 from mide.automl.registry import list_models as list_trained_models
 from mide.automl.registry import save_model
 from mide.automl.task_detector import TaskInfo
+from mide.automl.trainer import TrainingError
 from mide.automl.trainer import train as train_model
 from mide.config import Config, ConfigError, load_config
 from mide.connectors.base import is_url
@@ -189,6 +190,18 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "en": "{kind_cap} column '{column}' not found in dataset. Available columns: {columns}",
     },
     "column_kind_target": {"fr": "cible", "en": "target"},
+    "training_not_enough_rows": {
+        "fr": "Pas assez de lignes pour entraîner ({n}) ; il en faut au moins 20",
+        "en": "Not enough rows to train ({n}); at least 20 are needed",
+    },
+    "training_no_features": {
+        "fr": "Aucune colonne utilisable comme variable explicative",
+        "en": "No usable feature columns found",
+    },
+    "training_cv_failed": {
+        "fr": "La validation croisée a échoué : jeu de données trop petit ou dégénéré",
+        "en": "Cross-validation failed: dataset too small or degenerate",
+    },
     "column_kind_date": {"fr": "de date", "en": "date"},
     "llm_missing": {
         "fr": "Modèle non installé : lancez `mide models pull` ({value}).",
@@ -230,9 +243,17 @@ def _task_line(info: TaskInfo, language: str) -> str:
     return _sources_msg("train_task", language, task=task, reason=reason)
 
 
+def _error_text(exc: BaseException, language: str) -> str:
+    """Text of ``exc`` in ``language``: coded training errors are localized, others as is."""
+    if isinstance(exc, TrainingError) and f"training_{exc.code}" in SOURCES_MESSAGES:
+        return _sources_msg(f"training_{exc.code}", language, n=str(exc.n_rows))
+    return str(exc)
+
+
 def _echo_error(exc: BaseException, language: str) -> None:
     """Print ``exc`` on stderr behind the "Erreur :" / "Error:" prefix of ``language``."""
-    typer.echo(_sources_msg("error", _language_of(language), value=str(exc)), err=True)
+    lang = _language_of(language)
+    typer.echo(_sources_msg("error", lang, value=_error_text(exc, lang)), err=True)
 
 
 @sources_app.command("add")

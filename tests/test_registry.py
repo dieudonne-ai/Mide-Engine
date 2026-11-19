@@ -113,6 +113,34 @@ def test_cli_train_unknown_column_follows_language(demo_data, tmp_path, monkeypa
         assert date_line in res.output and "amount" in res.output, (language, res.output)
 
 
+def test_cli_train_training_errors_follow_language(tmp_path, monkeypatch):
+    # Trainer errors (too few rows, no usable feature) are in the configured language.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    data = tmp_path / "data"
+    data.mkdir()
+    pd.DataFrame({"a": [0.5, 1.5, 2.5], "y": [1.5, 2.5, 3.5]}).to_csv(data / "tiny.csv",
+                                                                       index=False)
+    pd.DataFrame({"y": [float(i) for i in range(30)]}).to_csv(data / "only.csv", index=False)
+    cfg = tmp_path / "cfg"
+    runner = CliRunner()
+    opt = ["--config-dir", str(cfg)]
+    runner.invoke(app, ["sources", "add", str(data), *opt])
+    expected = {
+        "fr": ["Erreur : Pas assez de lignes pour entraîner (3) ; il en faut au moins 20",
+               "Erreur : Aucune colonne utilisable comme variable explicative"],
+        "en": ["Error: Not enough rows to train (3); at least 20 are needed",
+               "Error: No usable feature columns found"],
+    }
+    for language, (rows_line, features_line) in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        res = runner.invoke(app, ["train", "--dataset", "tiny", "--target", "y", *opt])
+        assert res.exit_code == 1
+        assert rows_line in res.output, (language, res.output)
+        res = runner.invoke(app, ["train", "--dataset", "only", "--target", "y", *opt])
+        assert res.exit_code == 1
+        assert features_line in res.output, (language, res.output)
+
+
 def test_cli_train_unknown_dataset_follows_language(demo_data, tmp_path, monkeypatch):
     # The "dataset not found" error is fully in the configured language.
     monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))

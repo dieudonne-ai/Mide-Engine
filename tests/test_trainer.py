@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from mide.automl.task_detector import TaskType, detect_task
-from mide.automl.trainer import LIMITS, FeaturePrep, train
+from mide.automl.trainer import LIMITS, FeaturePrep, TrainingError, train
 
 
 @pytest.fixture
@@ -76,8 +76,13 @@ def test_missing_values_and_unseen_category():
 def test_errors():
     with pytest.raises(ValueError, match="Unknown profile"):
         train(pd.DataFrame({"a": [1.5] * 30, "y": range(30)}), "y", profile="huge")
-    with pytest.raises(ValueError, match="Not enough rows"):
+    with pytest.raises(ValueError, match="Not enough rows") as rows_err:
         train(pd.DataFrame({"a": [0.5, 1.5, 2.5], "y": [1.5, 2.5, 3.5]}), "y")
+    assert isinstance(rows_err.value, TrainingError)
+    assert (rows_err.value.code, rows_err.value.n_rows) == ("not_enough_rows", 3)
+    with pytest.raises(TrainingError, match="No usable feature") as feat_err:
+        train(pd.DataFrame({"y": [float(i) for i in range(30)]}), "y")
+    assert feat_err.value.code == "no_features"
 
 
 def test_feature_prep_dates():

@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: training errors of `mide train` follow the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #90 was already merged; suite green at start (348 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). The remaining trainer errors listed as debt were English-only behind the French prefix, e.g. "Erreur : Not enough rows to train (3); at least 20 are needed". In French they now read "Erreur : Pas assez de lignes pour entraîner (3) ; il en faut au moins 20", "Erreur : Aucune colonne utilisable comme variable explicative" and "Erreur : La validation croisée a échoué : jeu de données trop petit ou dégénéré"; English unchanged with `language: en`.
+- **Fichiers principaux :** `mide/automl/trainer.py`, `mide/cli.py`, `tests/test_trainer.py`, `tests/test_registry.py`
+- **Tests :** 349 passed, 2 skipped (1 new CLI test: FR/EN errors for a 3-row dataset and a dataset with no feature column, fails without the fix; `test_errors` of the trainer extended to check the error codes). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-g0p0ap -> main
+- **Décisions techniques :** new `TrainingError(ValueError)` with a stable `code` (`not_enough_rows`, `no_features`, `cv_failed`) and `n_rows`, like `TaskInfo.reason_code`. Its `str()` stays the English text, so library callers, logs and existing `except ValueError` code are unchanged. The CLI maps the code to `SOURCES_MESSAGES` in `_echo_error`, so any command printing a `TrainingError` is localized.
+- **Problèmes / dette technique :** "Unknown profile" and "A time series task needs a date column" stay English (internal errors, not reachable from normal CLI use). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: "column not found" errors of `mide train` follow the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #89 was already merged; suite green at start (347 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). A mistyped `--target` or `--date-column` printed "Erreur : Target column 'amout' not found in dataset. Available columns: …" in English (listed as debt). In French it now reads "Erreur : Colonne cible 'amout' introuvable dans le jeu de données. Colonnes disponibles : …" (and "Colonne de date 'jour' …" for `--date-column`); English unchanged with `language: en`.
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_registry.py`
