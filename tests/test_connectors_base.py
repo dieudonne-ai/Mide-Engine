@@ -95,6 +95,23 @@ def test_add_rejects_missing_path_and_inline_password(tmp_path: Path) -> None:
     assert list_sources(tmp_path) == ["postgresql://user@host/db"]
 
 
+def test_add_rejects_missing_sqlite_database_without_creating_it(tmp_path: Path) -> None:
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    missing = tmp_path / "typo.db"
+    with pytest.raises(FileNotFoundError):
+        add_source(f"sqlite:///{missing}", cfg)
+    assert not missing.exists()
+    assert list_sources(cfg) == []
+    for language, expected in (("fr", "le chemin n'existe pas"), ("en", "path does not exist")):
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        res = runner.invoke(app, ["sources", "add", f"sqlite:///{missing}", "--config-dir", str(cfg)])
+        assert res.exit_code == 1 and expected in res.output
+    assert not missing.exists()
+    missing.touch()
+    assert add_source(f"sqlite:///{missing}", cfg) == f"sqlite:///{missing}"
+
+
 def test_cli_sources_roundtrip(tmp_path: Path) -> None:
     cfg = tmp_path / "cfg"
     data = tmp_path / "data"

@@ -20,7 +20,13 @@ from mide.automl.trainer import TrainingError
 from mide.automl.trainer import train as train_model
 from mide.config import Config, ConfigError, load_config
 from mide.connectors.base import is_url
-from mide.connectors.sources import add_source, list_sources, remove_source, source_owning
+from mide.connectors.sources import (
+    add_source,
+    list_sources,
+    remove_source,
+    source_missing,
+    source_owning,
+)
 from mide.connectors.sql import SQLConnector
 from mide.connectors.tabular import TabularConnector
 from mide.hardware.profiler import profile_hardware
@@ -310,9 +316,10 @@ def _authorized_sources(config_dir: Path | None, language: str) -> list[str]:
 
 
 def _warn_missing_sources(sources: list[str], language: str) -> None:
-    """Print a localized warning (stderr) for each authorized folder/file that no longer exists."""
+    """Print a localized warning (stderr) for each authorized file, folder or SQLite database
+    that no longer exists."""
     for source in sources:
-        if not is_url(source) and not Path(source).expanduser().exists():
+        if source_missing(source):
             typer.echo(_sources_msg("source_missing", language, value=source), err=True)
 
 
@@ -593,6 +600,8 @@ def _load_dataset(dataset: str, sources: list[str], language: str = "fr"):
 
     names: list[str] = []
     for source in sources:
+        if source_missing(source):
+            continue
         conn: SQLConnector | TabularConnector | None = (
             SQLConnector(source, sources) if is_url(source) else None
         )
@@ -688,6 +697,8 @@ def _load_all_datasets(sources: list[str]) -> dict:
     for source in sources:
         try:
             conn: SQLConnector | TabularConnector
+            if source_missing(source):
+                continue
             if is_url(source):
                 conn = SQLConnector(source, sources)
             elif Path(source).expanduser().exists():

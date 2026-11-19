@@ -121,3 +121,31 @@ def test_catalog_closes_sql_connections(db_url: str) -> None:
         gc.collect()
     assert sorted(e.item for e in entries) == ["clients", "ventes"]
     assert not [w for w in caught if issubclass(w.category, ResourceWarning)]
+
+
+def test_sqlite_file_parsing(tmp_path: Path) -> None:
+    from mide.connectors.sql import sqlite_file
+
+    assert sqlite_file(f"sqlite:///{tmp_path / 'a.db'}") == tmp_path / "a.db"
+    assert sqlite_file("sqlite://") is None
+    assert sqlite_file("sqlite:///:memory:") is None
+    assert sqlite_file("sqlite:///file:a.db?mode=ro&uri=true") is None
+    assert sqlite_file("postgresql://user@host/db") is None
+    assert sqlite_file("not a url") is None
+
+
+def test_missing_sqlite_database_is_never_created(tmp_path: Path) -> None:
+    # Connecting to a missing SQLite file must not create it (sources are read-only).
+    path = tmp_path / "typo.db"
+    url = f"sqlite:///{path}"
+    with SQLConnector(url, [url]) as conn, pytest.raises(FileNotFoundError):
+        conn.discover()
+    assert not path.exists()
+
+
+def test_sqlite_opened_read_only_at_file_level(c: SQLConnector, db_url: str) -> None:
+    # Even bypassing ensure_read_only, the connection cannot write.
+    with c.engine.connect() as conn, pytest.raises(Exception, match="readonly|read-only"):
+        conn.exec_driver_sql("PRAGMA query_only = OFF")
+        conn.exec_driver_sql("CREATE TABLE hack (x INTEGER)")
+    assert c.discover() == ["clients", "ventes"]

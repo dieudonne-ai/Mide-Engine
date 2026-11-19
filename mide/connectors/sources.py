@@ -49,6 +49,11 @@ def add_source(source: str, config_dir: Path | None = None) -> str:
                 "Do not put a password in the URL; use an environment variable "
                 "(e.g. ${DB_PASSWORD})."
             )
+        from mide.connectors.sql import sqlite_file
+
+        db_file = sqlite_file(source)
+        if db_file is not None and not db_file.is_file():
+            raise FileNotFoundError(f"SQLite database does not exist: {db_file}")
     elif not Path(source).expanduser().exists():
         raise FileNotFoundError(f"Path does not exist: {source}")
     value = normalize_source(source)
@@ -68,6 +73,19 @@ def remove_source(source: str, config_dir: Path | None = None) -> bool:
     sources.remove(value)
     _save(sources, config_dir)
     return True
+
+
+def source_missing(source: str) -> bool:
+    """True if a folder/file source or a SQLite database file no longer exists on disk.
+
+    Server databases (PostgreSQL, MySQL, SQL Server) are never reported missing here.
+    """
+    if is_url(source):
+        from mide.connectors.sql import sqlite_file
+
+        db_file = sqlite_file(source)
+        return db_file is not None and not db_file.is_file()
+    return not Path(source).expanduser().exists()
 
 
 def source_owning(path: Path, sources: list[str]) -> str | None:

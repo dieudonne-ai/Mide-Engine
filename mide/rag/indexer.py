@@ -13,6 +13,7 @@ import pandas as pd
 
 from mide.connectors.base import is_url
 from mide.connectors.files import DocumentConnector
+from mide.connectors.sources import source_missing
 from mide.connectors.sql import SQLConnector
 from mide.connectors.tabular import TabularConnector, split_item
 from mide.rag.chunking import Chunk, chunk_text, summarize_table
@@ -144,6 +145,9 @@ def index_sources(
 
 
 def _scan_source(source, sources, old, process, chunk_size, overlap, max_mb) -> None:  # type: ignore[no-untyped-def]
+    if source_missing(source):
+        logger.debug("Source not found: %s", source)
+        return
     if is_url(source):
         with SQLConnector(source, sources) as conn:
             for table in conn.discover():

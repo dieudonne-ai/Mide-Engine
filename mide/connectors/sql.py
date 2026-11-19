@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import os
 import re
+import sqlite3
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any, Self
 
 import pandas as pd
 from sqlalchemy import create_engine, event, inspect, text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, make_url
 
 from mide.connectors.base import BaseConnector
 
@@ -35,6 +37,23 @@ def expand_env(url: str) -> str:
         return os.environ[name]
 
     return _ENV_VAR.sub(repl, url)
+
+
+def sqlite_file(url: str) -> Path | None:
+    """Return the database file of a SQLite URL, or ``None`` (other dialect, memory, URI mode).
+
+    The URL is parsed without expanding environment variables, so ``${VAR}`` stays as is.
+    """
+    try:
+        parsed = make_url(url)
+    except Exception:  # noqa: BLE001 - not a valid SQLAlchemy URL
+        return None
+    if parsed.get_backend_name() != "sqlite":
+        return None
+    database = parsed.database or ""
+    if database in ("", ":memory:") or parsed.query.get("uri") or database.startswith("file:"):
+        return None
+    return Path(database).expanduser()
 
 
 def _strip_comments_and_strings(sql: str) -> str:
@@ -68,7 +87,20 @@ class SQLConnector(BaseConnector):
     @property
     def engine(self) -> Engine:
         if self._engine is None:
-            engine = create_engine(expand_env(self.source))
+            url = expand_env(self.source)
+            db_file = sqlite_file(url)
+            if db_file is not None:
+                # Open the file read-only: a missing database raises instead of being
+                # created as an empty file (sources are never written, CLAUDE.md §2.3).
+                if not db_file.is_file():
+                    raise FileNotFoundError(f"SQLite database not found: {db_file}")
+                uri = f"{db_file.resolve().as_uri()}?mode=ro"
+                engine = create_engine(
+                    "sqlite://",
+                    creator=lambda: sqlite3.connect(uri, uri=True, check_same_thread=False),
+                )
+            else:
+                engine = create_engine(url)
             if engine.dialect.name == "sqlite":
 
                 @event.listens_for(engine, "connect")
