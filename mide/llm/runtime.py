@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from mide.hardware.profiler import HardwareReport, Profile
+from mide.utils.errors import MissingDependencyError
 
 # Context window (tokens) per hardware profile.
 CONTEXT_BY_PROFILE: dict[Profile, int] = {
@@ -20,6 +21,10 @@ CONTEXT_BY_PROFILE: dict[Profile, int] = {
 
 class LLMError(Exception):
     """Raised when the LLM runtime cannot be loaded or used."""
+
+
+class LLMDependencyError(LLMError, MissingDependencyError):
+    """``llama-cpp-python`` is not installed (localized by the interfaces)."""
 
 
 @dataclass(frozen=True)
@@ -72,10 +77,7 @@ class LlamaCppLLM:
             try:
                 from llama_cpp import Llama  # type: ignore[import-not-found]
             except ImportError as exc:
-                raise LLMError(
-                    "llama-cpp-python is not installed. Install it with "
-                    "`pip install mide-engine[llm]`."
-                ) from exc
+                raise LLMDependencyError("llama-cpp-python", "llm") from exc
             loader = Llama
         self.params = params
         self._model = loader(

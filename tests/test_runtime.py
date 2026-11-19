@@ -79,3 +79,25 @@ def test_llamacpp_without_package(tmp_path, monkeypatch):
 
 def test_fake_llm_fixture(fake_llm):
     assert fake_llm.generate("x") == "fake answer"
+
+
+def test_llamacpp_missing_package_message_is_localized(tmp_path, monkeypatch):
+    import sys
+
+    from mide.llm.runtime import LLMDependencyError
+    from mide.utils.errors import friendly_message, run_safely
+
+    monkeypatch.setitem(sys.modules, "llama_cpp", None)
+    model = tmp_path / "m.gguf"
+    model.write_bytes(b"x")
+    with pytest.raises(LLMDependencyError) as info:
+        LlamaCppLLM(model, RuntimeParams(512, 1, 0))
+    assert friendly_message(info.value, "fr") == (
+        "llama-cpp-python n'est pas installé. Installez-le avec `pip install mide-engine[llm]`.")
+    assert friendly_message(info.value, "en") == str(info.value)
+
+    def boom():
+        raise info.value
+
+    # The last-resort handler no longer calls it an "unexpected error".
+    assert run_safely(boom, "fr") == 1

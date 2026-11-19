@@ -6,7 +6,23 @@ import sys
 from collections.abc import Callable
 from typing import Any
 
+
+class MissingDependencyError(Exception):
+    """An optional dependency is missing; ``extra`` is the ``mide-engine[extra]`` that installs it."""
+
+    def __init__(self, package: str, extra: str) -> None:
+        super().__init__(
+            f"{package} is not installed. Install it with `pip install mide-engine[{extra}]`."
+        )
+        self.package = package
+        self.extra = extra
+
+
 MESSAGES: dict[str, dict[str, str]] = {
+    "missing_dependency": {
+        "fr": "{package} n'est pas installé. Installez-le avec `pip install mide-engine[{extra}]`.",
+        "en": "{package} is not installed. Install it with `pip install mide-engine[{extra}]`.",
+    },
     "not_found": {
         "fr": "Fichier ou dossier introuvable : {detail}. Vérifiez le chemin.",
         "en": "File or folder not found: {detail}. Check the path.",
@@ -46,6 +62,8 @@ def classify(exc: BaseException) -> str:
     """Map an exception to a message key."""
     import pandas.errors as pde
 
+    if isinstance(exc, MissingDependencyError):
+        return "missing_dependency"
     if isinstance(exc, FileNotFoundError):
         return "not_found"
     if isinstance(exc, PermissionError):
@@ -67,7 +85,11 @@ def friendly_message(exc: BaseException, language: str = "fr") -> str:
     """Return a short, actionable message in ``language`` (``fr`` or ``en``)."""
     lang = language if language in ("fr", "en") else "fr"
     detail = getattr(exc, "filename", None) or str(exc) or type(exc).__name__
-    return MESSAGES[classify(exc)][lang].format(detail=detail)
+    return MESSAGES[classify(exc)][lang].format(
+        detail=detail,
+        package=getattr(exc, "package", ""),
+        extra=getattr(exc, "extra", ""),
+    )
 
 
 def run_safely(func: Callable[[], Any], language: str = "fr") -> int:

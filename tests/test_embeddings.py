@@ -100,3 +100,25 @@ def test_missing_profile_raises(tmp_path):
 
 def test_batch_size_shrinks_on_small_profiles():
     assert BATCH_BY_PROFILE["tiny"] < BATCH_BY_PROFILE["large"]
+
+
+def test_missing_sentence_transformers_is_a_localizable_dependency_error(monkeypatch):
+    import builtins
+
+    from mide.rag.embeddings import EmbeddingDependencyError
+    from mide.utils.errors import friendly_message
+
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "sentence_transformers":
+            raise ImportError("nope")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    with pytest.raises(EmbeddingDependencyError) as info:
+        SentenceTransformerEmbedder("m")
+    assert info.value.package == "sentence-transformers" and info.value.extra == "rag"
+    assert friendly_message(info.value, "fr") == (
+        "sentence-transformers n'est pas installé. Installez-le avec "
+        "`pip install mide-engine[rag]`.")
