@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide privacy` shows readable storage sizes (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #68 was already merged; suite green at start (316 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. After the demo, `mide privacy` listed stored data as raw byte counts ("models_trained (888655 B)"), and a downloaded LLM would show as a 10-digit number. Sizes now use binary units in the user's language: "867.8 KB" in English, "867.8 Ko" in French ("0 B" / "0 o" for empty folders).
+- **Fichiers principaux :** `mide/utils/privacy.py`, `tests/test_privacy.py`
+- **Tests :** 318 passed, 2 skipped (2 new: `format_size` units and rounding in FR/EN; `mide privacy` on a 888,655-byte folder shows "867.8 Ko" and not the raw count; the CLI test fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-s3yc47 -> main
+- **Décisions techniques :** display-only change; `StoredLocation.size_bytes` stays in bytes. Binary units (1 KB = 1024 B) match what file managers on Windows show.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: a top product is never also listed as a flop (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #67 was already merged; suite green at start (314 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. `product_ranking` took the top `n` and the bottom `n` products independently, so with fewer than `2 * n` products the same product was in both lists: with 2 products, `mide ask` said "flop products: B (25%), A (75%)", calling the best seller (75% of revenue) a flop. The dashboard (n=5) had the same overlap with fewer than 10 products. The flop list now only holds products left after the top; when none are left, the agent drops the "flop products" figure (the dashboard shows an empty table).
 - **Fichiers principaux :** `mide/business/sales.py`, `mide/agent/decision.py`, `tests/test_sales.py`, `tests/test_agent.py`

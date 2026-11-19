@@ -35,10 +35,22 @@ class PrivacyReport:
         lines += [f"  - {_mask(s)}" for s in self.sources] or [
             "  (aucune)" if fr else "  (none)"]
         lines.append("Données stockées localement :" if fr else "Data stored locally:")
-        lines += [f"  - {s.path} ({s.size_bytes} o) : {s.purpose}" if fr
-                  else f"  - {s.path} ({s.size_bytes} B): {s.purpose}" for s in self.stored]
+        lines += [f"  - {s.path} ({format_size(s.size_bytes, language)}) : {s.purpose}" if fr
+                  else f"  - {s.path} ({format_size(s.size_bytes, language)}): {s.purpose}"
+                  for s in self.stored]
         lines += [self.network, self.read_only]
         return "\n".join(lines)
+
+
+def format_size(size_bytes: int, language: str = "fr") -> str:
+    """Human-readable size in binary units (1 KB = 1024 B); French uses o/Ko/Mo/Go."""
+    units = ["o", "Ko", "Mo", "Go", "To"] if language == "fr" else ["B", "KB", "MB", "GB", "TB"]
+    size = float(size_bytes)
+    for unit in units[:-1]:
+        if size < 1024:
+            return f"{size:.0f} {unit}" if unit == units[0] else f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} {units[-1]}"
 
 
 def _mask(source: str) -> str:

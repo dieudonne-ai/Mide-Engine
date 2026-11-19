@@ -6,7 +6,7 @@ from typer.testing import CliRunner
 
 from mide import cli
 from mide.llm.runtime import FakeLLM
-from mide.utils.privacy import _mask
+from mide.utils.privacy import _mask, format_size
 
 
 @pytest.fixture
@@ -65,3 +65,22 @@ def test_sources_respected(env, tmp_path, monkeypatch):
     (tmp_path / "secret.csv").write_text("a\n1\n")
     frames = cli._load_all_datasets(cli.list_sources(env))
     assert not any("secret" in str(k) for k in frames)
+
+
+def test_format_size_is_human_readable():
+    assert format_size(0, "en") == "0 B"
+    assert format_size(1023, "en") == "1023 B"
+    assert format_size(888655, "en") == "867.8 KB"
+    assert format_size(888655, "fr") == "867.8 Ko"
+    assert format_size(3 * 1024**3, "en") == "3.0 GB"
+    assert format_size(5 * 1024**5, "fr") == "5120.0 To"
+
+
+def test_privacy_command_shows_readable_sizes(env, demo_data):
+    home = env.parent / "home" / "models_trained"
+    home.mkdir(parents=True)
+    (home / "m.bin").write_bytes(b"x" * 888655)
+    res = CliRunner().invoke(cli.app, ["privacy", "--config-dir", str(env)])
+    assert res.exit_code == 0, res.output
+    assert "867.8 Ko" in res.output
+    assert "888655" not in res.output
