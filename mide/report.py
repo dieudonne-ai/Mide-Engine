@@ -56,8 +56,12 @@ def _by_module(findings: list[Finding]) -> dict[str, Finding]:
     return {f.module: f for f in findings}
 
 
-def _actions(f: dict[str, Finding], fr: bool) -> list[Action]:
-    """Rank candidate actions: churn, marketing budget, anomalies, sales trend."""
+def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> list[Action]:
+    """Rank candidate actions: churn, marketing budget, anomalies, sales trend.
+
+    The anomaly action is only proposed for an anomaly in the recent window (see
+    recent_anomaly_alerts), so it never asks to investigate an event the alerts left out.
+    """
     out: list[Action] = []
     cust = f.get("customers")
     if cust and "churn" in cust.facts:
@@ -78,6 +82,7 @@ def _actions(f: dict[str, Finding], fr: bool) -> list[Action]:
                 f"best channel: {mkt.facts['best channel']}"))
     ins = f.get("insights")
     anomalies = [v for k, v in ins.facts.items() if k.startswith("anomaly ")] if ins else []
+    anomalies = [a for a in anomalies if _is_recent(a, last_day)]
     if anomalies:  # chronological order: the last one is the most recent
         out.append(Action(
             "Analyser la cause de l'anomalie de ventes la plus récente" if fr
@@ -126,6 +131,18 @@ def _anomaly_end(text: str) -> date | None:
         return None
 
 
+def _recent_cutoff(last_day: date) -> date:
+    return date.fromordinal(last_day.toordinal() - RECENT_ANOMALY_DAYS)
+
+
+def _is_recent(anomaly: str, last_day: date | None) -> bool:
+    """True if the anomaly ends within RECENT_ANOMALY_DAYS of last_day (or cannot be dated)."""
+    if last_day is None:
+        return True
+    end = _anomaly_end(anomaly)
+    return end is None or end >= _recent_cutoff(last_day)
+
+
 def recent_anomaly_alerts(anomalies: list[str], last_day: date | None, fr: bool) -> list[str]:
     """Keep anomalies that end within RECENT_ANOMALY_DAYS of the last sale; count the others.
 
@@ -134,8 +151,8 @@ def recent_anomaly_alerts(anomalies: list[str], last_day: date | None, fr: bool)
     """
     if last_day is None:
         return anomalies
-    cutoff = date.fromordinal(last_day.toordinal() - RECENT_ANOMALY_DAYS)
-    recent = [a for a in anomalies if (end := _anomaly_end(a)) is None or end >= cutoff]
+    cutoff = _recent_cutoff(last_day)
+    recent = [a for a in anomalies if _is_recent(a, last_day)]
     older = len(anomalies) - len(recent)
     if older:
         recent.append(
@@ -164,7 +181,7 @@ def build_report(data: BusinessData, language: str = "fr", today: date | None = 
     if "marketing" in findings and findings["marketing"].facts.get("underperforming", "none") != "none":
         report.alerts.append(
             f"marketing underperforming: {findings['marketing'].facts['underperforming']}")
-    report.actions = _actions(findings, lang == "fr")
+    report.actions = _actions(findings, lang == "fr", _last_sale_day(data))
     stale = stale_data_alert(data, report.generated, lang == "fr")
     if stale and not report.empty:
         report.alerts.insert(0, stale)
