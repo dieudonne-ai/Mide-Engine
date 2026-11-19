@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: weekly report budget action carries the attribution check (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #60 was already merged; suite green at start (303 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed that the "attribution check" added last session appears in `mide ask` but not in the weekly report. Priority action 2, "Réallouer le budget depuis Radio — ... est. extra revenue up to 285,353 ...", rests on a ROAS the engine itself flags as double-counted, and the report said nothing about it. When the marketing finding has an attribution check, the budget action now ends with "; attribution check: channels report 1,443,825 revenue, 1.96x total sales 735,907; ...". The same applies to the "Renforcer le canal le plus rentable" action. Applies to `mide report` (Markdown/HTML) and `mide auto`.
+- **Fichiers principaux :** `mide/report.py`, `tests/test_report.py`
+- **Tests :** 305 passed, 2 skipped (2 new: exact evidence text of the demo reallocation action; best-channel action with and without a check. Both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-en7iy5 -> main
+- **Décisions techniques :** text-only change; the actions, their order and the estimates are unchanged. The full check text is reused rather than a shorter summary, so report and `mide ask` say the same thing.
+- **Problèmes / dette technique :** the six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged. The sandbox's `pip` installs into Python 3.13 while `python` is 3.11; tests and the demo were run with `python3.13` (`PYTHON=python3.13`).
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: marketing figures flag channel revenue above total sales (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #59 was already merged; suite green at start (301 passed, 2 skipped for missing `streamlit`). The debt noted in the last two entries is that the demo channels report 1,443,825 revenue against 735,907 total sales. This also happens with real data when several channels claim the same sale. It was left as a demo-generator problem, but the engine said nothing about it, so "ROI 41.54" read as an absolute return. The marketing finding now adds an `attribution check` figure when a sales table is available and the channels claim more than total sales: "channels report 1,443,825 revenue, 1.96x total sales 735,907; the same sale is likely counted by several channels, so compare ROI/ROAS between channels rather than as absolute returns". It shows up in `mide ask`, the agent figures and the LLM prompt.
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`

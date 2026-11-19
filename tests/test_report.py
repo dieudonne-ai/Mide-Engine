@@ -151,3 +151,25 @@ def test_report_flags_stale_data_first(tables):
     fresh = build_report(tables, "en", today=date(2025, 1, 2))
     assert not any(a.startswith("stale data") for a in fresh.alerts)
 
+
+
+def test_budget_action_carries_attribution_check(tables):
+    # Demo channels claim ~1.96x total sales: the ROAS-based action must say so.
+    action = next(a for a in build_report(tables, "en").actions
+                  if a.text.startswith("Reallocate budget from"))
+    assert action.evidence == (
+        "6,840 to Email, est. extra revenue up to 285,353 (linear, at Email ROAS 42.54; "
+        "returns diminish); best channel: Email; attribution check: channels report "
+        "1,443,825 revenue, 1.96x total sales 735,907; the same sale is likely counted by "
+        "several channels, so compare ROI/ROAS between channels rather than as absolute returns")
+
+
+def test_budget_action_without_attribution_issue():
+    from mide.agent.decision import Finding
+    from mide.report import _actions
+
+    mkt = {"marketing": Finding("marketing", {"best channel": "Email"})}
+    assert _actions(mkt, fr=False)[0].evidence == "best channel: Email"
+    mkt["marketing"].facts["attribution check"] = "channels report 2x total sales"
+    assert _actions(mkt, fr=False)[0].evidence == (
+        "best channel: Email; attribution check: channels report 2x total sales")
