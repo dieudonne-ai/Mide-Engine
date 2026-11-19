@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide sources remove` lists the authorized sources when the source is not listed (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #73 was already merged; suite green at start (322 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. `mide sources remove <path>` with a path that is not listed (a typo, or a different spelling of the path) only said "Error: source not listed: <path>", so the user had to run `mide sources list` to find the exact stored value. The error now adds "Authorized sources: <a>, <b>" (or "No authorized sources." when the list is empty), in the same way as the `mide train` fix in #73.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_connectors_base.py`
+- **Tests :** 323 passed, 2 skipped (1 new: removing an unknown source exits 1 and shows "No authorized sources." when empty, then the listed source once one is added, and the list is unchanged; it fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-9j5p8r -> main
+- **Décisions techniques :** only `sources.yaml` is read (the list the user consented to), no data source is opened. Exit code is still 1.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: `mide train` lists valid names when a dataset or column is mistyped (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #72 was already merged; suite green at start (321 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. A mistyped `--target`, `--date-column` or `--dataset` in `mide train` only said "not found", so the user had to run `mide scan` to look up the right name. The errors now list the valid names, e.g. "Target column 'nope' not found in dataset. Available columns: order_id, date, customer_id, ..." and "Dataset not found in authorized sources: nope. Available datasets: campaigns, customers, products, sales".
 - **Fichiers principaux :** `mide/automl/task_detector.py`, `mide/cli.py`, `tests/test_task_detector.py`, `tests/test_registry.py`
