@@ -389,3 +389,11 @@ def test_churn_fact_on_demo_data_cites_its_scale(data):
     fact = run_modules(["customers"], data)[0].facts["churn"]
     assert fact.endswith(
         "2,344 past revenue at risk (0.3% of revenue; 4 of 400 customers)")
+
+
+def test_customer_segments_on_demo_data_include_at_risk(data):
+    facts = run_modules(["customers"], data)[0].facts
+    segments = {k: v for k, v in facts.items() if k.startswith("segment ")}
+    assert segments["segment At risk"] == "44 customers, 9.1% of revenue"
+    assert len(segments) == 6
+    assert sum(int(v.split()[0]) for v in segments.values()) == 400

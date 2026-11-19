@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: customer answer lists every RFM segment, including "At risk" (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #66 was already merged; suite green at start (313 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed that "Which customers are at risk of churn?" listed only the top 3 RFM segments by revenue (Champions, Needs attention, Loyal: 237 of 400 customers). The "At risk" segment (44 customers, 9.1% of revenue), the one the question is about, was hidden without a word, as were Hibernating and New / promising. RFM has at most six segments, so all of them are now listed. This shows up in `mide ask`, the agent figures and the LLM prompt.
+- **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
+- **Tests :** 314 passed, 2 skipped (1 new: on the demo data the six segments are listed, "At risk" reads "44 customers, 9.1% of revenue", and the counts add up to 400; it fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-7ixxnf -> main
+- **Décisions techniques :** text-only change; RFM scoring, segment labels and their order (by revenue) are unchanged. The report does not use the segment figures, so it is unchanged.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged. Sandbox note: `pip` here belongs to Python 3.13 while `python` is 3.11; run the tests with `/usr/bin/python3 -m pytest`.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: churn action names every at-risk customer it can (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #65 was already merged; suite green at start (312 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. Running `scripts/demo.sh` showed the churn figure behind priority action 1 ("Relancer les clients à risque") as "4 customers at high risk (top: C0093, C0320, C0348, ...)": one of the four customers to contact was hidden behind "...", which saves no space. Now, when only one name would be hidden, all are named; when more are hidden, the text says how many ("top: L5, L4, L3, +3 more"). This shows up in `mide ask`, the agent figures, the LLM prompt and the report.
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
