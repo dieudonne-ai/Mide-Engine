@@ -46,6 +46,29 @@ def test_no_sources_hint_follows_language(tmp_path) -> None:
         assert "No authorized sources. Use `mide sources add`." in result.output, command
 
 
+def test_models_and_report_messages_follow_language(tmp_path, monkeypatch) -> None:
+    # `models trained` hint and `report` format/written messages use the configured language.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    args = ["--config-dir", str(cfg)]
+    out = tmp_path / "r.md"
+    expected = {
+        "fr": ("Aucun modèle entraîné. Utilisez `mide train --dataset X --target Y`.",
+               "Le format doit être 'md' ou 'html'.", f"Rapport écrit : {out}"),
+        "en": ("No trained models. Use `mide train --dataset X --target Y`.",
+               "Format must be 'md' or 'html'.", f"Report written: {out}"),
+    }
+    for language, (no_models, bad_format, written) in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        result = runner.invoke(app, ["models", "trained", *args])
+        assert result.exit_code == 0 and no_models in result.output, language
+        result = runner.invoke(app, ["report", "--format", "pdf", *args])
+        assert result.exit_code == 2 and bad_format in result.output, language
+        result = runner.invoke(app, ["report", "-o", str(out), *args])
+        assert result.exit_code == 0 and written in result.output, language
+
+
 def test_ui_help_shows_install_extra() -> None:
     # Rich markup must not swallow the "[ui]" extra in the install hint.
     result = runner.invoke(app, ["ui", "--help"], env={"COLUMNS": "200"})
@@ -77,4 +100,4 @@ def test_auto_without_rag_extra_still_retrains(tmp_path, monkeypatch) -> None:
     assert result.exit_code == 0, result.output
     assert "Index: skipped (sentence-transformers is not installed)." in result.output
     assert len(calls) == 1 and any("sales.csv" in key for key in calls[0])
-    assert "No trained models" in result.output
+    assert "Aucun modèle entraîné" in result.output

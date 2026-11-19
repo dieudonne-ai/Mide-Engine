@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide models trained`, `mide auto` and `mide report` messages follow the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #79 was already merged; suite green at start (331 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. The "No trained models. Use `mide train --dataset X --target Y`." hint (`mide models trained`, `mide auto`) and the `mide report` messages ("Format must be 'md' or 'html'.", "Report written: …") were English-only although `language` defaults to `fr` (CLAUDE.md section 6; follow-up of the previous session). They now print "Aucun modèle entraîné. Utilisez `mide train --dataset X --target Y`.", "Le format doit être 'md' ou 'html'." and "Rapport écrit : …" in French, English unchanged when `language: en`.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_cli.py`
+- **Tests :** 332 passed, 2 skipped (1 new test covering the three messages in FR and EN; the assertion of `test_auto_without_rag_extra_still_retrains` updated from English to French because it runs with the default language. Both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-9c9azf -> main
+- **Décisions techniques :** the messages live in `SOURCES_MESSAGES` (`no_models_hint`, `report_format`, `report_written`). The report format check runs before the config is loaded, so it uses `_cli_language()` (French fallback if the config is broken). Behaviour and exit codes are unchanged.
+- **Problèmes / dette technique :** `doctor`, `models list/pull`, `train`, the `index`/`auto` progress lines and the generic "Error: …" prefix are still English-only; left for later sessions. The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: `mide scan/index/auto` "no authorized sources" hint follows the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #78 was already merged; suite green at start (330 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed. With no authorized source, `mide scan`, `mide index` and `mide auto` always printed the English "No authorized sources. Use `mide sources add`." although `language` defaults to `fr` (CLAUDE.md section 6; follow-up of the previous session). They now print "Aucune source autorisée. Utilisez `mide sources add`." in French, English unchanged when `language: en`. Also removed an unreachable duplicate `raise typer.Exit(1)` in `mide sources remove`.
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_cli.py`
