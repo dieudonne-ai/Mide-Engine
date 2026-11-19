@@ -39,7 +39,7 @@ def page_home(data: dd.DashboardData, lang: str) -> None:
     st.subheader(dd.ui_text("anomalies", lang))
     if report.anomalies:
         for a in report.anomalies:
-            st.warning(a.describe())
+            st.warning(dd.anomaly_text(a, lang))
     else:
         st.success(dd.ui_text("no_anomaly", lang))
 

@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: dashboard anomaly alerts follow the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #98 was already merged; suite green at start (373 passed, 4 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). The anomaly warnings on the dashboard home page were English even with `language: fr` ("drop on 2024-03-10: 1,200 vs 4,000 expected (-70%)"). In French they now read "chute le 2024-03-10 : 1,200 au lieu de 4,000 attendus (-70%)" or "pic du … au … : …"; English output is unchanged.
+- **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
+- **Tests :** 383 passed, 0 skipped (`pip install -e ".[ui]"` this session so the Streamlit `AppTest` tests ran). 6 new: English text equals `Anomaly.describe()` (one day and a run of days), French text, unknown kind kept as is, FR/EN anomaly warnings on the dashboard with the demo data. 5 of them fail without the fix (the English AppTest case passes both ways). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-6s23ry -> main
+- **Décisions techniques :** new `dashboard_data.anomaly_text(anomaly, language)` with `anomaly_*` keys in `UI_TEXT`. `Anomaly.describe()` is unchanged on purpose: `mide/report.py` parses its English text to date the anomalies, and the agent facts use it.
+- **Problèmes / dette technique :** budget move reasons and table column names in the dashboard are still English. "Unknown profile" and "A time series task needs a date column" stay English (internal errors). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: dashboard UI follows the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #97 was already merged; suite green at start (366 passed, 2 skipped for missing `streamlit`, run with `python3.13 -m pytest` after `pip install -e ".[dev]"`). The Streamlit dashboard (page names, headers, KPI labels, buttons, messages) was English only. With `language: fr` it now shows "Accueil", "Ventes", "Clients", "Marketing", "Poser une question", "Sources de données", "Matériel & modèles" and French labels everywhere; English output is unchanged. Pages are selected by a stable id, not by their label.
 - **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`

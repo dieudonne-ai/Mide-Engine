@@ -106,6 +106,12 @@ UI_TEXT: dict[str, dict[str, str]] = {
                      "en": "{name} v{version} [{task}] target={target}"},
     "no_trained": {"fr": "Aucun pour l'instant. Utilisez `mide train`.",
                    "en": "None yet. Use `mide train`."},
+    "anomaly_drop": {"fr": "chute", "en": "drop"},
+    "anomaly_spike": {"fr": "pic", "en": "spike"},
+    "anomaly_day": {"fr": "le {day}", "en": "on {day}"},
+    "anomaly_period": {"fr": "du {start} au {end}", "en": "on {start} -> {end}"},
+    "anomaly_line": {"fr": "{kind} {period} : {actual} au lieu de {expected} attendus ({change})",
+                     "en": "{kind} {period}: {actual} vs {expected} expected ({change})"},
 }
 
 
@@ -113,6 +119,18 @@ def ui_text(key: str, language: str, **values: object) -> str:
     """Dashboard label ``key`` in ``language`` (``fr`` when unknown), formatted with values."""
     texts = UI_TEXT[key]
     return texts.get(language, texts["fr"]).format(**values)
+
+
+def anomaly_text(anomaly: insights.Anomaly, language: str) -> str:
+    """Dashboard line of an anomaly; in English it equals ``anomaly.describe()``."""
+    start, end = anomaly.start.date(), anomaly.end.date()
+    period = (ui_text("anomaly_day", language, day=start) if anomaly.start == anomaly.end
+              else ui_text("anomaly_period", language, start=start, end=end))
+    kind_key = f"anomaly_{anomaly.kind}"
+    kind = ui_text(kind_key, language) if kind_key in UI_TEXT else anomaly.kind
+    return ui_text("anomaly_line", language, kind=kind, period=period,
+                   actual=f"{anomaly.actual:,.0f}", expected=f"{anomaly.expected:,.0f}",
+                   change=f"{anomaly.ratio - 1:+.0%}")
 
 
 def page_labels(language: str) -> dict[str, str]:
