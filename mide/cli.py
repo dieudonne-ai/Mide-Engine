@@ -101,6 +101,14 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "en": "The model does NOT beat the baseline.",
     },
     "train_top": {"fr": "Variables principales : {value}", "en": "Top features: {value}"},
+    "doctor_ram": {"fr": "RAM : {value} Go", "en": "RAM: {value} GB"},
+    "doctor_cpu": {"fr": "Cœurs CPU : {value}", "en": "CPU cores: {value}"},
+    "doctor_os": {"fr": "OS : {value}", "en": "OS: {value}"},
+    "doctor_gpu": {"fr": "GPU : {value}", "en": "GPU: {value}"},
+    "doctor_gpu_vram": {"fr": "{name} ({vram} Go de VRAM)", "en": "{name} ({vram} GB VRAM)"},
+    "doctor_gpu_none": {"fr": "aucun", "en": "none"},
+    "doctor_disk": {"fr": "Espace disque libre : {value} Go", "en": "Disk free: {value} GB"},
+    "doctor_profile": {"fr": "Profil : {value}", "en": "Profile: {value}"},
 }
 
 
@@ -726,17 +734,22 @@ def privacy_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
 
 
 @app.command()
-def doctor() -> None:
+def doctor(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     """Check that the installation works and show the hardware report."""
     report = profile_hardware()
+    lang = _cli_language(config_dir)
+    gpu = (
+        _sources_msg("doctor_gpu_vram", lang, name=report.gpu.name, vram=str(report.gpu.vram_gb))
+        if report.gpu
+        else _sources_msg("doctor_gpu_none", lang)
+    )
     typer.echo("OK")
-    typer.echo(f"RAM: {report.ram_gb} GB")
-    typer.echo(f"CPU cores: {report.cpu_cores}")
-    typer.echo(f"OS: {report.os_name}")
-    gpu = f"{report.gpu.name} ({report.gpu.vram_gb} GB VRAM)" if report.gpu else "none"
-    typer.echo(f"GPU: {gpu}")
-    typer.echo(f"Disk free: {report.disk_free_gb} GB")
-    typer.echo(f"Profile: {report.profile}")
+    typer.echo(_sources_msg("doctor_ram", lang, value=str(report.ram_gb)))
+    typer.echo(_sources_msg("doctor_cpu", lang, value=str(report.cpu_cores)))
+    typer.echo(_sources_msg("doctor_os", lang, value=report.os_name))
+    typer.echo(_sources_msg("doctor_gpu", lang, value=gpu))
+    typer.echo(_sources_msg("doctor_disk", lang, value=str(report.disk_free_gb)))
+    typer.echo(_sources_msg("doctor_profile", lang, value=report.profile))
 
 
 def run() -> None:

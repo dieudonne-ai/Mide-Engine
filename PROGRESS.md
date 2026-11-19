@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-19 — Maintenance: `mide doctor` report follows the `language` setting (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #81 was already merged; suite green at start (333 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed (`PyYAML`/`cryptography`/`cffi` reinstalled with `--ignore-installed`). The `mide doctor` hardware report was English-only although `language` defaults to `fr` (CLAUDE.md section 6; listed as debt). It now prints "RAM : … Go", "Cœurs CPU : …", "OS : …", "GPU : <name> (<n> Go de VRAM)" / "GPU : aucun", "Espace disque libre : … Go" and "Profil : …" in French; English unchanged when `language: en`. `mide doctor` gained the same `--config-dir` option as the other commands.
+- **Fichiers principaux :** `mide/cli.py`, `tests/test_profiler.py`
+- **Tests :** 334 passed, 2 skipped (1 new test covering every doctor line in FR and EN, with a GPU; the assertion of `test_doctor_shows_report` updated from "Profile: small" to "Profil : small" because it runs with the default language. Both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-0iddst -> main
+- **Décisions techniques :** the messages live in `SOURCES_MESSAGES` (`doctor_*`). The language is read with `_cli_language()` so a broken config falls back to French and never blocks `doctor` (which is the command used to diagnose a broken install). The leading "OK" line is unchanged in both languages. Behaviour and exit code are unchanged.
+- **Problèmes / dette technique :** `models list/pull`, the `index`/`auto` progress lines, the task-detector reasons and the generic "Error: …" prefix are still English-only. The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-19 — Maintenance: `mide train` result output follows the `language` setting (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #80 was already merged; suite green at start (332 passed, 2 skipped for missing `streamlit`) once the sandbox dependencies were installed (`PyYAML`/`cryptography`/`cffi` reinstalled with `--ignore-installed` because of the Debian builds). The `mide train` result lines were English-only although `language` defaults to `fr` (CLAUDE.md section 6; listed as debt by the previous session). They now print "Tâche : …", "Modèle enregistré : <name> v<n>", "  VC <metric> : … (référence …)", "Le modèle bat la référence." / "Le modèle ne bat PAS la référence." and "Variables principales : …" in French; English unchanged when `language: en`.
 - **Fichiers principaux :** `mide/cli.py`, `tests/test_registry.py`

@@ -82,4 +82,24 @@ def test_doctor_shows_report(monkeypatch):
     result = CliRunner().invoke(app, ["doctor"])
     assert result.exit_code == 0
     assert "OK" in result.output
-    assert "Profile: small" in result.output
+    assert "Profil : small" in result.output
+
+
+def test_doctor_follows_language(monkeypatch, tmp_path):
+    # `mide doctor` labels use the configured language (default fr).
+    _mock(monkeypatch, 8, gpu=GPUInfo("RTX 3060", 12.0))
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    expected = {
+        "fr": ["RAM : ", "Cœurs CPU : ", "OS : ", "GPU : RTX 3060 (12.0 Go de VRAM)",
+               "Espace disque libre : ", "Profil : "],
+        "en": ["RAM: ", "CPU cores: ", "OS: ", "GPU: RTX 3060 (12.0 GB VRAM)",
+               "Disk free: ", "Profile: "],
+    }
+    for language, lines in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        result = CliRunner().invoke(app, ["doctor", "--config-dir", str(cfg)])
+        assert result.exit_code == 0
+        assert "OK" in result.output
+        for line in lines:
+            assert line in result.output, (language, line)
