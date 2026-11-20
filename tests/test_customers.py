@@ -78,3 +78,14 @@ def test_demo_churn_report(sales):
 def test_empty_input_raises():
     with pytest.raises(ValueError):
         customer_table(pd.DataFrame({"customer_id": [], "date": [], "amount": []}))
+
+
+def test_segment_labels_cover_every_segment(sales):
+    from mide.business.customers import SEGMENT_LABELS, segment_label
+
+    assert set(rfm_segments(sales).segment) <= set(SEGMENT_LABELS)
+    for name, texts in SEGMENT_LABELS.items():
+        assert segment_label(name, "en") == name
+        assert segment_label(name, "fr") == texts["fr"]
+        assert segment_label(name, "xx") == texts["fr"]
+    assert segment_label("Other", "fr") == "Other"
