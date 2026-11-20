@@ -151,7 +151,7 @@ def test_cli_pull_unknown_profile_lists_configured_profiles(
     [
         (
             "fr",
-            ["tiny: org/model/m.gguf [non installé]", "Télécharger ", "(0.00 Go) depuis internet ?",
+            ["tiny: org/model/m.gguf [non installé]", "Télécharger ", "(0,00 Go) depuis internet ?",
              "Modèle prêt : ", "tiny: org/model/m.gguf [installé]",
              "Erreur : aucun modèle configuré pour le profil 'large'. Profils configurés : tiny"],
         ),

@@ -155,7 +155,7 @@ def test_auto_summary_follows_language(tmp_path, monkeypatch) -> None:
             "Analyse : 1 jeux de données/documents.",
             "Indexation : ignorée (sentence-transformers is not installed).",
             "Modèle a : remplacé (3 -> 2) le nouveau modèle est meilleur",
-            "Modèle b : conservé (2 -> 2.5) l'ancien modèle est conservé",
+            "Modèle b : conservé (2 -> 2,5) l'ancien modèle est conservé",
             "Modèle c : inchangé",
             "Modèle d : ignoré le jeu de données n'est plus disponible",
             "Modèle e : erreur boom",
@@ -504,8 +504,73 @@ def test_auto_outcome_line_explains_leak_blocked_model() -> None:
     outcome = ModelOutcome("sales-amount", "kept_leak", "candidate suspected of target leakage",
                            5.0, 0.1, target="amount", leakage_suspects=["amount_ttc"])
     assert _auto_outcome_line(outcome, "fr") == (
-        "Modèle sales-amount : conservé (5 -> 0.1) fuite de la cible probable dans le "
+        "Modèle sales-amount : conservé (5 -> 0,1) fuite de la cible probable dans le "
         "nouveau modèle, l'ancien est conservé")
     assert _auto_outcome_line(outcome, "en") == (
         "Model sales-amount: kept (5 -> 0.1) likely target leakage in the new model, "
         "previous model kept")
+
+
+def test_cli_numbers_follow_french_format(tmp_path, monkeypatch) -> None:
+    # scan, train and models trained write numbers in the French format in French
+    # ('1 200', '313,4', '31 %', non-breaking spaces) and keep the English one in English.
+    import re
+
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    folder = tmp_path / "data"
+    folder.mkdir()
+    lines = ["x,amount"] + [f"{i % 7},{(i * 37) % 101 / 3:.3f}" for i in range(1200)]
+    (folder / "sales.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    args = ["--config-dir", str(cfg)]
+    assert runner.invoke(app, ["sources", "add", str(folder), *args]).exit_code == 0
+    english_number = re.compile(r"\d\.\d|\d%")  # "8,464" is a French decimal
+    outputs = {}
+    for language in ("fr", "en"):
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        output = ""
+        for command in (["scan"], ["train", "--dataset", "sales", "--target", "amount"],
+                        ["models", "trained"]):
+            result = runner.invoke(app, [*command, *args])
+            assert result.exit_code == 0, result.output
+            output += result.output
+        outputs[language] = output.replace(str(tmp_path), "")
+    assert "1\u00a0200 lignes" in outputs["fr"] and "1,200 rows" in outputs["en"]
+    assert re.search(r"VC mae : \d+,\d+ \(référence \d+,\d+\)", outputs["fr"])
+    assert re.search(r"x \(\d+\u00a0%\)", outputs["fr"])
+    assert re.search(r"x \(\d+%\)", outputs["en"])
+    assert re.search(r"mae=\d+,\d+ bat_reference", outputs["fr"])
+    assert not english_number.search(outputs["fr"]), outputs["fr"]
+    assert english_number.search(outputs["en"])
+
+
+def test_doctor_numbers_follow_french_format(tmp_path, monkeypatch) -> None:
+    # RAM, VRAM and free disk use a decimal comma in French, a dot in English.
+    from mide import cli
+    from mide.hardware.profiler import GPUInfo, HardwareReport
+
+    report = HardwareReport(ram_gb=15.7, cpu_cores=4, os_name="Linux",
+                            gpu=GPUInfo(name="RTX", vram_gb=7.5), disk_free_gb=59.25,
+                            profile="medium")
+    monkeypatch.setattr(cli, "profile_hardware", lambda: report)
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    expected = {
+        "fr": ["RAM : 15,7 Go", "RTX (7,5 Go de VRAM)", "Espace disque libre : 59,25 Go"],
+        "en": ["RAM: 15.7 GB", "RTX (7.5 GB VRAM)", "Disk free: 59.25 GB"],
+    }
+    for language, texts in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        result = runner.invoke(app, ["doctor", "--config-dir", str(cfg)])
+        assert result.exit_code == 0, result.output
+        for text in texts:
+            assert text in result.output, language
+
+
+def test_models_pull_size_follows_french_format() -> None:
+    from mide.cli import _fmt_size
+
+    assert _fmt_size(1_930_000_000, "fr") == "1,93 Go"
+    assert _fmt_size(1_930_000_000, "en") == "1.93 GB"
+    assert _fmt_size(None, "fr") == "?"

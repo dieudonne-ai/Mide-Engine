@@ -91,7 +91,7 @@ def test_doctor_follows_language(monkeypatch, tmp_path):
     cfg = tmp_path / "cfg"
     cfg.mkdir()
     expected = {
-        "fr": ["RAM : ", "Cœurs CPU : ", "OS : ", "GPU : RTX 3060 (12.0 Go de VRAM)",
+        "fr": ["RAM : ", "Cœurs CPU : ", "OS : ", "GPU : RTX 3060 (12,0 Go de VRAM)",
                "Espace disque libre : ", "Profil : "],
         "en": ["RAM: ", "CPU cores: ", "OS: ", "GPU: RTX 3060 (12.0 GB VRAM)",
                "Disk free: ", "Profile: "],
