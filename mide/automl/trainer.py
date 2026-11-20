@@ -14,6 +14,10 @@ from mide.hardware.profiler import Profile
 ID_UNIQUE_RATIO = 0.9  # text columns with this share of unique values are treated as identifiers
 MAX_CATEGORIES = 50  # text columns with more distinct values are dropped
 DATE_PARTS = ("year", "month", "day_of_week", "day_of_year", "day")
+# Parts that are calendar noise when dates are a week or more apart (e.g. monthly data:
+# the weekday of the 1st of each month says nothing about the business).
+FINE_DATE_PARTS = ("day_of_week", "day")
+COARSE_GAP_DAYS = 6  # median gap between distinct dates from which the cadence is coarse
 LEAK_ACCURACY = 0.99  # a classifier at least this accurate in CV is suspiciously perfect
 LEAK_ERROR_RATIO = 0.05  # a regressor whose CV error is below this share of the baseline's
 LEAK_CORRELATION = 0.99  # a numeric feature this correlated with a numeric target is a suspect
@@ -78,8 +82,23 @@ class FeaturePrep:
                 n = s.nunique(dropna=True)
                 if 1 < n <= MAX_CATEGORIES and n / max(len(s), 1) < ID_UNIQUE_RATIO:
                     self.categorical[col] = sorted(s.dropna().astype(str).unique())
-        self.columns = list(self.transform(df).columns)
+        self.columns = [c for c in self.transform(df).columns if c not in self._noise_parts(df)]
         return self
+
+    def _noise_parts(self, df: pd.DataFrame) -> set[str]:
+        """Date-part features that carry no signal: constant ones, and day-level parts
+        when the dates are weekly or coarser (the ordinal day is always kept)."""
+        noise: set[str] = set()
+        for col in self.dates:
+            parsed = pd.to_datetime(df[col], errors="coerce", format="mixed").dropna()
+            distinct = pd.Series(parsed.unique()).sort_values()
+            gaps = distinct.diff().dropna().dt.days
+            coarse = not gaps.empty and gaps.median() >= COARSE_GAP_DAYS
+            for part in DATE_PARTS:
+                values = getattr(parsed.dt, part)
+                if values.nunique() <= 1 or (coarse and part in FINE_DATE_PARTS):
+                    noise.add(f"{col}_{part}")
+        return noise
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         out: dict[str, Any] = {}
