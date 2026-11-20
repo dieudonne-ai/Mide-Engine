@@ -176,3 +176,18 @@ def test_scan_skips_deleted_sqlite_database_without_recreating_it(tmp_path: Path
     assert not gone.exists()
     assert all(e.source != url for e in build_catalog([str(data), url]))
     assert not gone.exists()
+
+
+def test_catalog_lists_a_file_once_when_sources_overlap(tmp_path: Path) -> None:
+    data = tmp_path / "data"
+    data.mkdir()
+    _sales_df().to_csv(data / "ventes.csv", index=False)
+    entries = build_catalog([str(data), str(data / "ventes.csv")])
+    assert [Path(e.item).name for e in entries] == ["ventes.csv"]
+    # Tables with the same name in two databases stay separate.
+    urls = []
+    for name in ("a.db", "b.db"):
+        with closing(sqlite3.connect(tmp_path / name)) as con:
+            _sales_df().to_sql("orders", con, index=False)
+        urls.append(f"sqlite:///{tmp_path / name}")
+    assert [e.item for e in build_catalog(urls)] == ["orders", "orders"]
