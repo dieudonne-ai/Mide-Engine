@@ -64,6 +64,52 @@ def fact_label(key: str, language: str) -> str:
     return labels.get(key, key)
 
 
+_D = r"\d{4}-\d{2}-\d{2}"
+# French wording of the English phrases the fact builders write into fact values.
+# Facts stay English (LLM prompt, report parsing); only the displayed text is translated.
+# Order matters: longer phrases first, so a short one never breaks a longer match.
+_FR_VALUE_PHRASES: list[tuple[re.Pattern[str], str]] = [(re.compile(p), r) for p, r in [
+    ((r"the same sale is likely counted by several channels, so compare ROI/ROAS between "
+      r"channels rather than as absolute returns"),
+     ("la même vente est probablement comptée par plusieurs canaux : comparez le ROI/ROAS "
+      "entre canaux plutôt qu'en valeur absolue")),
+    (r"channels report (\S+) revenue, (\S+) total sales (\S+)",
+     r"les canaux déclarent \1 de revenus, \2 le total des ventes \3"),
+    (r"est\. extra revenue up to", "revenu supplémentaire estimé jusqu'à"),
+    (r"\(linear, at (.+?) ROAS ", r"(linéaire, au ROAS \1 de "),
+    (r"returns diminish", "rendements décroissants"),
+    (rf"\b(drop|spike) on ({_D}) -> ({_D}):", r"\1 du \2 au \3 :"),
+    (rf"\b(drop|spike) on ({_D}):", r"\1 le \2 :"),
+    (r"\bdrop\b", "baisse"), (r"\bspike\b", "pic"),
+    (r"(\S+) expected \(", r"\1 attendus ("),
+    (rf"\((\d+) days to ({_D}) vs previous (\d+)\)", r"(\1 jours jusqu'au \2 vs les \3 précédents)"),
+    (rf"\bfor ({_D}) -> ({_D})", r"du \1 au \2"),
+    (r"vs previous (\d+)d\b", r"vs les \1 jours précédents"),
+    (r"(\d) to (?=\S)", r"\1 vers "),
+    (r"customers at high risk", "clients à risque élevé"),
+    (r"\(top: ", "(principaux : "),
+    (r", \+(\d+) more\)", r", +\1 autres)"),
+    (r"past revenue at risk", "de chiffre d'affaires passé à risque"),
+    (r"(\d+) of (\d+) customers", r"\1 clients sur \2"),
+    (r"% of revenue", "% du chiffre d'affaires"),
+    (r"\bcustomers\b", "clients"),
+    (r"(\d) orders\)", r"\1 commandes)"),
+    (r"\bspend (?=-?\d)", "dépenses "), (r"\brevenue (?=-?\d)", "revenus "),
+    (r"^up\b", "hausse"), (r"^down\b", "baisse"), (r"^flat\b", "stable"),
+    (r"\bYoY ", "sur un an "), (r"\blast 3 months ", "3 derniers mois "),
+    (r"^none$", "aucun"), (r"\bn/a\b", "n.d."),
+]]
+
+
+def fact_value(value: str, language: str) -> str:
+    """Fact value as shown to the user: French phrasing unless the language is English."""
+    if language == "en":
+        return value
+    for pattern, replacement in _FR_VALUE_PHRASES:
+        value = pattern.sub(replacement, value)
+    return value
+
+
 @dataclass
 class Recommendation:
     """LLM text plus the deterministic figures used to produce it."""
@@ -74,7 +120,7 @@ class Recommendation:
 
     def data_used(self, language: str = "fr") -> str:
         title = "Données utilisées" if language == "fr" else "Data used"
-        lines = [f"- [{f.module}] {fact_label(k, language)}: {v}"
+        lines = [f"- [{f.module}] {fact_label(k, language)}: {fact_value(v, language)}"
                  for f in self.findings for k, v in f.facts.items()]
         return f"{title}:\n" + "\n".join(lines) if lines else ""
 

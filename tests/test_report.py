@@ -223,7 +223,7 @@ def test_budget_action_single_move_keeps_short_text():
     mkt = {"marketing": Finding("marketing", {"move Radio": "500 to Email", "best channel": "Email"})}
     action = _actions(mkt, fr=True)[0]
     assert action.text == "Réallouer le budget depuis Radio"
-    assert action.evidence == "500 to Email; meilleur canal: Email"
+    assert action.evidence == "500 vers Email; meilleur canal: Email"
 
 
 def test_action_evidence_labels_follow_language():
@@ -235,9 +235,9 @@ def test_action_evidence_labels_follow_language():
                                             "attribution check": "2x"}),
          "sales": Finding("sales", {"trend": "up", "forecast 30d": "100"})}
     fr = [a.evidence for a in _actions(f, fr=True)]
-    assert fr == ["risque de départ: 4 customers",
-                  "500 to Email; meilleur canal: Email; contrôle d'attribution: 2x",
-                  "tendance: up; prévision à 30 jours: 100"]
+    assert fr == ["risque de départ: 4 clients",
+                  "500 vers Email; meilleur canal: Email; contrôle d'attribution: 2x",
+                  "tendance: hausse; prévision à 30 jours: 100"]
     en = [a.evidence for a in _actions(f, fr=False)]
     assert en == ["churn: 4 customers",
                   "500 to Email; best channel: Email; attribution check: 2x",
@@ -287,3 +287,16 @@ def test_source_owning(tmp_path):
     assert source_owning(other, sources) is None
     assert source_owning(folder / "missing.md", sources) is None
     assert source_owning(other, [str(other)]) == str(other)
+
+
+def test_french_report_has_no_english_fact_values(tables):
+    from datetime import date
+
+    report = build_report(tables, "fr", today=date(2025, 1, 10))
+    for text in (render_markdown(report), render_html(report)):
+        for phrase in ("customers at high risk", "% of revenue", "vs previous", " for 20",
+                       "est. extra revenue", "returns diminish", "YoY", "last 3 months"):
+            assert phrase not in text
+        assert "clients à risque élevé" in text and "du 2025-01-01 au" in text
+    # The English report keeps the original wording.
+    assert "customers at high risk" in render_markdown(build_report(tables, "en"))
