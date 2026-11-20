@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-20 — Maintenance: one wide bar per month in the monthly revenue chart (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #131 was already merged; suite green at start (510 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Picked the debt left by #130/#131: the "Chiffre d'affaires mensuel" bars were a few pixels wide because they sat on a continuous time axis. Monthly bar charts now have one band per month, labelled "janv. 2024" in French ("Jan 2024" in English), tooltip "janvier 2024". Checked in a real browser (Streamlit + Chromium) on the demo data: 24 wide bars with French month labels.
+- **Fichiers principaux :** `mide/dashboard_data.py`, `tests/test_dashboard.py`
+- **Tests :** 512 passed, 0 skipped. 2 new: monthly bar charts use an ordinal `yearmonth` x axis (FR/EN, axis and tooltip formats) while line charts and bar charts with several points per month keep the time axis; the demo monthly revenue chart uses month bands (fails without the fix). 1 existing assertion updated: `test_chart_french_locale_and_titles` now expects an ordinal x for the monthly bar case (the line case still expects temporal). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-ypy2up -> main
+- **Décisions techniques :** in `dd.chart()`, a bar chart over dates switches to `type="ordinal"` + `timeUnit="yearmonth"` only when no two dates share a month (`_one_point_per_month`), so other date bar charts would keep the old behaviour. Vega still formats the month labels with the French locale, so no new text table was needed.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-20 — Maintenance: French month and weekday names in the dashboard seasonality line (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #130 was already merged; suite green at start (501 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Picked the debt left by #130: the seasonality sentence on the French Sales page read "Mois le plus fort : **Dec**, … meilleur jour : **Sat**". It now reads "**décembre**", "**samedi**". English is unchanged.
 - **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
