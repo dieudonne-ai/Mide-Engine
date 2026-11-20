@@ -102,3 +102,59 @@ def test_feature_prep_dates():
     prep = FeaturePrep("y").fit(df)
     out = prep.transform(df)
     assert "d_month" in out.columns and out["d_month"].tolist() == [1.0, 2.0]
+
+
+def test_target_leakage_is_flagged_on_demo_sales(frames):
+    # amount = quantity x unit_price: predicting quantity is "perfect" because of a leak.
+    result = train(frames["sales"], "quantity", profile="tiny")
+    assert result.task.task is TaskType.CLASSIFICATION
+    assert result.metrics["accuracy"] >= 0.99
+    assert result.leakage_suspects[:2] == ["amount", "unit_price"]
+    assert "quantity" not in result.leakage_suspects
+
+
+def test_target_leakage_regression_and_plausible_models():
+    rng = np.random.default_rng(1)
+    x = rng.uniform(0, 100, size=300)
+    leaky = pd.DataFrame({"price": x, "noise": rng.normal(size=300), "total": 3.0 * x})
+    assert train(leaky, "total", profile="tiny").leakage_suspects == ["price"]
+    # A useful but imperfect model raises no suspicion.
+    noisy = leaky.assign(total=3.0 * x + rng.normal(scale=40, size=300))
+    assert train(noisy, "total", profile="tiny").leakage_suspects == []
+    label = pd.DataFrame({"x": x, "label": np.where(x + rng.normal(scale=20, size=300) > 50,
+                                                    "high", "low")})
+    assert train(label, "label", profile="tiny").leakage_suspects == []
+
+
+def test_leakage_suspects_rules():
+    from mide.automl.trainer import leakage_suspects
+
+    prep = FeaturePrep("y", dates=["date"])
+    importance = {"date_ordinal": 0.5, "date_day": 0.2, "a": 0.2, "b": 0.1}
+    reg = TaskType.REGRESSION
+    # Date parts map back to their date column; stops once 60 % of the importance is covered.
+    assert leakage_suspects(reg, {"mae": 0.0}, {"mae": 5.0}, importance, prep) == ["date"]
+    late = {"a": 0.4, "date_day": 0.1, "b": 0.3}
+    assert leakage_suspects(reg, {"mae": 0.0}, {"mae": 5.0}, late, prep) == ["a", "date", "b"]
+    assert leakage_suspects(reg, {"mae": 1.0}, {"mae": 5.0}, importance, prep) == []
+    assert leakage_suspects(reg, {"mae": 0.0}, {"mae": 0.0}, importance, prep) == []
+    spread = {f"c{i}": 0.1 for i in range(10)}
+    assert leakage_suspects(reg, {"mae": 0.0}, {"mae": 5.0}, spread, prep) == ["c0", "c1", "c2"]
+    ts = TaskType.TIME_SERIES
+    assert leakage_suspects(ts, {"mae": 0.0}, {"mae": 5.0}, importance, prep) == []
+    clf = TaskType.CLASSIFICATION
+    assert leakage_suspects(clf, {"accuracy": 0.995}, {"accuracy": 0.5}, {"a": 1.0}, prep) == ["a"]
+    assert leakage_suspects(clf, {"accuracy": 0.95}, {"accuracy": 0.5}, {"a": 1.0}, prep) == []
+    # Correlated columns are always suspects, listed first and not repeated.
+    assert leakage_suspects(reg, {"mae": 1.0}, {"mae": 5.0}, importance, prep, ["b"]) == ["b"]
+    assert leakage_suspects(reg, {"mae": 0.0}, {"mae": 5.0}, importance, prep, ["a"]) == [
+        "a", "date"]
+
+
+def test_correlated_feature_is_a_suspect_even_with_an_imperfect_fit():
+    # 40 rows: the trees cannot reach a near-perfect error, but total = 3 x price exactly.
+    x = np.arange(40, dtype=float)
+    df = pd.DataFrame({"price": x, "other": (x * 7) % 5, "total": 3.0 * x})
+    result = train(df, "total", profile="tiny")
+    assert result.metrics["mae"] > 0.05 * result.baseline_metrics["mae"]
+    assert result.leakage_suspects == ["price"]
