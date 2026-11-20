@@ -10,6 +10,7 @@
 _(L'agent écrit ici les blocages et décisions à prendre. Dieudonné répond directement sous chaque question.)_
 
 - Roadmap complete (2026-11-15): which backlog item should come next (Google Sheets/Odoo/QuickBooks connectors, local FastAPI REST API, desktop app, Swahili, multi-user)? Until then, scheduled runs only do maintenance.
+- Report ranking (2026-11-20): the weekly report always puts "Re-engage customers at churn risk" first, even when it is tiny (demo data: 4 customers, 0.3 % of revenue), ahead of a budget move estimated at +285 353. Should actions be ranked by estimated impact instead of the fixed order churn → marketing → anomaly → trend? Left unchanged until you decide.
 - W4-06: Docker daemon unavailable in the agent sandbox, so `docker build` was not verified. Could you run `docker build -t mide-engine . && docker run --rm mide-engine demo` and confirm?
 
 ---
@@ -39,6 +40,15 @@ Format de chaque entrée :
 - **Problèmes / dette technique :** ...
 - **Prochaine tâche :** <ID>
 -->
+
+### 2026-11-20 — Maintenance: one colon per marketing channel line (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #138 was already merged; suite green at start (537 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The channel facts read like two labels in a row: "channel Email: spend 16,089, revenue 684,450: ROI 41.54, ROAS 42.54" ("canal Email : dépenses 16 089, revenus 684 450 : ROI …" in French). They now read "channel Email: ROI 41.54, ROAS 42.54 (spend 16,089, revenue 684,450)" / "canal Email : ROI 41,54, ROAS 42,54 (dépenses 16 089, revenus 684 450)". This shows in `mide ask` "Data used", the LLM prompt and the dashboard. The totals are still cited next to each ratio.
+- **Fichiers principaux :** `mide/agent/decision.py` (`_marketing_finding`), `tests/test_agent.py`
+- **Tests :** 538 passed, 0 skipped. 1 new: every channel line in "Data used" on the demo data has exactly one colon and its totals in parentheses, in EN and FR (fails without the fix). Expectations updated to the new order in `test_channel_figures_cite_spend_and_revenue`, `test_channel_figure_with_zero_spend_stays_readable`, `test_reallocation_estimate_is_flagged_as_upper_bound` (ROAS parsing) and one case of `test_fact_value_translates_english_phrases_to_french`. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-iapdrl -> main
+- **Décisions techniques :** the English fact itself changed (not just its display), since the double colon was there in both languages; the existing `spend`/`revenue` translations still match inside the parentheses, so no new French phrase was needed.
+- **Problèmes / dette technique :** the churn-first ranking in the report is now a formal question (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
 
 ### 2026-11-20 — Maintenance: no English "vs" in French fact values (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #137 was already merged; suite green at start (536 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The French report still used the English "vs": "(-9,3 % vs les 30 jours précédents)", "(30 jours jusqu'au 31 décembre 2024 vs les 30 précédents)", "(janvier 2024 à décembre 2024 vs janvier 2023 à décembre 2023)" and anomalies "74 vs 1 735 attendus". They now read "par rapport aux 30 jours précédents", ", contre les 30 précédents", "… contre janvier 2023 à décembre 2023" and "74 au lieu de 1 735 attendus" (the wording the dashboard already uses). This covers the weekly report, `mide ask` "Données utilisées" and the dashboard. English is unchanged.
