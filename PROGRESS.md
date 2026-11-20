@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-20 — Maintenance: French number format in dashboard tables (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #128 was already merged; suite green at start (495 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Picked the debt left by the previous sessions: the `st.dataframe` tables (top/flop products, RFM segments, churn scores, marketing channels) showed numbers in English format ("12000.0", "1.53") on the French dashboard. In French they now read "12 000", "1,53" (non-breaking spaces, 2 decimals for non-integer floats). English is unchanged.
+- **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
+- **Tests :** 498 passed, 0 skipped. 3 new: `number_cell` (FR/EN, integers, NaN, text, bool); `table_view` formats French numbers while the underlying data stays numeric and English is the plain table; every dashboard table on the demo data has no English decimal point left in French (fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** task/maint-fr-table-numbers -> main
+- **Décisions techniques :** new `dashboard_data.table_view()` wraps `display_table()` in a pandas `Styler` (French only). A Styler only changes the displayed text, so sorting a column in the dashboard still sorts by value. `display_table()` is unchanged (still returns a DataFrame), so its tests are unaffected. The `Styler` import is type-checking only, because it needs `jinja2` (installed with Streamlit, the `ui` extra).
+- **Problèmes / dette technique :** chart axes still use Streamlit/Vega number format. The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-20 — Maintenance: French RFM segment names in the LLM prompt (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #127 was already merged; suite green at start (493 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Picked the debt left by #127: the French decision prompt still listed "segment At risk", "segment Hibernating", … so a French answer could quote the segment names in English. In French the prompt now lists "segment À risque", "segment En sommeil", "segment À surveiller", "segment Nouveaux / prometteurs", "segment Fidèles" (same table as the dashboard and "Données utilisées"). The English prompt is unchanged.
 - **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
