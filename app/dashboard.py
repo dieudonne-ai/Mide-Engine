@@ -62,8 +62,9 @@ def page_sales(data: dd.DashboardData, lang: str) -> None:
     direction = dd.ui_text(f"trend_{view['trend'].direction}", lang)
     st.caption(dd.ui_text("trend", lang, value=direction))
     s = view["seasonality"]
-    st.write(dd.ui_text("seasonality", lang, peak=s.peak_month, trough=s.trough_month,
-                        weekday=s.peak_weekday))
+    st.write(dd.ui_text("seasonality", lang, peak=dd.season_label(s.peak_month, lang),
+                        trough=dd.season_label(s.trough_month, lang),
+                        weekday=dd.season_label(s.peak_weekday, lang)))
     left, right = st.columns(2)
     left.subheader(dd.ui_text("top_products", lang))
     left.dataframe(dd.table_view(view["products"]["top"], lang))

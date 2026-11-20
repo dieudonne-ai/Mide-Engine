@@ -633,3 +633,44 @@ def test_table_view_covers_dashboard_tables(cfg_dir):
     for table in tables:
         html = dd.table_view(table, "fr").to_html()
         assert not re.search(r">-?\d+\.\d+<", html), "English decimal point left"
+
+
+@pytest.mark.parametrize(("name", "fr"), [
+    ("Jan", "janvier"), ("Aug", "août"), ("Dec", "décembre"),
+    ("Mon", "lundi"), ("Sat", "samedi"), ("Sun", "dimanche"),
+])
+def test_season_label_french(name, fr):
+    assert dd.season_label(name, "fr") == fr
+    assert dd.season_label(name, "en") == name
+
+
+def test_season_label_covers_every_name_and_keeps_unknown():
+    from mide.business import sales
+
+    names = sales.MONTH_NAMES + sales.WEEKDAY_NAMES
+    labels = [dd.season_label(n, "fr") for n in names]
+    assert len(set(labels)) == len(names)
+    assert not set(labels) & set(names)
+    assert dd.season_label("Q1", "fr") == "Q1"
+
+
+@pytest.mark.parametrize("language", ["fr", "en"])
+def test_dashboard_seasonality_names_follow_language(cfg_dir, monkeypatch, language):
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    from mide.business import sales
+
+    (cfg_dir / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+    monkeypatch.setenv(dd.CONFIG_ENV, str(cfg_dir))
+    at = AppTest.from_file(str(APP), default_timeout=120).run()
+    at.sidebar.radio[0].set_value(dd.page_labels(language)["sales"]).run()
+    assert not at.exception, at.exception
+    data = dd.load_dashboard_data(cfg_dir)
+    s = dd.sales_view(data.tables.sales)["seasonality"]
+    text = " ".join(m.value for m in at.markdown)
+    for name in (s.peak_month, s.trough_month, s.peak_weekday):
+        assert f"**{dd.season_label(name, language)}**" in text
+    if language == "fr":
+        english = sales.MONTH_NAMES + sales.WEEKDAY_NAMES
+        assert not any(f"**{n}**" in text for n in english)

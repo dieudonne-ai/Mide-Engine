@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-20 — Maintenance: French month and weekday names in the dashboard seasonality line (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #130 was already merged; suite green at start (501 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Picked the debt left by #130: the seasonality sentence on the French Sales page read "Mois le plus fort : **Dec**, … meilleur jour : **Sat**". It now reads "**décembre**", "**samedi**". English is unchanged.
+- **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
+- **Tests :** 510 passed, 0 skipped. 9 new: `season_label` for months and weekdays (FR/EN), every name has a distinct French label, unknown names are kept; the Sales page shows the French names in French and the English names in English (the French case fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-r0hcyw -> main
+- **Décisions techniques :** new `dashboard_data.season_label()` maps the `sales.MONTH_NAMES` / `WEEKDAY_NAMES` abbreviations to the French names already in `FRENCH_CHART_LOCALE` (one source for French month/day names). `sales.Seasonality` is unchanged, so its English keys used by the agent and the reports stay the same.
+- **Problèmes / dette technique :** monthly revenue bars are still thin (temporal x axis). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-20 — Maintenance: French number and date format on dashboard chart axes (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #129 was already merged; suite green at start (498 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Picked the debt left by #129: the three dashboard charts (weekly revenue, monthly revenue, ROI by channel) showed English axes on the French dashboard ("12,000", "Jan", "Mar"). In French they now read "12 000", "janv.", "mars", "juillet", and tooltips show "1 234,5". English is unchanged. Checked in a real browser (Streamlit + Chromium) on the demo data: both pages render with French axes.
 - **Fichiers principaux :** `mide/dashboard_data.py`, `app/dashboard.py`, `tests/test_dashboard.py`
