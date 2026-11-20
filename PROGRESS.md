@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-20 — Maintenance: French multiplier in the attribution check (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. Suite green at start (535 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`); PR #136 was open with green tests and was merged into main as asked. Picked a leftover English form in the French report: the marketing attribution check read "les canaux déclarent 1 443 825 de revenus, 1,96x le total des ventes 735 907 ; …". It now reads "les canaux déclarent 1 443 825 de revenus, soit 1,96 fois le total des ventes (735 907) ; …" in the weekly report (budget action), `mide ask` "Données utilisées" and the dashboard. English is unchanged.
+- **Fichiers principaux :** `mide/agent/decision.py` (`_FR_VALUE_PHRASES`), `tests/test_agent.py`, `tests/test_report.py`
+- **Tests :** 536 passed, 0 skipped. 1 new: the French demo report has no "1,96x" multiplier and says "fois le total des ventes (", while the English one keeps "1.96x total sales" (fails without the fix). 1 new case in `test_fact_value_translates_english_phrases_to_french`. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-gcdwe9 -> main
+- **Décisions techniques :** the translation happens only at display time, like the other phrases, so the English fact (LLM prompt, English output) is untouched. The regex now also matches the "x" and the ";" so the total can be put in parentheses.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (here 0.3 % of revenue; left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-20 — Maintenance: spelled-out months in the French sales trend (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #135 was already merged; suite green at start (525 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Picked the debt left by #135: the French sales trend still showed ISO year-months ("sur un an +12 % (2024-01 -> 2024-12 vs 2023-01 -> 2023-12)"). It now reads "(janvier 2024 à décembre 2024 vs janvier 2023 à décembre 2023)" in the weekly report, `mide ask` "Données utilisées" and the dashboard. English is unchanged.
 - **Fichiers principaux :** `mide/utils/french.py` (new `french_month()`, `french_year_months()`), `mide/agent/decision.py` (`fact_value` spells out year-months in French), `tests/test_french.py`, `tests/test_report.py`

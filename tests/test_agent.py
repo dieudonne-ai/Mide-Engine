@@ -484,6 +484,12 @@ def test_fact_value_translates_english_phrases_to_french():
             "au ROAS Google Ads de 5.52; rendements décroissants)",
         "none": "aucun",
         "Radio, SMS": "Radio, SMS",
+        ("channels report 1,443,825 revenue, 1.96x total sales 735,907; the same sale is "
+         "likely counted by several channels, so compare ROI/ROAS between channels rather "
+         "than as absolute returns"):
+            ("les canaux déclarent 1,443,825 de revenus, soit 1.96 fois le total des ventes "
+             "(735,907) ; la même vente est probablement comptée par plusieurs canaux : "
+             "comparez le ROI/ROAS entre canaux plutôt qu'en valeur absolue"),
     }
     for english, french in cases.items():
         assert fact_value(english, "fr") == french_punctuation(french_numbers(french))
