@@ -159,14 +159,7 @@ COLUMN_LABELS: dict[str, dict[str, str]] = {
 
 # Display names of cell values, per column: RFM segments and churn risk levels.
 VALUE_LABELS: dict[str, dict[str, dict[str, str]]] = {
-    "segment": {
-        "Champions": {"fr": "Champions", "en": "Champions"},
-        "Loyal": {"fr": "Fidèles", "en": "Loyal"},
-        "New / promising": {"fr": "Nouveaux / prometteurs", "en": "New / promising"},
-        "At risk": {"fr": "À risque", "en": "At risk"},
-        "Hibernating": {"fr": "En sommeil", "en": "Hibernating"},
-        "Needs attention": {"fr": "À surveiller", "en": "Needs attention"},
-    },
+    "segment": customers.SEGMENT_LABELS,
     "risk_level": {
         "low": {"fr": "faible", "en": "low"},
         "medium": {"fr": "moyen", "en": "medium"},

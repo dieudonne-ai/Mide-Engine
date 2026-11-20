@@ -25,6 +25,26 @@ def _score(values: pd.Series, higher_is_better: bool, bins: int = 5) -> pd.Serie
     return pd.Series(scores, index=values.index)
 
 
+# Display names of the RFM segments. The segment values stay English (stable keys for
+# the LLM prompt, the registry and tests); only what the user reads is translated.
+SEGMENT_LABELS: dict[str, dict[str, str]] = {
+    "Champions": {"fr": "Champions", "en": "Champions"},
+    "Loyal": {"fr": "Fidèles", "en": "Loyal"},
+    "New / promising": {"fr": "Nouveaux / prometteurs", "en": "New / promising"},
+    "At risk": {"fr": "À risque", "en": "At risk"},
+    "Hibernating": {"fr": "En sommeil", "en": "Hibernating"},
+    "Needs attention": {"fr": "À surveiller", "en": "Needs attention"},
+}
+
+
+def segment_label(segment: str, language: str) -> str:
+    """Display name of an RFM segment (unknown segments unchanged, French by default)."""
+    texts = SEGMENT_LABELS.get(segment)
+    if texts is None:
+        return segment
+    return texts.get(language, texts["fr"])
+
+
 def _segment(r: int, f: int, m: int) -> str:
     fm = (f + m) / 2
     if r >= 4 and fm >= 4:

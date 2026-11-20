@@ -580,3 +580,25 @@ def test_data_used_values_follow_the_language(demo_data):
                    "est. extra revenue", "returns diminish", "channels report"):
         assert phrase not in fr and phrase in en
     assert "clients à risque élevé" in fr and "rendements décroissants" in fr
+
+
+def test_segment_labels_follow_language():
+    from mide.agent.decision import fact_label
+
+    assert fact_label("segment At risk", "fr") == "segment À risque"
+    assert fact_label("segment Needs attention", "fr") == "segment À surveiller"
+    assert fact_label("segment Hibernating", "xx") == "segment En sommeil"
+    assert fact_label("segment At risk", "en") == "segment At risk"
+    assert fact_label("segment Unknown", "fr") == "segment Unknown"
+
+
+def test_data_used_french_segment_names_on_demo(data):
+    from mide.agent.decision import Recommendation
+    from mide.business.customers import SEGMENT_LABELS
+
+    rec = Recommendation("t", run_modules(["customers"], data))
+    fr, en = rec.data_used("fr"), rec.data_used("en")
+    assert "- [customers] segment À risque : 44 clients, 9,1 % du chiffre d'affaires" in fr
+    english_only = [s for s, t in SEGMENT_LABELS.items() if t["fr"] != s]
+    assert english_only and not any(f"segment {s}" in fr for s in english_only), fr
+    assert "- [customers] segment At risk: 44 customers, 9.1% of revenue" in en

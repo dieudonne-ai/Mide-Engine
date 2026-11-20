@@ -60,6 +60,8 @@ def fact_label(key: str, language: str) -> str:
     if match:
         prefix = match.group(1) or match.group(3)
         value = match.group(2) or match.group(4)
+        if prefix == "segment":
+            value = customers.segment_label(value, language)
         return labels[prefix].format(x=value)
     return labels.get(key, key)
 
