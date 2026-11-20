@@ -29,6 +29,8 @@ class ModelOutcome:
     detail: str = ""
     old_score: float | None = None
     new_score: float | None = None
+    target: str = ""
+    leakage_suspects: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -130,7 +132,10 @@ def retrain_if_changed(
                 extra = {"evaluation": evaluate(candidate, df), "dataset": dataset, "data_hash": digest,
                          **({"item": meta["item"]} if meta.get("item") else {})}
                 save_model(candidate, registry_dir, name, extra)
-                outcomes.append(ModelOutcome(name, "promoted", "new model is better", old_score, new_score))
+                outcomes.append(ModelOutcome(
+                    name, "promoted", "new model is better", old_score, new_score,
+                    target=meta["target"], leakage_suspects=list(candidate.leakage_suspects),
+                ))
             else:
                 outcomes.append(ModelOutcome(name, "kept", "previous model kept", old_score, new_score))
         except Exception as exc:  # noqa: BLE001 - one failing model must not stop the run
