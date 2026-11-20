@@ -177,6 +177,61 @@ def test_auto_summary_follows_language(tmp_path, monkeypatch) -> None:
         assert result.output.splitlines() == lines, language
 
 
+def test_auto_and_models_trained_show_target_leakage(tmp_path, monkeypatch) -> None:
+    # A model promoted by `mide auto` with leakage suspects gets the same FR/EN warning
+    # as `mide train`; `mide models trained` repeats it for a flagged model only.
+    from mide import cli
+    from mide.automl.auto import ModelOutcome
+    from mide.rag.embeddings import EmbeddingError
+
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    folder = tmp_path / "data"
+    folder.mkdir()
+    lines = ["price,total"] + [f"{i},{3 * i}" for i in range(60)]
+    (folder / "orders.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    lines = ["x,amount"] + [f"{i % 5},{10 * (i % 5) + (i * 7) % 11}" for i in range(60)]
+    (folder / "sales.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    args = ["--config-dir", str(cfg)]
+    assert runner.invoke(app, ["sources", "add", str(folder), *args]).exit_code == 0
+    for dataset, target in (("orders", "total"), ("sales", "amount")):
+        result = runner.invoke(app, ["train", "--dataset", dataset, "--target", target, *args])
+        assert result.exit_code == 0, result.output
+
+    def no_embedder(_cfg):
+        raise EmbeddingError("sentence-transformers is not installed.")
+
+    outcomes = [
+        ModelOutcome("orders-total", "promoted", "new model is better", 3.0, 2.0,
+                     target="total", leakage_suspects=["price"]),
+        ModelOutcome("sales-amount", "kept", "previous model kept", 2.0, 2.5),
+    ]
+    monkeypatch.setattr(cli, "_get_embedder", no_embedder)
+    monkeypatch.setattr(cli, "retrain_if_changed", lambda *a, **k: outcomes)
+    expected = {
+        "fr": ("Attention : score presque parfait, fuite de la cible probable. Vérifiez que "
+               "price ne sont pas calculées à partir de 'total' ni connues après lui ; "
+               "sinon retirez-les des données avant d'entraîner."),
+        "en": ("Warning: near-perfect score, likely target leakage. Check that price "
+               "are not computed from 'total' or only known after it; if so, remove "
+               "them from the data before training."),
+    }
+    for language, warning in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        result = runner.invoke(app, ["auto", *args])
+        assert result.exit_code == 0, result.output
+        out = result.output.splitlines()
+        assert out[-3].startswith(("Modèle orders-total", "Model orders-total"))
+        assert out[-2] == warning
+        assert out[-1].startswith(("Modèle sales-amount", "Model sales-amount"))
+        result = runner.invoke(app, ["models", "trained", *args])
+        assert result.exit_code == 0, result.output
+        out = result.output.splitlines()
+        assert out[0].startswith("orders-total v1") and out[1] == "  " + warning
+        assert out[2].startswith("sales-amount v1") and len(out) == 3
+
+
 def test_train_task_line_follows_language():
     # The "Task: <task> - <reason>" line of `mide train` is translated in French.
     import pandas as pd

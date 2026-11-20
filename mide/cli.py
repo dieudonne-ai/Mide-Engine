@@ -504,6 +504,9 @@ def models_trained(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
         return
     for r in records:
         typer.echo(_trained_line(r.name, r.version, r.metadata, language))
+        if r.metadata.get("leakage_suspects"):
+            typer.echo("  " + _leak_line(str(r.metadata.get("target")),
+                                         list(r.metadata["leakage_suspects"]), language))
 
 
 def _trained_line(name: str, version: int, meta: dict[str, Any], language: str) -> str:
@@ -735,10 +738,7 @@ def train_command(
     top = ", ".join(f"{k} ({v:.0%})" for k, v in list(result.feature_importance.items())[:5])
     typer.echo(_sources_msg("train_top", language, value=top))
     if result.leakage_suspects:
-        typer.echo(_sources_msg(
-            "train_leak", language, target=target,
-            columns=", ".join(result.leakage_suspects),
-        ))
+        typer.echo(_leak_line(target, result.leakage_suspects, language))
 
 
 def _get_llm(cfg: Config) -> LLM:
@@ -1017,6 +1017,13 @@ def auto_command(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
         typer.echo(_sources_msg("no_models_hint", language))
     for o in report.outcomes:
         typer.echo(_auto_outcome_line(o, language))
+        if o.leakage_suspects:
+            typer.echo(_leak_line(o.target, o.leakage_suspects, language))
+
+
+def _leak_line(target: str, suspects: list[str], language: str) -> str:
+    """Target-leakage warning naming the suspect columns, in ``language``."""
+    return _sources_msg("train_leak", language, target=target, columns=", ".join(suspects))
 
 
 def _auto_outcome_line(outcome: ModelOutcome, language: str) -> str:

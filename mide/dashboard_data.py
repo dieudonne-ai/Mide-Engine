@@ -333,6 +333,16 @@ def marketing_view(df: pd.DataFrame) -> dict:
     }
 
 
+def leak_warning(meta: dict, language: str) -> str | None:
+    """Target-leakage warning of a trained model's metadata, or ``None`` when not flagged."""
+    suspects = meta.get("leakage_suspects") or []
+    if not suspects:
+        return None
+    from mide.cli import _leak_line  # local import: cli imports heavy modules
+
+    return _leak_line(str(meta.get("target")), list(suspects), language)
+
+
 def hardware_view(cfg: Config) -> dict:
     """Hardware report, installed LLM weights and trained models."""
     report: HardwareReport = profile_hardware()

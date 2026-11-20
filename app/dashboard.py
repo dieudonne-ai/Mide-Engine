@@ -163,6 +163,9 @@ def page_hardware(data: dd.DashboardData, lang: str) -> None:
     for r in view["trained"]:
         st.write(dd.ui_text("trained_line", lang, name=r.name, version=r.version,
                             task=r.metadata["task"], target=r.metadata["target"]))
+        leak = dd.leak_warning(r.metadata, lang)
+        if leak:
+            st.warning(leak)
     if not view["trained"]:
         st.caption(dd.ui_text("no_trained", lang))
 

@@ -482,3 +482,13 @@ def test_dashboard_chart_labels_follow_language(cfg_dir, monkeypatch, language, 
     fields = _chart_fields(at)
     assert expected <= fields
     assert not fields & {"amount", "date", "roi", "channel"}
+
+
+def test_leak_warning_for_flagged_models_only():
+    assert dd.leak_warning({"target": "y", "leakage_suspects": []}, "fr") is None
+    assert dd.leak_warning({"target": "y"}, "en") is None
+    meta = {"target": "quantity", "leakage_suspects": ["amount", "unit_price"]}
+    fr = dd.leak_warning(meta, "fr")
+    assert fr.startswith("Attention : score presque parfait")
+    assert "amount, unit_price" in fr and "'quantity'" in fr
+    assert dd.leak_warning(meta, "en").startswith("Warning: near-perfect score")

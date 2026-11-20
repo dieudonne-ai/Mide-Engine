@@ -75,3 +75,24 @@ def test_recorded_item_is_matched_exactly(tmp_path):
     out = auto.retrain_if_changed(
         {"/b/sales.csv": other, "/a/sales.csv": df}, reg, tmp_path / "s.json", "tiny")
     assert [o.status for o in out] == ["unchanged"]
+
+
+def test_promoted_outcome_reports_target_leakage(tmp_path):
+    # New data adds a column computed from the target: the retrained model is better
+    # (so promoted) but the outcome names the leaking column and the target.
+    rows = range(120)
+    df = pd.DataFrame({"x": [i % 10 for i in rows],
+                       "amount": [10.0 * (i % 10) + (i * 7) % 23 for i in rows]})
+    reg, state = tmp_path / "reg", tmp_path / "state.json"
+    plain = train(df, "amount", profile="tiny", seed=1)
+    assert plain.leakage_suspects == []
+    save_model(plain, reg, "sales-amount", {"dataset": "sales", "data_hash": auto.fingerprint(df)})
+    leaky = df.assign(amount_ttc=df.amount * 1.18)
+    out = auto.retrain_if_changed({"sales.csv": leaky}, reg, state, profile="tiny")
+    assert out[0].status == "promoted"
+    assert out[0].target == "amount"
+    assert out[0].leakage_suspects[0] == "amount_ttc"
+    assert list_models(reg)[-1].metadata["leakage_suspects"][0] == "amount_ttc"
+    # Nothing is reported for an unchanged dataset.
+    again = auto.retrain_if_changed({"sales.csv": leaky}, reg, state, profile="tiny")
+    assert again[0].status == "unchanged" and again[0].leakage_suspects == []
