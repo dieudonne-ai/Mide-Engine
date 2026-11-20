@@ -368,9 +368,22 @@ def test_french_report_trend_has_no_iso_year_months(tables):
     fr = build_report(tables, "fr", today=date(2025, 1, 10))
     for text in (render_markdown(fr), render_html(fr)):
         assert not year_month.search(text), year_month.search(text)
-    assert re.search(r"\w+ \d{4} à \w+ \d{4} vs ", render_markdown(fr))
+    assert re.search(r"\w+ \d{4} à \w+ \d{4} contre ", render_markdown(fr))
     en = build_report(tables, "en", today=date(2025, 1, 10))
     assert re.search(r"\d{4}-\d{2} -> \d{4}-\d{2}", render_markdown(en))
+
+
+def test_french_report_has_no_english_vs(tables):
+    """French fact values say 'par rapport aux', 'contre', 'au lieu de', never 'vs'."""
+    import re
+    from datetime import date
+
+    fr = build_report(tables, "fr", today=date(2025, 1, 10))
+    for text in (render_markdown(fr), render_html(fr)):
+        assert not re.search(r"\bvs\b", text), re.search(r".{40}\bvs\b.{40}", text)
+    assert "par rapport aux 30 jours précédents" in render_markdown(fr)
+    en = build_report(tables, "en", today=date(2025, 1, 10))
+    assert "vs previous 30d" in render_markdown(en)
 
 
 def test_french_report_attribution_check_spells_out_multiplier(tables):
