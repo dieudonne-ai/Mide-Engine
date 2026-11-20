@@ -300,3 +300,15 @@ def test_french_report_has_no_english_fact_values(tables):
         assert "clients à risque élevé" in text and "du 2025-01-01 au" in text
     # The English report keeps the original wording.
     assert "customers at high risk" in render_markdown(build_report(tables, "en"))
+
+
+def test_french_report_uses_french_number_format(tables):
+    import re
+    from datetime import date
+
+    english_number = re.compile(r"\d,\d{3}\b|\d\.\d")
+    report = build_report(tables, "fr", today=date(2025, 1, 10))
+    for text in (render_markdown(report), render_html(report)):
+        assert not english_number.search(text), english_number.search(text)
+        assert " %" in text
+    assert english_number.search(render_markdown(build_report(tables, "en")))

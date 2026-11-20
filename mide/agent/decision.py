@@ -101,13 +101,29 @@ _FR_VALUE_PHRASES: list[tuple[re.Pattern[str], str]] = [(re.compile(p), r) for p
 ]]
 
 
+_NBSP = "\u00a0"
+_FR_THOUSANDS = re.compile(r"(?<![\d.])(?<!\d,)\d{1,3}(?:,\d{3})+(?!\d|,\d)")
+_FR_DECIMAL = re.compile(r"(?<=\d)\.(?=\d)")
+_FR_PERCENT = re.compile(r"(?<=\d)%")
+
+
+def french_numbers(value: str) -> str:
+    """French number format: '1,735' -> '1 735', '42.54' -> '42,54', '20.7%' -> '20,7 %'.
+
+    Spaces are non-breaking so a number is never split across lines. Dates
+    (2024-12-31) and identifiers (C0012) are left as they are."""
+    value = _FR_THOUSANDS.sub(lambda m: m.group(0).replace(",", _NBSP), value)
+    value = _FR_DECIMAL.sub(",", value)
+    return _FR_PERCENT.sub(_NBSP + "%", value)
+
+
 def fact_value(value: str, language: str) -> str:
-    """Fact value as shown to the user: French phrasing unless the language is English."""
+    """Fact value as shown to the user: French phrasing and numbers unless English."""
     if language == "en":
         return value
     for pattern, replacement in _FR_VALUE_PHRASES:
         value = pattern.sub(replacement, value)
-    return value
+    return french_numbers(value)
 
 
 @dataclass

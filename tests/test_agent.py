@@ -415,10 +415,10 @@ def test_data_used_labels_follow_language():
                 Finding("insights", {"anomaly 2": "spike", "custom key": "x"})]
     rec = Recommendation("t", findings)
     fr = rec.data_used("fr")
-    assert "- [sales] prévision à 30 jours: 45,871" in fr
+    assert "- [sales] prévision à 30 jours: 45\u00a0871" in fr
     assert "- [sales] meilleurs produits: P001" in fr
-    assert "- [marketing] canal SMS: ROI -0.58" in fr
-    assert "- [marketing] transfert depuis Radio: 6,840" in fr
+    assert "- [marketing] canal SMS: ROI -0,58" in fr
+    assert "- [marketing] transfert depuis Radio: 6\u00a0840" in fr
     assert "- [insights] anomalie 2: pic" in fr
     assert "- [insights] custom key: x" in fr
     en = rec.data_used("en")
@@ -454,7 +454,9 @@ def test_ask_without_llama_cpp_shows_figures_in_language(tmp_path, monkeypatch, 
 
 
 def test_fact_value_translates_english_phrases_to_french():
-    from mide.agent.decision import fact_value
+    # Phrases only: the expected French strings keep English digits and go through
+    # french_numbers, which is pinned by test_french_numbers.
+    from mide.agent.decision import fact_value, french_numbers
 
     cases = {
         "735,907 for 2023-01-01 -> 2024-12-31": "735,907 du 2023-01-01 au 2024-12-31",
@@ -484,8 +486,47 @@ def test_fact_value_translates_english_phrases_to_french():
         "Radio, SMS": "Radio, SMS",
     }
     for english, french in cases.items():
-        assert fact_value(english, "fr") == french
+        assert fact_value(english, "fr") == french_numbers(french)
         assert fact_value(english, "en") == english
+
+
+def test_french_numbers():
+    from mide.agent.decision import fact_value, french_numbers
+
+    nb = "\u00a0"
+    cases = {
+        "74 vs 1,735 attendus (-96%)": f"74 vs 1{nb}735 attendus (-96{nb}%)",
+        "dépenses 13,680, revenus 11,250: ROI -0.18, ROAS 0.82":
+            f"dépenses 13{nb}680, revenus 11{nb}250: ROI -0,18, ROAS 0,82",
+        "1,443,825 de revenus, 1.96x": f"1{nb}443{nb}825 de revenus, 1,96x",
+        "hausse, sur un an +20.7% (2024-01 -> 2024-12)": f"hausse, sur un an +20,7{nb}% (2024-01 -> 2024-12)",
+        "1,234.56": f"1{nb}234,56",
+        "du 2023-06-14 au 2023-06-16": "du 2023-06-14 au 2023-06-16",
+        "C1, C2, C3, +6 autres": "C1, C2, C3, +6 autres",
+        "P001 Rice 25kg, 12,34": "P001 Rice 25kg, 12,34",
+        "aucun": "aucun",
+    }
+    for raw, french in cases.items():
+        assert french_numbers(raw) == french
+    assert fact_value("spend 13,680, revenue 11,250: ROI -0.18", "fr") == (
+        f"dépenses 13{nb}680, revenus 11{nb}250: ROI -0,18")
+    assert fact_value("spend 13,680: ROI -0.18", "en") == "spend 13,680: ROI -0.18"
+
+
+def test_data_used_french_numbers_on_demo(demo_data):
+    import re
+
+    import pandas as pd
+
+    from mide.agent.decision import Recommendation, detect_tables, run_modules
+
+    data = detect_tables({"s": pd.read_csv(demo_data["sales"]),
+                          "c": pd.read_csv(demo_data["campaigns"])})
+    rec = Recommendation("x", run_modules(["insights", "sales", "customers", "marketing"], data))
+    fr, en = rec.data_used("fr"), rec.data_used("en")
+    english_number = re.compile(r"\d,\d{3}\b|\d\.\d")
+    assert english_number.search(en)
+    assert not english_number.search(fr), fr
 
 
 def test_data_used_values_follow_the_language(demo_data):
