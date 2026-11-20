@@ -8,6 +8,7 @@ from pathlib import Path
 from mide.config import Config
 from mide.connectors.base import is_url
 from mide.connectors.sources import list_sources
+from mide.utils.french import NBSP
 
 
 @dataclass
@@ -31,11 +32,11 @@ class PrivacyReport:
 
     def to_text(self, language: str = "fr") -> str:
         fr = language == "fr"
-        lines = ["Sources lues (autorisées uniquement) :" if fr else "Data read (authorized sources only):"]
+        lines = [f"Sources lues (autorisées uniquement){NBSP}:" if fr else "Data read (authorized sources only):"]
         lines += [f"  - {_mask(s)}" for s in self.sources] or [
             "  (aucune)" if fr else "  (none)"]
-        lines.append("Données stockées localement :" if fr else "Data stored locally:")
-        lines += [f"  - {s.path} ({format_size(s.size_bytes, language)}) : {s.purpose}" if fr
+        lines.append(f"Données stockées localement{NBSP}:" if fr else "Data stored locally:")
+        lines += [f"  - {s.path} ({format_size(s.size_bytes, language)}){NBSP}: {s.purpose}" if fr
                   else f"  - {s.path} ({format_size(s.size_bytes, language)}): {s.purpose}"
                   for s in self.stored]
         lines += [self.network, self.read_only]
@@ -83,10 +84,10 @@ def build_privacy_report(cfg: Config, config_dir: Path | None = None) -> Privacy
     return PrivacyReport(
         sources=list_sources(config_dir),
         stored=stored,
-        network=("Réseau : aucun appel en exécution (seul le téléchargement initial des "
+        network=(f"Réseau{NBSP}: aucun appel en exécution (seul le téléchargement initial des "
                  "modèles, avec confirmation). Aucune télémétrie." if fr else
                  "Network: no calls at runtime (only the initial model download, with "
                  "confirmation). No telemetry."),
-        read_only=("Sources en lecture seule : fichiers jamais modifiés, SQL limité à SELECT."
+        read_only=(f"Sources en lecture seule{NBSP}: fichiers jamais modifiés, SQL limité à SELECT."
                    if fr else "Sources are read-only: files never modified, SQL limited to SELECT."),
     )

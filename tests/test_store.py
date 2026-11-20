@@ -120,7 +120,7 @@ def test_cli_index(tmp_path, monkeypatch, fake_embedder):
     runner = CliRunner()
     first = runner.invoke(cli.app, ["index", "--config-dir", str(cfg_dir)])
     assert first.exit_code == 0, first.output
-    assert "Indexation : 3 nouveaux" in first.output
+    assert "Indexation\u00a0: 3 nouveaux" in first.output
     second = runner.invoke(cli.app, ["index", "--config-dir", str(cfg_dir)])
     assert "0 nouveaux" in second.output and "(0 nouveaux extraits)" in second.output
 
@@ -137,8 +137,8 @@ def test_cli_index_summary_follows_language(tmp_path, monkeypatch, fake_embedder
     args = ["index", "--config-dir", str(cfg_dir)]
     fr = CliRunner().invoke(cli.app, args)
     assert fr.exit_code == 0, fr.output
-    assert "Indexation : 3 nouveaux, 0 mis à jour, 0 inchangés, 0 retirés" in fr.output
-    assert "[erreur] " in fr.output and "broken.pdf : " in fr.output
+    assert "Indexation\u00a0: 3 nouveaux, 0 mis à jour, 0 inchangés, 0 retirés" in fr.output
+    assert "[erreur] " in fr.output and "broken.pdf\u00a0: " in fr.output
     (cfg_dir / "default.yaml").write_text("language: en\n", encoding="utf-8")
     en = CliRunner().invoke(cli.app, args)
     assert en.exit_code == 0, en.output
@@ -166,8 +166,8 @@ def test_cli_index_warns_about_missing_source_in_language(tmp_path, monkeypatch,
     args = ["index", "--config-dir", str(cfg_dir)]
     fr = CliRunner().invoke(cli.app, args)
     assert fr.exit_code == 0, fr.output
-    assert f"Attention : source introuvable, ignorée : {gone}" in fr.output
-    assert "Indexation : 3 nouveaux" in fr.output
+    assert f"Attention\u00a0: source introuvable, ignorée\u00a0: {gone}" in fr.output
+    assert "Indexation\u00a0: 3 nouveaux" in fr.output
     (cfg_dir / "default.yaml").write_text("language: en\n", encoding="utf-8")
     en = CliRunner().invoke(cli.app, args)
     assert f"Warning: source not found, skipped: {gone}" in en.output

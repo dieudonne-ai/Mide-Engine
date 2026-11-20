@@ -56,7 +56,7 @@ def test_models_and_report_messages_follow_language(tmp_path, monkeypatch) -> No
     out = tmp_path / "r.md"
     expected = {
         "fr": ("Aucun modèle entraîné. Utilisez `mide train --dataset X --target Y`.",
-               "Le format doit être 'md' ou 'html'.", f"Rapport écrit : {out}"),
+               "Le format doit être 'md' ou 'html'.", f"Rapport écrit\u00a0: {out}"),
         "en": ("No trained models. Use `mide train --dataset X --target Y`.",
                "Format must be 'md' or 'html'.", f"Report written: {out}"),
     }
@@ -99,7 +99,7 @@ def test_auto_without_rag_extra_still_retrains(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(cli, "retrain_if_changed", lambda datasets, *a, **k: calls.append(datasets) or [])
     result = runner.invoke(app, ["auto", "--config-dir", str(cfg)])
     assert result.exit_code == 0, result.output
-    assert "Indexation : ignorée (sentence-transformers is not installed)." in result.output
+    assert "Indexation\u00a0: ignorée (sentence-transformers is not installed)." in result.output
     assert len(calls) == 1 and any("sales.csv" in key for key in calls[0])
     assert "Aucun modèle entraîné" in result.output
 
@@ -110,7 +110,7 @@ def test_error_prefix_follows_language(tmp_path, monkeypatch) -> None:
     cfg = tmp_path / "cfg"
     cfg.mkdir()
     args = ["--config-dir", str(cfg)]
-    for language, prefix in (("fr", "Erreur : "), ("en", "Error: ")):
+    for language, prefix in (("fr", "Erreur\u00a0: "), ("en", "Error: ")):
         (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
         result = runner.invoke(app, ["train", "--dataset", "nope", "--target", "y", *args])
         assert result.exit_code == 1, language
@@ -120,7 +120,7 @@ def test_error_prefix_follows_language(tmp_path, monkeypatch) -> None:
     for command in (["models", "list"], ["index"], ["privacy"], ["auto"], ["finetune"]):
         result = runner.invoke(app, [*command, *args])
         assert result.exit_code == 1, command
-        assert result.output.startswith("Erreur : "), (command, result.output)
+        assert result.output.startswith("Erreur\u00a0: "), (command, result.output)
 
 
 def test_auto_summary_follows_language(tmp_path, monkeypatch) -> None:
@@ -152,13 +152,13 @@ def test_auto_summary_follows_language(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(cli, "retrain_if_changed", lambda *a, **k: outcomes)
     expected = {
         "fr": [
-            "Analyse : 1 jeux de données/documents.",
-            "Indexation : ignorée (sentence-transformers is not installed).",
-            "Modèle a : remplacé (3 -> 2) le nouveau modèle est meilleur",
-            "Modèle b : conservé (2 -> 2,5) l'ancien modèle est conservé",
-            "Modèle c : inchangé",
-            "Modèle d : ignoré le jeu de données n'est plus disponible",
-            "Modèle e : erreur boom",
+            "Analyse\u00a0: 1 jeux de données/documents.",
+            "Indexation\u00a0: ignorée (sentence-transformers is not installed).",
+            "Modèle a\u00a0: remplacé (3 -> 2) le nouveau modèle est meilleur",
+            "Modèle b\u00a0: conservé (2 -> 2,5) l'ancien modèle est conservé",
+            "Modèle c\u00a0: inchangé",
+            "Modèle d\u00a0: ignoré le jeu de données n'est plus disponible",
+            "Modèle e\u00a0: erreur boom",
         ],
         "en": [
             "Scan: 1 datasets/documents.",
@@ -210,8 +210,8 @@ def test_auto_and_models_trained_show_target_leakage(tmp_path, monkeypatch) -> N
     monkeypatch.setattr(cli, "_get_embedder", no_embedder)
     monkeypatch.setattr(cli, "retrain_if_changed", lambda *a, **k: outcomes)
     expected = {
-        "fr": ("Attention : score presque parfait, fuite de la cible probable. Vérifiez que "
-               "price ne sont pas calculées à partir de 'total' ni connues après lui ; "
+        "fr": ("Attention\u00a0: score presque parfait, fuite de la cible probable. Vérifiez que "
+               "price ne sont pas calculées à partir de 'total' ni connues après lui\u00a0; "
                "sinon retirez-les des données avant d'entraîner."),
         "en": ("Warning: near-perfect score, likely target leakage. Check that price "
                "are not computed from 'total' or only known after it; if so, remove "
@@ -246,13 +246,13 @@ def test_train_task_line_follows_language():
     cases = {
         "fr": [
             (detect_task(dated, "amount"),
-             "Tâche : série temporelle - cible numérique avec la colonne de date 'date'"),
+             "Tâche\u00a0: série temporelle - cible numérique avec la colonne de date 'date'"),
             (detect_task(dated.drop(columns=["date"]), "amount"),
-             "Tâche : régression - cible numérique continue, pas de colonne de date utilisable"),
+             "Tâche\u00a0: régression - cible numérique continue, pas de colonne de date utilisable"),
             (detect_task(pd.DataFrame({"y": ["a", "b", "a"]}), "y"),
-             "Tâche : classification - cible non numérique avec 2 classes"),
+             "Tâche\u00a0: classification - cible non numérique avec 2 classes"),
             (detect_task(pd.DataFrame({"y": [0, 1, 2, 1]}), "y"),
-             "Tâche : classification - cible entière avec seulement 3 valeurs"),
+             "Tâche\u00a0: classification - cible entière avec seulement 3 valeurs"),
         ],
         "en": [
             (detect_task(dated, "amount"),
@@ -268,7 +268,7 @@ def test_train_task_line_follows_language():
             assert _task_line(info, language) == expected
     # Without a known code, the English reason is kept as it is.
     legacy = TaskInfo(TaskType.REGRESSION, "y", "some reason")
-    assert _task_line(legacy, "fr") == "Tâche : régression - some reason"
+    assert _task_line(legacy, "fr") == "Tâche\u00a0: régression - some reason"
 
 
 def test_broken_sources_file_gives_clear_error(tmp_path, monkeypatch) -> None:
@@ -281,7 +281,7 @@ def test_broken_sources_file_gives_clear_error(tmp_path, monkeypatch) -> None:
     args = ["--config-dir", str(cfg)]
     commands = (["scan"], ["sources", "list"], ["sources", "add", str(tmp_path)],
                 ["sources", "remove", str(tmp_path)])
-    for language, prefix in (("fr", "Erreur : Fichier de sources invalide"),
+    for language, prefix in (("fr", "Erreur\u00a0: Fichier de sources invalide"),
                              ("en", "Error: Invalid sources file")):
         (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
         for command in commands:
@@ -309,7 +309,7 @@ def test_broken_models_file_error_follows_language(
     cfg = tmp_path / "cfg"
     cfg.mkdir()
     (cfg / "models.yaml").write_text(models_yaml, encoding="utf-8")
-    for language, prefix, text, other in (("fr", "Erreur : ", fr_text, en_text),
+    for language, prefix, text, other in (("fr", "Erreur\u00a0: ", fr_text, en_text),
                                           ("en", "Error: ", en_text, fr_text)):
         (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
         result = runner.invoke(app, ["privacy", "--config-dir", str(cfg)])
@@ -353,9 +353,9 @@ def test_missing_dependency_messages_follow_language(tmp_path, monkeypatch) -> N
     monkeypatch.setattr(cli, "retrain_if_changed", lambda *a, **k: [])
     monkeypatch.setattr(cli, "VectorStore", OneDoc)
     expected = {
-        "fr": (("Erreur : sentence-transformers n'est pas installé. Installez-le avec "
+        "fr": (("Erreur\u00a0: sentence-transformers n'est pas installé. Installez-le avec "
                "`pip install mide-engine[rag]`."),
-               ("Indexation : ignorée (sentence-transformers n'est pas installé. Installez-le "
+               ("Indexation\u00a0: ignorée (sentence-transformers n'est pas installé. Installez-le "
                "avec `pip install mide-engine[rag]`).")),
         "en": (("Error: sentence-transformers is not installed. Install it with "
                "`pip install mide-engine[rag]`."),
@@ -393,7 +393,7 @@ def test_ask_without_llama_cpp_and_no_figures_gives_clear_error(tmp_path, monkey
     (cfg / "default.yaml").write_text("language: fr\n", encoding="utf-8")
     result = runner.invoke(app, ["ask", "Que dit le rapport annuel ?", "--config-dir", str(cfg)])
     assert result.exit_code == 1
-    assert ("Erreur : llama-cpp-python n'est pas installé. Installez-le avec "
+    assert ("Erreur\u00a0: llama-cpp-python n'est pas installé. Installez-le avec "
             "`pip install mide-engine[llm]`.") in result.output
 
 
@@ -477,7 +477,7 @@ def test_train_warns_about_target_leakage(tmp_path, monkeypatch) -> None:
     for source in (folder, plain):
         assert runner.invoke(app, ["sources", "add", str(source), *args]).exit_code == 0
     expected = {
-        "fr": "Attention : score presque parfait, fuite de la cible probable. Vérifiez que price",
+        "fr": "Attention\u00a0: score presque parfait, fuite de la cible probable. Vérifiez que price",
         "en": "Warning: near-perfect score, likely target leakage. Check that price",
     }
     for language, text in expected.items():
@@ -504,7 +504,7 @@ def test_auto_outcome_line_explains_leak_blocked_model() -> None:
     outcome = ModelOutcome("sales-amount", "kept_leak", "candidate suspected of target leakage",
                            5.0, 0.1, target="amount", leakage_suspects=["amount_ttc"])
     assert _auto_outcome_line(outcome, "fr") == (
-        "Modèle sales-amount : conservé (5 -> 0,1) fuite de la cible probable dans le "
+        "Modèle sales-amount\u00a0: conservé (5 -> 0,1) fuite de la cible probable dans le "
         "nouveau modèle, l'ancien est conservé")
     assert _auto_outcome_line(outcome, "en") == (
         "Model sales-amount: kept (5 -> 0.1) likely target leakage in the new model, "
@@ -537,7 +537,7 @@ def test_cli_numbers_follow_french_format(tmp_path, monkeypatch) -> None:
             output += result.output
         outputs[language] = output.replace(str(tmp_path), "")
     assert "1\u00a0200 lignes" in outputs["fr"] and "1,200 rows" in outputs["en"]
-    assert re.search(r"VC mae : \d+,\d+ \(référence \d+,\d+\)", outputs["fr"])
+    assert re.search(r"VC mae\u00a0: \d+,\d+ \(référence \d+,\d+\)", outputs["fr"])
     assert re.search(r"x \(\d+\u00a0%\)", outputs["fr"])
     assert re.search(r"x \(\d+%\)", outputs["en"])
     assert re.search(r"mae=\d+,\d+ bat_reference", outputs["fr"])
@@ -557,7 +557,7 @@ def test_doctor_numbers_follow_french_format(tmp_path, monkeypatch) -> None:
     cfg = tmp_path / "cfg"
     cfg.mkdir()
     expected = {
-        "fr": ["RAM : 15,7 Go", "RTX (7,5 Go de VRAM)", "Espace disque libre : 59,25 Go"],
+        "fr": ["RAM\u00a0: 15,7 Go", "RTX (7,5 Go de VRAM)", "Espace disque libre\u00a0: 59,25 Go"],
         "en": ["RAM: 15.7 GB", "RTX (7.5 GB VRAM)", "Disk free: 59.25 GB"],
     }
     for language, texts in expected.items():

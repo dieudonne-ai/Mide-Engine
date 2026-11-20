@@ -142,7 +142,7 @@ def test_cli_pull_unknown_profile_lists_configured_profiles(
     result = CliRunner().invoke(cli.app, args)
     assert result.exit_code == 1
     assert "aucun modèle configuré pour le profil 'large'" in result.output
-    assert "Profils configurés : tiny" in result.output
+    assert "Profils configurés\u00a0: tiny" in result.output
     assert calls == []
 
 
@@ -151,9 +151,9 @@ def test_cli_pull_unknown_profile_lists_configured_profiles(
     [
         (
             "fr",
-            ["tiny: org/model/m.gguf [non installé]", "Télécharger ", "(0,00 Go) depuis internet ?",
-             "Modèle prêt : ", "tiny: org/model/m.gguf [installé]",
-             "Erreur : aucun modèle configuré pour le profil 'large'. Profils configurés : tiny"],
+            ["tiny: org/model/m.gguf [non installé]", "Télécharger ", "(0,00 Go) depuis internet\u00a0?",
+             "Modèle prêt\u00a0: ", "tiny: org/model/m.gguf [installé]",
+             "Erreur\u00a0: aucun modèle configuré pour le profil 'large'. Profils configurés\u00a0: tiny"],
         ),
         (
             "en",

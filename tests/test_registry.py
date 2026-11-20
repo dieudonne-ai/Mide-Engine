@@ -88,15 +88,15 @@ def test_cli_train_and_list(demo_data, tmp_path, monkeypatch):
     runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
     res = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amount", *opt])
     assert res.exit_code == 0, res.output
-    assert "Modèle enregistré : sales-amount v1" in res.output
+    assert "Modèle enregistré\u00a0: sales-amount v1" in res.output
     res = runner.invoke(app, ["models", "trained", *opt])
     assert "sales-amount v1" in res.output
     bad = runner.invoke(app, ["train", "--dataset", "nope", "--target", "amount", *opt])
     assert bad.exit_code == 1
-    assert "Jeux de données disponibles : sales" in bad.output
+    assert "Jeux de données disponibles\u00a0: sales" in bad.output
     bad = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amout", *opt])
     assert bad.exit_code == 1
-    assert "Colonnes disponibles :" in bad.output and "amount" in bad.output
+    assert "Colonnes disponibles\u00a0:" in bad.output and "amount" in bad.output
 
 
 def test_cli_train_integer_class_target(demo_data, tmp_path, monkeypatch):
@@ -108,7 +108,7 @@ def test_cli_train_integer_class_target(demo_data, tmp_path, monkeypatch):
     runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
     res = runner.invoke(app, ["train", "--dataset", "sales", "--target", "quantity", *opt])
     assert res.exit_code == 0, res.output
-    assert "Modèle enregistré : sales-quantity v1" in res.output
+    assert "Modèle enregistré\u00a0: sales-quantity v1" in res.output
     assert "VC accuracy" in res.output
 
 
@@ -120,10 +120,10 @@ def test_cli_train_unknown_column_follows_language(demo_data, tmp_path, monkeypa
     opt = ["--config-dir", str(cfg)]
     runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
     cases = {
-        "fr": [("Erreur : Colonne cible 'amout' introuvable dans le jeu de données. "
-                "Colonnes disponibles : "),
-               ("Erreur : Colonne de date 'jour' introuvable dans le jeu de données. "
-                "Colonnes disponibles : ")],
+        "fr": [("Erreur\u00a0: Colonne cible 'amout' introuvable dans le jeu de données. "
+                "Colonnes disponibles\u00a0: "),
+               ("Erreur\u00a0: Colonne de date 'jour' introuvable dans le jeu de données. "
+                "Colonnes disponibles\u00a0: ")],
         "en": ["Error: Target column 'amout' not found in dataset. Available columns: ",
                "Error: Date column 'jour' not found in dataset. Available columns: "],
     }
@@ -151,8 +151,8 @@ def test_cli_train_training_errors_follow_language(tmp_path, monkeypatch):
     opt = ["--config-dir", str(cfg)]
     runner.invoke(app, ["sources", "add", str(data), *opt])
     expected = {
-        "fr": ["Erreur : Pas assez de lignes pour entraîner (3) ; il en faut au moins 20",
-               "Erreur : Aucune colonne utilisable comme variable explicative"],
+        "fr": ["Erreur\u00a0: Pas assez de lignes pour entraîner (3)\u00a0; il en faut au moins 20",
+               "Erreur\u00a0: Aucune colonne utilisable comme variable explicative"],
         "en": ["Error: Not enough rows to train (3); at least 20 are needed",
                "Error: No usable feature columns found"],
     }
@@ -180,8 +180,8 @@ def test_cli_train_target_errors_follow_language(tmp_path, monkeypatch):
     opt = ["--config-dir", str(cfg)]
     runner.invoke(app, ["sources", "add", str(data), *opt])
     expected = {
-        "fr": ["Erreur : La colonne cible 'y' ne contient aucune valeur",
-               "Erreur : La colonne cible 'y' a moins de 2 valeurs distinctes"],
+        "fr": ["Erreur\u00a0: La colonne cible 'y' ne contient aucune valeur",
+               "Erreur\u00a0: La colonne cible 'y' a moins de 2 valeurs distinctes"],
         "en": ["Error: Target column 'y' has no values",
                "Error: Target column 'y' has fewer than 2 distinct values"],
     }
@@ -203,7 +203,7 @@ def test_cli_train_non_date_column_follows_language(demo_data, tmp_path, monkeyp
     opt = ["--config-dir", str(cfg)]
     runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
     expected = {
-        "fr": "Erreur : La colonne 'unit_price' ne contient pas de dates",
+        "fr": "Erreur\u00a0: La colonne 'unit_price' ne contient pas de dates",
         "en": "Error: Column 'unit_price' does not contain dates",
     }
     for language, line in expected.items():
@@ -224,7 +224,7 @@ def test_cli_train_date_target_follows_language(demo_data, tmp_path, monkeypatch
     opt = ["--config-dir", str(cfg)]
     runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
     expected = {
-        "fr": "Erreur : La colonne cible 'date' contient des dates",
+        "fr": "Erreur\u00a0: La colonne cible 'date' contient des dates",
         "en": "Error: Target column 'date' contains dates",
     }
     for language, line in expected.items():
@@ -244,7 +244,7 @@ def test_cli_train_identifier_target_follows_language(demo_data, tmp_path, monke
     opt = ["--config-dir", str(cfg)]
     runner.invoke(app, ["sources", "add", str(demo_data["customers"]), *opt])
     expected = {
-        "fr": "Erreur : Chaque valeur de la colonne cible 'customer_id' est unique",
+        "fr": "Erreur\u00a0: Chaque valeur de la colonne cible 'customer_id' est unique",
         "en": "Error: Every value of target column 'customer_id' is unique",
     }
     for language, line in expected.items():
@@ -265,8 +265,8 @@ def test_cli_train_unknown_dataset_follows_language(demo_data, tmp_path, monkeyp
     opt = ["--config-dir", str(cfg)]
     runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
     expected = {
-        "fr": "Erreur : Jeu de données introuvable dans les sources autorisées : nope. "
-              "Jeux de données disponibles : sales",
+        "fr": "Erreur\u00a0: Jeu de données introuvable dans les sources autorisées\u00a0: nope. "
+              "Jeux de données disponibles\u00a0: sales",
         "en": "Error: Dataset not found in authorized sources: nope. Available datasets: sales",
     }
     for language, line in expected.items():
@@ -284,8 +284,8 @@ def test_cli_train_output_follows_language(demo_data, tmp_path, monkeypatch):
     opt = ["--config-dir", str(cfg)]
     runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
     expected = {
-        "fr": ["Tâche : série temporelle - cible numérique avec la colonne de date ", "Modèle enregistré : sales-amount v1", "  VC ", "(référence ",
-               "Le modèle bat la référence.", "Variables principales : "],
+        "fr": ["Tâche\u00a0: série temporelle - cible numérique avec la colonne de date ", "Modèle enregistré\u00a0: sales-amount v1", "  VC ", "(référence ",
+               "Le modèle bat la référence.", "Variables principales\u00a0: "],
         "en": ["Task: ", "Saved sales-amount v2", "  CV ", "(baseline ",
                "The model beats the baseline.", "Top features: "],
     }
@@ -324,7 +324,7 @@ def test_cli_models_trained_invalid_config(tmp_path):
     (cfg / "default.yaml").write_text("language: de\n", encoding="utf-8")
     res = CliRunner().invoke(app, ["models", "trained", "--config-dir", str(cfg)])
     assert res.exit_code == 1
-    assert "Erreur :" in res.output and "language" in res.output
+    assert "Erreur\u00a0:" in res.output and "language" in res.output
     assert res.exception is None or isinstance(res.exception, SystemExit)
 
 

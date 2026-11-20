@@ -137,7 +137,7 @@ def test_cli_sources_remove_unknown_lists_sources(tmp_path: Path) -> None:
     runner.invoke(app, ["sources", "add", str(data), *args])
     res = runner.invoke(app, ["sources", "remove", str(tmp_path / "nope"), *args])
     assert res.exit_code == 1
-    assert f"Sources autorisées : {data.resolve()}" in res.output
+    assert f"Sources autorisées\u00a0: {data.resolve()}" in res.output
     assert list_sources(cfg) == [str(data.resolve())]
 
 
@@ -149,7 +149,7 @@ def test_cli_sources_messages_follow_language(tmp_path: Path) -> None:
     data.mkdir()
     args = ["--config-dir", str(cfg)]
     res = runner.invoke(app, ["sources", "add", str(data), *args])
-    assert f"Source ajoutée : {data.resolve()}" in res.output
+    assert f"Source ajoutée\u00a0: {data.resolve()}" in res.output
     res = runner.invoke(app, ["sources", "add", str(tmp_path / "x"), *args])
     assert res.exit_code == 1
     assert "le chemin n'existe pas" in res.output
@@ -182,7 +182,7 @@ def test_cli_sources_add_refuses_path_inside_authorized_folder(tmp_path: Path) -
     for inner in (data / "sales.csv", data / "sub"):
         res = runner.invoke(app, ["sources", "add", str(inner), *args])
         assert res.exit_code == 0, res.output
-        expected = f"Déjà autorisé par le dossier {data.resolve()} : {inner.resolve()} n'a pas été ajouté."
+        expected = f"Déjà autorisé par le dossier {data.resolve()}\u00a0: {inner.resolve()} n'a pas été ajouté."
         assert expected in res.output
     assert list_sources(cfg) == [str(data.resolve())]
     (cfg / "default.yaml").write_text("language: en\n", encoding="utf-8")
