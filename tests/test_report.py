@@ -98,9 +98,10 @@ def test_report_labels_follow_language(tables):
     from mide.report import fact_label
 
     fr = render_markdown(build_report(tables, "fr"))
-    for label in ("**chiffre d'affaires**:", "**commandes**:", "**panier moyen**:",
-                  "**croissance sur 30 jours**:", "**prévision à 30 jours**:",
-                  "- risque de départ: ", "- canaux marketing sous-performants: Radio, SMS"):
+    nb = "\u00a0"
+    for label in (f"**chiffre d'affaires**{nb}:", f"**commandes**{nb}:", f"**panier moyen**{nb}:",
+                  f"**croissance sur 30 jours**{nb}:", f"**prévision à 30 jours**{nb}:",
+                  f"- risque de départ{nb}: ", f"- canaux marketing sous-performants{nb}: Radio, SMS"):
         assert label in fr, label
     assert "**revenue**" not in fr and "- churn:" not in fr and "marketing underperforming" not in fr
     en = render_markdown(build_report(tables, "en"))
@@ -216,6 +217,20 @@ def test_trend_action_without_forecast():
         "trend: up; forecast 30d: 100 (-5% vs previous 30d)")
 
 
+def test_french_report_spacing_before_colon_and_semicolon(tables):
+    import re
+
+    fr = render_markdown(build_report(tables, "fr"))
+    body = fr.split("## ", 1)[1]  # skip the title and date
+    assert not re.search(r"[^\u00a0][:;] ", body), body
+    import html
+
+    page = html.unescape(render_html(build_report(tables, "fr")))  # '&gt; ' is not a ';'
+    assert not re.search(r"[^\u00a0][:;] ", page)
+    en = render_markdown(build_report(tables, "en"))
+    assert "**revenue**: " in en and "\u00a0:" not in en and "\u00a0;" not in en
+
+
 def test_budget_action_single_move_keeps_short_text():
     from mide.agent.decision import Finding
     from mide.report import _actions
@@ -223,7 +238,7 @@ def test_budget_action_single_move_keeps_short_text():
     mkt = {"marketing": Finding("marketing", {"move Radio": "500 to Email", "best channel": "Email"})}
     action = _actions(mkt, fr=True)[0]
     assert action.text == "Réallouer le budget depuis Radio"
-    assert action.evidence == "500 vers Email; meilleur canal: Email"
+    assert action.evidence == "500 vers Email\u00a0; meilleur canal\u00a0: Email"
 
 
 def test_action_evidence_labels_follow_language():
@@ -234,16 +249,16 @@ def test_action_evidence_labels_follow_language():
          "marketing": Finding("marketing", {"move Radio": "500 to Email", "best channel": "Email",
                                             "attribution check": "2x"}),
          "sales": Finding("sales", {"trend": "up", "forecast 30d": "100"})}
-    fr = [a.evidence for a in _actions(f, fr=True)]
-    assert fr == ["risque de départ: 4 clients",
-                  "500 vers Email; meilleur canal: Email; contrôle d'attribution: 2x",
-                  "tendance: hausse; prévision à 30 jours: 100"]
+    fr = [a.evidence.replace("\u00a0", "~") for a in _actions(f, fr=True)]
+    assert fr == ["risque de départ~: 4 clients",
+                  "500 vers Email~; meilleur canal~: Email~; contrôle d'attribution~: 2x",
+                  "tendance~: hausse~; prévision à 30 jours~: 100"]
     en = [a.evidence for a in _actions(f, fr=False)]
     assert en == ["churn: 4 customers",
                   "500 to Email; best channel: Email; attribution check: 2x",
                   "trend: up; forecast 30d: 100"]
     only_best = {"marketing": Finding("marketing", {"best channel": "Email"})}
-    assert _actions(only_best, fr=True)[0].evidence == "meilleur canal: Email"
+    assert _actions(only_best, fr=True)[0].evidence == "meilleur canal\u00a0: Email"
 
 
 @pytest.mark.parametrize("language", ["fr", "en"])

@@ -9,7 +9,15 @@ from datetime import UTC, date, datetime
 
 import pandas as pd
 
-from mide.agent.decision import BusinessData, Finding, fact_label, fact_value, run_modules
+from mide.agent.decision import (
+    BusinessData,
+    Finding,
+    fact_label,
+    fact_sep,
+    fact_value,
+    list_sep,
+    run_modules,
+)
 
 _ACTION_LIMIT = 3
 STALE_AFTER_DAYS = 30  # older sales data gets a warning at the top of the alerts
@@ -72,31 +80,33 @@ def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> l
     def val(value: str) -> str:
         return fact_value(value, lang)
 
+    sep, ls = fact_sep(lang), list_sep(lang)
+
     cust = f.get("customers")
     if cust and "churn" in cust.facts:
         out.append(Action(
             "Relancer les clients à risque de départ" if fr else "Re-engage customers at churn risk",
-            f"{label('churn')}: {val(cust.facts['churn'])}"))
+            f"{label('churn')}{sep}{val(cust.facts['churn'])}"))
     mkt = f.get("marketing")
     if mkt:
         # The budget action rests on ROAS: carry the attribution caveat with it.
         check = mkt.facts.get("attribution check")
-        caveat = f"; {label('attribution check')}: {val(check)}" if check else ""
+        caveat = f"{ls}{label('attribution check')}{sep}{val(check)}" if check else ""
         moves = [(k, v) for k, v in mkt.facts.items() if k.startswith("move ")]
         if moves:
             # Cite every suggested move: the alerts list all underperforming channels,
             # so the action must not silently drop all but the first one.
             sources = ", ".join(k[5:] for k, _ in moves)
             detail = (val(moves[0][1]) if len(moves) == 1
-                      else "; ".join(f"{k[5:]}: {val(v)}" for k, v in moves))
+                      else ls.join(f"{k[5:]}{sep}{val(v)}" for k, v in moves))
             out.append(Action(
                 (f"Réallouer le budget depuis {sources}" if fr
                  else f"Reallocate budget from {sources}"),
-                f"{detail}; {label('best channel')}: {val(mkt.facts.get('best channel', '-'))}{caveat}"))
+                f"{detail}{ls}{label('best channel')}{sep}{val(mkt.facts.get('best channel', '-'))}{caveat}"))
         elif "best channel" in mkt.facts:
             out.append(Action(
                 "Renforcer le canal le plus rentable" if fr else "Invest more in the best channel",
-                f"{label('best channel')}: {val(mkt.facts['best channel'])}{caveat}"))
+                f"{label('best channel')}{sep}{val(mkt.facts['best channel'])}{caveat}"))
     ins = f.get("insights")
     anomalies = [v for k, v in ins.facts.items() if k.startswith("anomaly ")] if ins else []
     anomalies = [a for a in anomalies if _is_recent(a, last_day)]
@@ -110,11 +120,11 @@ def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> l
         # Stock is bought for the coming weeks: cite the 30d forecast next to the past trend,
         # since a rising trend can come with a lower forecast (e.g. after a seasonal peak).
         forecast = sal.facts.get("forecast 30d")
-        outlook = f"; {label('forecast 30d')}: {val(forecast)}" if forecast else ""
+        outlook = f"{ls}{label('forecast 30d')}{sep}{val(forecast)}" if forecast else ""
         out.append(Action(
             "Surveiller la tendance des ventes et ajuster les stocks" if fr
             else "Track the sales trend and adjust stock",
-            f"{label('trend')}: {val(sal.facts['trend'])}{outlook}"))
+            f"{label('trend')}{sep}{val(sal.facts['trend'])}{outlook}"))
     return out[:_ACTION_LIMIT]
 
 
@@ -135,8 +145,8 @@ def stale_data_alert(data: BusinessData, today: date, fr: bool) -> str | None:
     if age <= STALE_AFTER_DAYS:
         return None
     if fr:
-        return (f"données anciennes : dernière vente le {last.isoformat()}, {age} jours avant ce "
-                "rapport ; les chiffres décrivent cette période, pas aujourd'hui")
+        return (f"données anciennes\u00a0: dernière vente le {last.isoformat()}, {age} jours avant ce "
+                "rapport\u00a0; les chiffres décrivent cette période, pas aujourd'hui")
     return (f"stale data: last sale on {last.isoformat()}, {age} days before this report; "
             "figures describe that period, not today")
 
@@ -199,10 +209,10 @@ def build_report(data: BusinessData, language: str = "fr", today: date | None = 
                             if k.startswith("forecast")}
     if "customers" in findings and "churn" in findings["customers"].facts:
         report.alerts.append(
-            f"{fact_label('churn', lang)}: {fact_value(findings['customers'].facts['churn'], lang)}")
+            f"{fact_label('churn', lang)}{fact_sep(lang)}{fact_value(findings['customers'].facts['churn'], lang)}")
     if "marketing" in findings and findings["marketing"].facts.get("underperforming", "none") != "none":
         report.alerts.append(
-            f"{fact_label('underperforming', lang)}: "
+            f"{fact_label('underperforming', lang)}{fact_sep(lang)}"
             f"{fact_value(findings['marketing'].facts['underperforming'], lang)}")
     report.actions = _actions(findings, lang == "fr", _last_sale_day(data))
     stale = stale_data_alert(data, report.generated, lang == "fr")
@@ -217,7 +227,7 @@ def render_markdown(report: Report) -> str:
     if report.empty:
         return "\n".join(lines + [t["nodata"], ""])
     def items(facts: dict[str, str]) -> list[str]:
-        return [f"- **{fact_label(k, report.language)}**: {fact_value(v, report.language)}"
+        return [f"- **{fact_label(k, report.language)}**{fact_sep(report.language)}{fact_value(v, report.language)}"
                 for k, v in facts.items()]
 
     lines += [f"## {t['kpis']}", ""] + items(report.kpis)
@@ -243,7 +253,7 @@ def render_html(report: Report) -> str:
     else:
         def facts(items: dict[str, str]) -> str:
             lang = report.language
-            return ul([f"<b>{e(fact_label(k, lang))}</b>: {e(fact_value(v, lang))}"
+            return ul([f"<b>{e(fact_label(k, lang))}</b>{fact_sep(lang)}{e(fact_value(v, lang))}"
                        for k, v in items.items()])
 
         body += [
