@@ -117,13 +117,34 @@ def french_numbers(value: str) -> str:
     return _FR_PERCENT.sub(_NBSP + "%", value)
 
 
+_FR_PUNCT = re.compile(r"[ \u00a0]?([;:])(?= |$)")
+
+
+def french_punctuation(value: str) -> str:
+    """French spacing: a non-breaking space before ':' and ';' ('a; b' -> 'a ; b').
+
+    Only a sign followed by a space or the end is touched, so ratios, times and
+    URLs ('a:b', '10:30', 'http://') stay as they are."""
+    return _FR_PUNCT.sub(_NBSP + r"\1", value)
+
+
+def fact_sep(language: str) -> str:
+    """Separator between a label and its value: ': ' in English, ' : ' in French."""
+    return ": " if language == "en" else _NBSP + ": "
+
+
+def list_sep(language: str) -> str:
+    """Separator between items of a fact: '; ' in English, ' ; ' in French."""
+    return "; " if language == "en" else _NBSP + "; "
+
+
 def fact_value(value: str, language: str) -> str:
-    """Fact value as shown to the user: French phrasing and numbers unless English."""
+    """Fact value as shown to the user: French phrasing, numbers and spacing unless English."""
     if language == "en":
         return value
     for pattern, replacement in _FR_VALUE_PHRASES:
         value = pattern.sub(replacement, value)
-    return french_numbers(value)
+    return french_punctuation(french_numbers(value))
 
 
 @dataclass
@@ -136,9 +157,9 @@ class Recommendation:
 
     def data_used(self, language: str = "fr") -> str:
         title = "Données utilisées" if language == "fr" else "Data used"
-        lines = [f"- [{f.module}] {fact_label(k, language)}: {fact_value(v, language)}"
+        lines = [f"- [{f.module}] {fact_label(k, language)}{fact_sep(language)}{fact_value(v, language)}"
                  for f in self.findings for k, v in f.facts.items()]
-        return f"{title}:\n" + "\n".join(lines) if lines else ""
+        return f"{title}{fact_sep(language).rstrip()}\n" + "\n".join(lines) if lines else ""
 
 
 _SALES_COLS = {"date", "amount"}

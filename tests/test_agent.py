@@ -415,12 +415,12 @@ def test_data_used_labels_follow_language():
                 Finding("insights", {"anomaly 2": "spike", "custom key": "x"})]
     rec = Recommendation("t", findings)
     fr = rec.data_used("fr")
-    assert "- [sales] prévision à 30 jours: 45\u00a0871" in fr
-    assert "- [sales] meilleurs produits: P001" in fr
-    assert "- [marketing] canal SMS: ROI -0,58" in fr
-    assert "- [marketing] transfert depuis Radio: 6\u00a0840" in fr
-    assert "- [insights] anomalie 2: pic" in fr
-    assert "- [insights] custom key: x" in fr
+    assert "- [sales] prévision à 30 jours\u00a0: 45\u00a0871" in fr
+    assert "- [sales] meilleurs produits\u00a0: P001" in fr
+    assert "- [marketing] canal SMS\u00a0: ROI -0,58" in fr
+    assert "- [marketing] transfert depuis Radio\u00a0: 6\u00a0840" in fr
+    assert "- [insights] anomalie 2\u00a0: pic" in fr
+    assert "- [insights] custom key\u00a0: x" in fr
     en = rec.data_used("en")
     assert "- [sales] forecast 30d: 45,871" in en and "- [marketing] channel SMS" in en
     assert "- [marketing] move Radio: 6,840" in en and "top products: P001" in en
@@ -456,7 +456,7 @@ def test_ask_without_llama_cpp_shows_figures_in_language(tmp_path, monkeypatch, 
 def test_fact_value_translates_english_phrases_to_french():
     # Phrases only: the expected French strings keep English digits and go through
     # french_numbers, which is pinned by test_french_numbers.
-    from mide.agent.decision import fact_value, french_numbers
+    from mide.agent.decision import fact_value, french_numbers, french_punctuation
 
     cases = {
         "735,907 for 2023-01-01 -> 2024-12-31": "735,907 du 2023-01-01 au 2024-12-31",
@@ -486,7 +486,7 @@ def test_fact_value_translates_english_phrases_to_french():
         "Radio, SMS": "Radio, SMS",
     }
     for english, french in cases.items():
-        assert fact_value(english, "fr") == french_numbers(french)
+        assert fact_value(english, "fr") == french_punctuation(french_numbers(french))
         assert fact_value(english, "en") == english
 
 
@@ -509,8 +509,46 @@ def test_french_numbers():
     for raw, french in cases.items():
         assert french_numbers(raw) == french
     assert fact_value("spend 13,680, revenue 11,250: ROI -0.18", "fr") == (
-        f"dépenses 13{nb}680, revenus 11{nb}250: ROI -0,18")
+        f"dépenses 13{nb}680, revenus 11{nb}250{nb}: ROI -0,18")
     assert fact_value("spend 13,680: ROI -0.18", "en") == "spend 13,680: ROI -0.18"
+
+
+def test_french_punctuation():
+    from mide.agent.decision import fact_sep, fact_value, french_punctuation, list_sep
+
+    nb = "\u00a0"
+    cases = {
+        "0,3 % du chiffre d'affaires; 4 clients": f"0,3 % du chiffre d'affaires{nb}; 4 clients",
+        "revenus 11 250: ROI -0,18": f"revenus 11 250{nb}: ROI -0,18",
+        "baisse du 2023-06-14 au 2023-06-16 : 74": f"baisse du 2023-06-14 au 2023-06-16{nb}: 74",
+        "fin:": f"fin{nb}:",
+        "ratio 3:2, 10:30, http://x, ROI/ROAS": "ratio 3:2, 10:30, http://x, ROI/ROAS",
+        f"déjà{nb}; espacé{nb}: ok": f"déjà{nb}; espacé{nb}: ok",
+    }
+    for raw, french in cases.items():
+        assert french_punctuation(raw) == french
+    assert fact_value("(0.3% of revenue; 9 of 400 customers)", "fr") == (
+        f"(0,3{nb}% du chiffre d'affaires{nb}; 9 clients sur 400)")
+    assert fact_value("(0.3% of revenue; 9 of 400 customers)", "en") == (
+        "(0.3% of revenue; 9 of 400 customers)")
+    assert (fact_sep("fr"), list_sep("fr")) == (f"{nb}: ", f"{nb}; ")
+    assert (fact_sep("en"), list_sep("en")) == (": ", "; ")
+
+
+def test_data_used_french_punctuation_on_demo(demo_data):
+    import re
+
+    import pandas as pd
+
+    from mide.agent.decision import Recommendation, detect_tables, run_modules
+
+    frames = {k: pd.read_csv(v) for k, v in demo_data.items() if str(v).endswith(".csv")}
+    findings = run_modules(["insights", "sales", "customers", "marketing"], detect_tables(frames))
+    fr = Recommendation("t", findings).data_used("fr")
+    assert not re.search(r"[^\u00a0][:;] ", fr), fr
+    assert fr.startswith("Données utilisées\u00a0:")
+    en = Recommendation("t", findings).data_used("en")
+    assert en.startswith("Data used:") and "\u00a0" not in en
 
 
 def test_data_used_french_numbers_on_demo(demo_data):
