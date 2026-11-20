@@ -106,7 +106,7 @@ def test_ask_and_chat_reject_unknown_source(tmp_path, monkeypatch, fake_embedder
     res = runner.invoke(cli.app, ["ask", "marketing budget", "--source", "meting.txt",
                                   "--config-dir", str(cfg_dir)])
     assert res.exit_code == 1
-    assert "Source non indexée : meting.txt" in res.output
+    assert "Source non indexée\u00a0: meting.txt" in res.output
     assert "meeting.txt" in res.output and "stock.txt" in res.output
     assert llm.prompts == []
     (cfg_dir / "default.yaml").write_text("language: en\n")

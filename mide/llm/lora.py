@@ -164,7 +164,7 @@ def finetune(
             json.dumps({"adapter": str(adapter), "before": before, "after": after}),
             encoding="utf-8")
         return FinetuneReport("activated", msg, len(pairs), before, after, adapter)
-    msg = (f"Adaptateur rejeté (pas d'amélioration : {before:.2f} -> {after:.2f}), "
+    msg = (f"Adaptateur rejeté (pas d'amélioration\u00a0: {before:.2f} -> {after:.2f}), "
            "le RAG est utilisé." if language == "fr"
            else f"Adapter rejected (no improvement: {before:.2f} -> {after:.2f}), RAG is used.")
     return FinetuneReport("rejected", msg, len(pairs), before, after)

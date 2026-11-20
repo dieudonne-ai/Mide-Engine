@@ -105,7 +105,7 @@ def test_cli_finetune_missing_llm_fails_cleanly_fr_en(tmp_path, monkeypatch):
 
     (tmp_path / "models.yaml").write_bytes((PACKAGED_DEFAULTS_DIR / "models.yaml").read_bytes())
     expected = {
-        "fr": "Erreur : Modèle non installé : lancez `mide models pull`",
+        "fr": "Erreur\u00a0: Modèle non installé\u00a0: lancez `mide models pull`",
         "en": "Error: Model not installed: run `mide models pull`",
     }
     for language, line in expected.items():

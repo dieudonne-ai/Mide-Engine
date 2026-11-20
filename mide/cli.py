@@ -48,6 +48,7 @@ from mide.rag.indexer import index_sources
 from mide.rag.retriever import Retriever
 from mide.rag.store import VectorStore
 from mide.utils.errors import MissingDependencyError, friendly_message
+from mide.utils.french import NBSP, french_spacing
 from mide.utils.privacy import build_privacy_report
 
 logger = logging.getLogger(__name__)
@@ -358,7 +359,10 @@ def _language_of(language: str) -> str:
 
 
 def _sources_msg(key: str, language: str, **values: str) -> str:
-    return SOURCES_MESSAGES[key][language].format(**values)
+    template = SOURCES_MESSAGES[key][language]
+    if language == "fr":
+        template = french_spacing(template)
+    return template.format(**values)
 
 
 def _task_line(info: TaskInfo, language: str) -> str:
@@ -821,8 +825,9 @@ def _check_source(store: VectorStore, source: str | None, language: str) -> None
     if source in items:
         return
     if language == "fr":
-        hint = f"Sources indexées : {', '.join(items)}" if items else "Index vide. Lancez `mide index`."
-        raise UnknownSourceError(f"Source non indexée : {source}. {hint}")
+        hint = (f"Sources indexées{NBSP}: {', '.join(items)}" if items
+                else "Index vide. Lancez `mide index`.")
+        raise UnknownSourceError(f"Source non indexée{NBSP}: {source}. {hint}")
     hint = f"Indexed sources: {', '.join(items)}" if items else "Empty index. Run `mide index`."
     raise UnknownSourceError(f"Source not indexed: {source}. {hint}")
 
@@ -842,7 +847,8 @@ def ask_answer(question: str, config_dir: Path | None = None, source: str | None
     cfg = load_config(config_dir)
     if not question.strip():
         raise EmptyQuestionError(
-            "Question vide. Exemple : mide ask \"Quels produits se vendent le mieux ?\"" if cfg.language == "fr"
+            french_spacing("Question vide. Exemple : mide ask \"Quels produits se vendent le mieux ?\"")
+            if cfg.language == "fr"
             else "Empty question. Example: mide ask \"Which products sell best?\"")
     if source is not None:
         _check_source(VectorStore(cfg.app_dir / "index"), source, cfg.language)
@@ -948,8 +954,8 @@ def _refuse_source_overwrite(output: Path, sources: list[str], language: str) ->
     if owner is None:
         return
     if language == "fr":
-        msg = (f"Erreur : {output} fait partie de la source autorisée {owner}. "
-               "MIDE ne modifie jamais vos données ; choisissez un autre fichier de sortie.")
+        msg = (f"Erreur{NBSP}: {output} fait partie de la source autorisée {owner}. "
+               f"MIDE ne modifie jamais vos données{NBSP}; choisissez un autre fichier de sortie.")
     else:
         msg = (f"Error: {output} belongs to the authorized source {owner}. "
                "MIDE never modifies your data; choose another output file.")

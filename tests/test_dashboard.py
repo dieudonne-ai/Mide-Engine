@@ -77,7 +77,7 @@ def test_ui_command_without_streamlit(monkeypatch):
 
 
 @pytest.mark.parametrize(("language", "expected"), [
-    ("fr", "Erreur : Streamlit n'est pas installé : pip install 'mide-engine[ui]'"),
+    ("fr", "Erreur\u00a0: Streamlit n'est pas installé\u00a0: pip install 'mide-engine[ui]'"),
     ("en", "Error: Streamlit is not installed: pip install 'mide-engine[ui]'"),
 ])
 def test_ui_without_streamlit_follows_language(empty_cfg, monkeypatch, language, expected):
@@ -95,7 +95,7 @@ def test_ui_without_streamlit_follows_language(empty_cfg, monkeypatch, language,
 
 
 @pytest.mark.parametrize(("language", "expected"), [
-    ("fr", "Erreur : tableau de bord introuvable : "),
+    ("fr", "Erreur\u00a0: tableau de bord introuvable\u00a0: "),
     ("en", "Error: dashboard not found: "),
 ])
 def test_ui_without_dashboard_follows_language(empty_cfg, monkeypatch, tmp_path, language,
@@ -489,6 +489,6 @@ def test_leak_warning_for_flagged_models_only():
     assert dd.leak_warning({"target": "y"}, "en") is None
     meta = {"target": "quantity", "leakage_suspects": ["amount", "unit_price"]}
     fr = dd.leak_warning(meta, "fr")
-    assert fr.startswith("Attention : score presque parfait")
+    assert fr.startswith("Attention\u00a0: score presque parfait")
     assert "amount, unit_price" in fr and "'quantity'" in fr
     assert dd.leak_warning(meta, "en").startswith("Warning: near-perfect score")

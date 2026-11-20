@@ -92,7 +92,7 @@ def test_scan_cli(tmp_path: Path) -> None:
     result = runner.invoke(app, ["scan", "--config-dir", str(cfg)])
     assert result.exit_code == 0
     assert "ventes.csv" in result.output
-    assert "colonnes de date : date" in result.output
+    assert "colonnes de date\u00a0: date" in result.output
     assert "montant" in result.output
 
 
@@ -112,9 +112,9 @@ def test_scan_cli_follows_language(tmp_path: Path) -> None:
     fr = runner.invoke(app, args)
     assert fr.exit_code == 0, fr.output
     assert " lignes x " in fr.output and " colonnes" in fr.output
-    assert "colonnes de date : date" in fr.output
-    assert "cibles possibles : " in fr.output
-    assert "[erreur] " in fr.output and "bad.xlsx : " in fr.output
+    assert "colonnes de date\u00a0: date" in fr.output
+    assert "cibles possibles\u00a0: " in fr.output
+    assert "[erreur] " in fr.output and "bad.xlsx\u00a0: " in fr.output
     (cfg / "default.yaml").write_text("language: en\n", encoding="utf-8")
     en = runner.invoke(app, args)
     assert en.exit_code == 0, en.output
@@ -150,7 +150,7 @@ def test_scan_warns_about_missing_source_in_language(tmp_path: Path) -> None:
     args = ["scan", "--config-dir", str(cfg)]
     fr = runner.invoke(app, args)
     assert fr.exit_code == 0, fr.output
-    assert f"Attention : source introuvable, ignorée : {gone}" in fr.output
+    assert f"Attention\u00a0: source introuvable, ignorée\u00a0: {gone}" in fr.output
     assert "Source not found" not in fr.output
     assert "ventes.csv" in fr.output
     (cfg / "default.yaml").write_text("language: en\n", encoding="utf-8")
@@ -171,7 +171,7 @@ def test_scan_skips_deleted_sqlite_database_without_recreating_it(tmp_path: Path
     (cfg / "sources.yaml").write_text(f"sources:\n  - {data}\n  - {url}\n", encoding="utf-8")
     res = runner.invoke(app, ["scan", "--config-dir", str(cfg)])
     assert res.exit_code == 0, res.output
-    assert f"Attention : source introuvable, ignorée : {url}" in res.output
+    assert f"Attention\u00a0: source introuvable, ignorée\u00a0: {url}" in res.output
     assert "ventes.csv" in res.output
     assert not gone.exists()
     assert all(e.source != url for e in build_catalog([str(data), url]))

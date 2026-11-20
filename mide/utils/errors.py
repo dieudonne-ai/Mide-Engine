@@ -6,6 +6,8 @@ import sys
 from collections.abc import Callable
 from typing import Any
 
+from mide.utils.french import french_spacing
+
 
 class MissingDependencyError(Exception):
     """An optional dependency is missing; ``extra`` is the ``mide-engine[extra]`` that installs it."""
@@ -85,7 +87,10 @@ def friendly_message(exc: BaseException, language: str = "fr") -> str:
     """Return a short, actionable message in ``language`` (``fr`` or ``en``)."""
     lang = language if language in ("fr", "en") else "fr"
     detail = getattr(exc, "filename", None) or str(exc) or type(exc).__name__
-    return MESSAGES[classify(exc)][lang].format(
+    template = MESSAGES[classify(exc)][lang]
+    if lang == "fr":
+        template = french_spacing(template)
+    return template.format(
         detail=detail,
         package=getattr(exc, "package", ""),
         extra=getattr(exc, "extra", ""),
