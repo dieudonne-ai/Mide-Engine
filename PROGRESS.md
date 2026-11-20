@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-20 — Maintenance: "no anomaly since …" when every anomaly is old (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #139 was already merged; suite green at start (538 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). On the demo data the report alerts said "4 anomalies plus anciennes (avant le 2 octobre 2024) non listées" ("4 older anomalies (before 2024-10-02) not listed") with no recent anomaly above it, so "older" had nothing to compare against. When none is recent, the alert now reads "aucune anomalie depuis le 2 octobre 2024 (4 plus anciennes non listées)" / "no anomaly since 2024-10-02 (4 older ones not listed)". When some recent anomalies are listed, the old wording stays.
+- **Fichiers principaux :** `mide/report.py` (`recent_anomaly_alerts`), `tests/test_report.py`
+- **Tests :** 539 passed, 0 skipped. 1 new: the French demo report says "aucune anomalie depuis le 2 octobre 2024 (4 plus anciennes non listées)" (fails without the fix). Updated: `test_recent_anomaly_alerts_keeps_recent_and_counts_older` (adds the English case and a mixed recent+older FR case) and `test_report_alerts_skip_old_demo_anomalies`. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-7ni9a6 -> main
+- **Décisions techniques :** the change is limited to the report alert. The anomaly facts themselves (`mide ask`, LLM prompt) are unchanged.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-20 — Maintenance: one colon per marketing channel line (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #138 was already merged; suite green at start (537 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The channel facts read like two labels in a row: "channel Email: spend 16,089, revenue 684,450: ROI 41.54, ROAS 42.54" ("canal Email : dépenses 16 089, revenus 684 450 : ROI …" in French). They now read "channel Email: ROI 41.54, ROAS 42.54 (spend 16,089, revenue 684,450)" / "canal Email : ROI 41,54, ROAS 42,54 (dépenses 16 089, revenus 684 450)". This shows in `mide ask` "Data used", the LLM prompt and the dashboard. The totals are still cited next to each ratio.
 - **Fichiers principaux :** `mide/agent/decision.py` (`_marketing_finding`), `tests/test_agent.py`

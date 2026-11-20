@@ -78,9 +78,13 @@ def test_recent_anomaly_alerts_keeps_recent_and_counts_older():
     assert recent_anomaly_alerts(items, last, fr=False) == [
         items[1], items[2], "1 older anomaly (before 2024-10-02) not listed"]
     assert recent_anomaly_alerts(items[:1] * 2, last, fr=True) == [
-        "2 anomalies plus anciennes (avant le 2 octobre 2024) non listées"]
+        "aucune anomalie depuis le 2 octobre 2024 (2 plus anciennes non listées)"]
     assert recent_anomaly_alerts(items[:1], last, fr=True) == [
-        "1 anomalie plus ancienne (avant le 2 octobre 2024) non listée"]
+        "aucune anomalie depuis le 2 octobre 2024 (1 plus ancienne non listée)"]
+    assert recent_anomaly_alerts(items[:1], last, fr=False) == [
+        "no anomaly since 2024-10-02 (1 older one not listed)"]
+    assert recent_anomaly_alerts(items[1:2] + items[:1], last, fr=True) == [
+        items[1], "1 anomalie plus ancienne (avant le 2 octobre 2024) non listée"]
     assert recent_anomaly_alerts(items, None, fr=False) == items
     assert recent_anomaly_alerts(["odd text"], last, fr=False) == ["odd text"]
 
@@ -89,7 +93,14 @@ def test_report_alerts_skip_old_demo_anomalies(tables):
     # Demo sales end 2024-12-31; the 4 anomalies all end before 2024-10-02.
     alerts = build_report(tables, "en").alerts
     assert not any(a.startswith(("drop on", "spike on")) for a in alerts)
-    assert "4 older anomalies (before 2024-10-02) not listed" in alerts
+    assert "no anomaly since 2024-10-02 (4 older ones not listed)" in alerts
+    assert not any("older anomal" in a for a in alerts)  # "older" than nothing listed
+
+
+def test_french_report_says_no_recent_anomaly_before_counting_older(tables):
+    page = render_markdown(build_report(tables, "fr"))
+    assert "- aucune anomalie depuis le 2 octobre 2024 (4 plus anciennes non listées)" in page
+    assert "4 anomalies plus anciennes" not in page
 
 
 def test_report_french_and_html(tables):
