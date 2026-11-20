@@ -9,7 +9,13 @@ from typing import Any
 import typer
 
 from mide import __version__
-from mide.agent.decision import Recommendation, detect_tables, recommend, run_modules
+from mide.agent.decision import (
+    Recommendation,
+    detect_tables,
+    french_numbers,
+    recommend,
+    run_modules,
+)
 from mide.agent.router import route_question
 from mide.automl.auto import AutoReport, ModelOutcome, fingerprint, retrain_if_changed
 from mide.automl.evaluator import evaluate
@@ -458,7 +464,8 @@ def scan(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
             typer.echo(_sources_msg("item_error", language, item=entry.item, message=entry.error))
             continue
         size = "" if entry.rows is None else _sources_msg(
-            "scan_size", language, rows=str(entry.rows), cols=str(entry.n_columns)
+            "scan_size", language, rows=_num(entry.rows, language, ","),
+            cols=str(entry.n_columns),
         )
         typer.echo(f"[{entry.kind}] {entry.item}{size}")
         if entry.profile:
@@ -474,9 +481,17 @@ models_app = typer.Typer(help="Manage local LLM weights.", no_args_is_help=True)
 app.add_typer(models_app, name="models")
 
 
+def _num(value: float, language: str, spec: str = "") -> str:
+    """Format ``value`` with ``spec``, in the French number format when ``language`` is fr.
+
+    '17,037' -> '17 037', '313.4' -> '313,4', '31%' -> '31 %' (non-breaking spaces)."""
+    text = format(value, spec)
+    return french_numbers(text) if language == "fr" else text
+
+
 def _fmt_size(size: int | None, language: str = "en") -> str:
     unit = "Go" if language == "fr" else "GB"
-    return "?" if size is None else f"{size / 1e9:.2f} {unit}"
+    return "?" if size is None else f"{_num(size / 1e9, language, '.2f')} {unit}"
 
 
 @models_app.command("list")
@@ -521,7 +536,7 @@ def _trained_line(name: str, version: int, meta: dict[str, Any], language: str) 
             else str(meta.get("task")))
     metric = str(meta.get("primary_metric"))
     score = meta.get("metrics", {}).get(metric)
-    score_text = f"{score:.4g}" if isinstance(score, int | float) else "?"
+    score_text = _num(score, language, ".4g") if isinstance(score, int | float) else "?"
     beats = _sources_msg("yes" if meta.get("beats_baseline") else "no", language)
     return _sources_msg("trained_line", language, name=name, version=str(version), task=task,
                         target=str(meta.get("target")), metric=metric, score=score_text,
@@ -735,12 +750,13 @@ def train_command(
     ))
     for key, value in result.metrics.items():
         typer.echo(_sources_msg(
-            "train_cv", language, metric=key, value=f"{value:.4g}",
-            baseline=f"{result.baseline_metrics[key]:.4g}",
+            "train_cv", language, metric=key, value=_num(value, language, ".4g"),
+            baseline=_num(result.baseline_metrics[key], language, ".4g"),
         ))
     typer.echo(_sources_msg("train_beats" if result.beats_baseline else "train_not_beats",
                             language))
-    top = ", ".join(f"{k} ({v:.0%})" for k, v in list(result.feature_importance.items())[:5])
+    top = ", ".join(f"{k} ({_num(v, language, '.0%')})"
+                    for k, v in list(result.feature_importance.items())[:5])
     typer.echo(_sources_msg("train_top", language, value=top))
     if result.leakage_suspects:
         typer.echo(_leak_line(target, result.leakage_suspects, language))
@@ -1039,7 +1055,9 @@ def _auto_outcome_line(outcome: ModelOutcome, language: str) -> str:
     )
     line = _sources_msg("auto_model", language, name=outcome.name, status=status)
     if outcome.new_score is not None:
-        line += f" ({outcome.old_score:.4g} -> {outcome.new_score:.4g})"
+        old, new = outcome.old_score, outcome.new_score
+        old_text = "?" if old is None else _num(old, language, ".4g")
+        line += f" ({old_text} -> {_num(new, language, '.4g')})"
     detail_key = f"auto_detail_{outcome.status}"
     # Error details are exception texts: they are shown as they are.
     detail = (
@@ -1167,16 +1185,17 @@ def doctor(config_dir: Path | None = CONFIG_DIR_OPTION) -> None:
     report = profile_hardware()
     lang = _cli_language(config_dir)
     gpu = (
-        _sources_msg("doctor_gpu_vram", lang, name=report.gpu.name, vram=str(report.gpu.vram_gb))
+        _sources_msg("doctor_gpu_vram", lang, name=report.gpu.name,
+                     vram=_num(report.gpu.vram_gb, lang))
         if report.gpu
         else _sources_msg("doctor_gpu_none", lang)
     )
     typer.echo("OK")
-    typer.echo(_sources_msg("doctor_ram", lang, value=str(report.ram_gb)))
+    typer.echo(_sources_msg("doctor_ram", lang, value=_num(report.ram_gb, lang)))
     typer.echo(_sources_msg("doctor_cpu", lang, value=str(report.cpu_cores)))
     typer.echo(_sources_msg("doctor_os", lang, value=report.os_name))
     typer.echo(_sources_msg("doctor_gpu", lang, value=gpu))
-    typer.echo(_sources_msg("doctor_disk", lang, value=str(report.disk_free_gb)))
+    typer.echo(_sources_msg("doctor_disk", lang, value=_num(report.disk_free_gb, lang)))
     typer.echo(_sources_msg("doctor_profile", lang, value=report.profile))
 
 
