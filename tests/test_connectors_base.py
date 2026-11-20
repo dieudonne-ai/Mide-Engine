@@ -168,3 +168,37 @@ def test_cli_sources_messages_follow_language(tmp_path: Path) -> None:
     res = runner.invoke(app, ["sources", "add", str(tmp_path / "x"), *args])
     assert "Error: path does not exist" in res.output
     assert "Source removed" in runner.invoke(app, ["sources", "remove", str(data), *args]).output
+
+
+def test_cli_sources_add_refuses_path_inside_authorized_folder(tmp_path: Path) -> None:
+    # A file (or sub-folder) of an authorized folder is not added a second time.
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    data = tmp_path / "data"
+    (data / "sub").mkdir(parents=True)
+    (data / "sales.csv").write_text("a,b\n1,2\n", encoding="utf-8")
+    args = ["--config-dir", str(cfg)]
+    runner.invoke(app, ["sources", "add", str(data), *args])
+    for inner in (data / "sales.csv", data / "sub"):
+        res = runner.invoke(app, ["sources", "add", str(inner), *args])
+        assert res.exit_code == 0, res.output
+        expected = f"Déjà autorisé par le dossier {data.resolve()} : {inner.resolve()} n'a pas été ajouté."
+        assert expected in res.output
+    assert list_sources(cfg) == [str(data.resolve())]
+    (cfg / "default.yaml").write_text("language: en\n", encoding="utf-8")
+    res = runner.invoke(app, ["sources", "add", str(data / "sales.csv"), *args])
+    assert f"Already authorized by the folder {data.resolve()}" in res.output
+    # The folder itself and a sibling folder are still handled as before.
+    assert "Source added" in runner.invoke(app, ["sources", "add", str(data), *args]).output
+    other = tmp_path / "data2"
+    other.mkdir()
+    assert "Source added" in runner.invoke(app, ["sources", "add", str(other), *args]).output
+    assert list_sources(cfg) == [str(data.resolve()), str(other.resolve())]
+
+
+def test_covering_folder_ignores_urls_and_files() -> None:
+    from mide.connectors.sources import covering_folder
+
+    assert covering_folder("sqlite:///x.db", ["/tmp"]) is None
+    assert covering_folder("/tmp/a/b.csv", ["sqlite:///x.db"]) is None
+    assert covering_folder("/tmp", ["/tmp"]) is None

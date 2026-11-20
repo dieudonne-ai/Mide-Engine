@@ -21,6 +21,7 @@ from mide.automl.trainer import train as train_model
 from mide.config import Config, ConfigError, load_config
 from mide.connectors.base import is_url
 from mide.connectors.sources import (
+    SourceCovered,
     add_source,
     list_sources,
     remove_source,
@@ -63,6 +64,10 @@ CONFIG_DIR_OPTION = typer.Option(
 
 SOURCES_MESSAGES: dict[str, dict[str, str]] = {
     "added": {"fr": "Source ajoutée : {value}", "en": "Source added: {value}"},
+    "covered": {
+        "fr": "Déjà autorisé par le dossier {folder} : {value} n'a pas été ajouté.",
+        "en": "Already authorized by the folder {folder}: {value} was not added.",
+    },
     "removed": {"fr": "Source retirée : {value}", "en": "Source removed: {value}"},
     "none": {"fr": "Aucune source autorisée.", "en": "No authorized sources."},
     "none_hint": {
@@ -386,6 +391,9 @@ def sources_add(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> Non
     except FileNotFoundError as exc:
         typer.echo(_sources_msg("missing_path", language, value=source), err=True)
         raise typer.Exit(1) from exc
+    except SourceCovered as exc:
+        typer.echo(_sources_msg("covered", language, value=exc.path, folder=exc.folder))
+        return
     except ValueError as exc:
         typer.echo(_sources_msg("password", language), err=True)
         raise typer.Exit(1) from exc

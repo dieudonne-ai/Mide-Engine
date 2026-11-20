@@ -9,6 +9,16 @@ import yaml
 from mide.config import DEFAULT_CONFIG_DIR, ConfigError, SourcesConfig, seed_default_config
 from mide.connectors.base import is_url, normalize_source
 
+
+class SourceCovered(Exception):
+    """The path is already inside an authorized folder; nothing to add."""
+
+    def __init__(self, path: str, folder: str) -> None:
+        super().__init__(f"{path} is already covered by the authorized folder {folder}")
+        self.path = path
+        self.folder = folder
+
+
 HEADER = "# Authorized data sources. Nothing outside this list is ever read.\n"
 
 
@@ -58,6 +68,9 @@ def add_source(source: str, config_dir: Path | None = None) -> str:
         raise FileNotFoundError(f"Path does not exist: {source}")
     value = normalize_source(source)
     sources = list_sources(config_dir)
+    folder = covering_folder(value, sources)
+    if folder is not None:
+        raise SourceCovered(value, folder)
     if value not in sources:
         sources.append(value)
         _save(sources, config_dir)
@@ -103,5 +116,23 @@ def source_owning(path: Path, sources: list[str]) -> str | None:
             continue
         root = Path(src).expanduser().resolve()
         if target == root or root in target.parents:
+            return src
+    return None
+
+
+def covering_folder(value: str, sources: list[str]) -> str | None:
+    """Return the authorized folder that already contains the path ``value``, if any.
+
+    Adding such a path would make the same files appear (and be indexed) twice.
+    SQL URLs and the path itself (an exact match) are never "covering".
+    """
+    if is_url(value):
+        return None
+    target = Path(value).expanduser().resolve()
+    for src in sources:
+        if is_url(src):
+            continue
+        root = Path(src).expanduser().resolve()
+        if root in target.parents and root.is_dir():
             return src
     return None

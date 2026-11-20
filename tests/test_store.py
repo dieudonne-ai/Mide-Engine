@@ -171,3 +171,13 @@ def test_cli_index_warns_about_missing_source_in_language(tmp_path, monkeypatch,
     (cfg_dir / "default.yaml").write_text("language: en\n", encoding="utf-8")
     en = CliRunner().invoke(cli.app, args)
     assert f"Warning: source not found, skipped: {gone}" in en.output
+
+
+def test_overlapping_sources_index_each_file_once(tmp_path, fake_embedder):
+    # A folder plus a file inside it (older sources.yaml): the file is indexed only once.
+    src = _make_source(tmp_path)
+    idx = tmp_path / "idx"
+    alone = index_sources([str(src)], idx / "a", fake_embedder)
+    both = index_sources([str(src), str(src / "report.md")], idx / "b", fake_embedder)
+    assert sorted(both.new_items) == sorted(alone.new_items)
+    assert VectorStore(idx / "b").count() == VectorStore(idx / "a").count()

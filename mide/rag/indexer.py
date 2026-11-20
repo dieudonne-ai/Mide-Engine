@@ -103,6 +103,8 @@ def index_sources(
     seen: set[str] = set()
 
     def process(item: str, state: dict, build) -> None:  # type: ignore[no-untyped-def]
+        if item in seen:  # same file reached through two overlapping sources
+            return
         seen.add(item)
         previous = old.get(item)
         if previous and previous.get("hash") == state["hash"]:

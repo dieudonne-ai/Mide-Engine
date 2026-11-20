@@ -81,4 +81,20 @@ def build_catalog(sources: list[str]) -> list[CatalogEntry]:
         except Exception as exc:  # noqa: BLE001 - one bad source must not stop the scan
             logger.warning("Cannot scan source %s: %s", source, exc)
             entries.append(CatalogEntry(source, source, "error", error=str(exc)))
-    return entries
+    return _unique_entries(entries)
+
+
+def _unique_entries(entries: list[CatalogEntry]) -> list[CatalogEntry]:
+    """Drop files listed twice because two authorized sources overlap (folder + file inside).
+
+    SQL tables are keyed by their source too: two databases may hold tables with the same name.
+    """
+    seen: set[tuple[str, str]] = set()
+    unique: list[CatalogEntry] = []
+    for entry in entries:
+        key = (entry.source if entry.kind in ("sql", "error") else "", entry.item)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(entry)
+    return unique
