@@ -357,3 +357,17 @@ def test_french_report_anomaly_lines_have_no_iso_dates(tables):
     # The English report keeps ISO dates (its anomaly lines equal Anomaly.describe()).
     en = build_report(tables, "en", today=date(2025, 1, 10))
     assert any(iso.search(a) for a in en.alerts)
+
+
+def test_french_report_trend_has_no_iso_year_months(tables):
+    """The sales trend months read 'janvier 2024 à décembre 2024' in French, ISO in English."""
+    import re
+    from datetime import date
+
+    year_month = re.compile(r"(?<![\d-])\d{4}-\d{2}(?![\d-])")
+    fr = build_report(tables, "fr", today=date(2025, 1, 10))
+    for text in (render_markdown(fr), render_html(fr)):
+        assert not year_month.search(text), year_month.search(text)
+    assert re.search(r"\w+ \d{4} à \w+ \d{4} vs ", render_markdown(fr))
+    en = build_report(tables, "en", today=date(2025, 1, 10))
+    assert re.search(r"\d{4}-\d{2} -> \d{4}-\d{2}", render_markdown(en))

@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-20 — Maintenance: spelled-out months in the French sales trend (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #135 was already merged; suite green at start (525 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Picked the debt left by #135: the French sales trend still showed ISO year-months ("sur un an +12 % (2024-01 -> 2024-12 vs 2023-01 -> 2023-12)"). It now reads "(janvier 2024 à décembre 2024 vs janvier 2023 à décembre 2023)" in the weekly report, `mide ask` "Données utilisées" and the dashboard. English is unchanged.
+- **Fichiers principaux :** `mide/utils/french.py` (new `french_month()`, `french_year_months()`), `mide/agent/decision.py` (`fact_value` spells out year-months in French), `tests/test_french.py`, `tests/test_report.py`
+- **Tests :** 535 passed, 0 skipped. 10 new: 8 `french_year_months` cases (range, lone month, full date kept, invalid month kept, digits glued kept, trailing dash kept, no month), `french_month` bad month, and the French demo report has no ISO year-month while the English one keeps them (fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-lkuj04 -> main
+- **Décisions techniques :** same approach as #135: the facts keep ISO year-months (LLM prompt, English output) and they are rewritten at display time in `fact_value`, after `french_dates` so full dates are already spelled out. "à" between the two months avoids the de/d' elision problem ("d'octobre", "d'avril").
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-20 — Maintenance: spelled-out dates in French fact values and dashboard anomalies (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #134 was already merged; suite green at start (518 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Picked the debt left by #134: French fact values still showed ISO dates ("baisse du 2023-06-14 au 2023-06-16", "735 907 du 2023-01-01 au 2024-12-31"), and so did the dashboard anomaly list ("chute le 2024-03-10"). They now read "baisse du 14 juin 2023 au 16 juin 2023", "du 1er janvier 2023 au 31 décembre 2024", "chute le 10 mars 2024". This covers the weekly report (KPIs, alerts, actions), `mide ask` "Données utilisées" and the dashboard. English is unchanged.
 - **Fichiers principaux :** `mide/utils/french.py` (new `french_dates()`), `mide/agent/decision.py` (`fact_value` spells out dates in French), `mide/dashboard_data.py` (`anomaly_text`), `tests/test_french.py`, `tests/test_report.py`, `tests/test_agent.py`, `tests/test_dashboard.py`
