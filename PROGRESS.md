@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-20 — Maintenance: no English "vs" in French fact values (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #137 was already merged; suite green at start (536 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The French report still used the English "vs": "(-9,3 % vs les 30 jours précédents)", "(30 jours jusqu'au 31 décembre 2024 vs les 30 précédents)", "(janvier 2024 à décembre 2024 vs janvier 2023 à décembre 2023)" and anomalies "74 vs 1 735 attendus". They now read "par rapport aux 30 jours précédents", ", contre les 30 précédents", "… contre janvier 2023 à décembre 2023" and "74 au lieu de 1 735 attendus" (the wording the dashboard already uses). This covers the weekly report, `mide ask` "Données utilisées" and the dashboard. English is unchanged.
+- **Fichiers principaux :** `mide/agent/decision.py` (`_FR_VALUE_PHRASES`), `tests/test_agent.py`, `tests/test_report.py`
+- **Tests :** 537 passed, 0 skipped. 1 new: the French demo report (Markdown and HTML) has no "vs" and says "par rapport aux 30 jours précédents", while the English one keeps "vs previous 30d" (fails without the fix). 1 new trend case in `test_fact_value_translates_english_phrases_to_french`; its 4 "vs" expectations and the trend regex of `test_french_report_trend_has_no_iso_year_months` updated to the new wording. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-v2pmea -> main
+- **Décisions techniques :** same display-time translation as before, so the English facts (LLM prompt, report parsing) are untouched. The year-month "vs" is replaced before `french_year_months` spells the months out.
+- **Problèmes / dette technique :** the report still ranks churn first whatever its size (here 0.3 % of revenue; left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-20 — Maintenance: French multiplier in the attribution check (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. Suite green at start (535 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`); PR #136 was open with green tests and was merged into main as asked. Picked a leftover English form in the French report: the marketing attribution check read "les canaux déclarent 1 443 825 de revenus, 1,96x le total des ventes 735 907 ; …". It now reads "les canaux déclarent 1 443 825 de revenus, soit 1,96 fois le total des ventes (735 907) ; …" in the weekly report (budget action), `mide ask` "Données utilisées" and the dashboard. English is unchanged.
 - **Fichiers principaux :** `mide/agent/decision.py` (`_FR_VALUE_PHRASES`), `tests/test_agent.py`, `tests/test_report.py`
