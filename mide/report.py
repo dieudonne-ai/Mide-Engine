@@ -186,6 +186,12 @@ def recent_anomaly_alerts(anomalies: list[str], last_day: date | None, fr: bool)
     cutoff = _recent_cutoff(last_day)
     recent = [a for a in anomalies if _is_recent(a, last_day)]
     older = len(anomalies) - len(recent)
+    if older and not recent:
+        # "older" needs something to be older than: say first that nothing is recent.
+        return [f"aucune anomalie depuis le {french_date(cutoff)} ({older} plus "
+                f"ancienne{'' if older == 1 else 's'} non listée{'' if older == 1 else 's'})"
+                if fr else f"no anomaly since {cutoff.isoformat()} ({older} older "
+                f"one{'' if older == 1 else 's'} not listed)"]
     if older:
         recent.append(
             f"{older} anomalie{'' if older == 1 else 's'} plus ancienne{'' if older == 1 else 's'} "
