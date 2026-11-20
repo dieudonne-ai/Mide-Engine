@@ -158,3 +158,28 @@ def test_correlated_feature_is_a_suspect_even_with_an_imperfect_fit():
     result = train(df, "total", profile="tiny")
     assert result.metrics["mae"] > 0.05 * result.baseline_metrics["mae"]
     assert result.leakage_suspects == ["price"]
+
+
+def test_date_parts_without_signal_are_dropped():
+    monthly = pd.DataFrame(
+        {"m": pd.date_range("2023-01-01", periods=24, freq="MS"), "y": np.arange(24.0)}
+    )
+    cols = FeaturePrep("y", "m").fit(monthly).columns
+    assert "m_day" not in cols and "m_day_of_week" not in cols  # 1st of month: calendar noise
+    assert {"m_year", "m_month", "m_day_of_year", "m_ordinal"} <= set(cols)
+
+    daily = pd.DataFrame(
+        {"d": pd.date_range("2024-01-01", periods=60, freq="D"), "y": np.arange(60.0)}
+    )
+    cols = FeaturePrep("y", "d").fit(daily).columns
+    assert "d_day_of_week" in cols and "d_day" in cols
+    assert "d_year" not in cols  # constant within 2024
+    out = FeaturePrep("y", "d").fit(daily).transform(daily)
+    assert list(out.columns) == cols
+
+
+def test_monthly_campaign_series_ignores_weekday(frames):
+    result = train(frames["campaigns"], "conversions", profile="small")
+    assert result.task.task is TaskType.TIME_SERIES
+    features = result.prep.columns
+    assert "month_day_of_week" not in features and "month_day" not in features
