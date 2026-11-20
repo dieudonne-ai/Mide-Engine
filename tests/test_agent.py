@@ -459,16 +459,16 @@ def test_fact_value_translates_english_phrases_to_french():
     from mide.agent.decision import fact_value, french_numbers, french_punctuation
 
     cases = {
-        "735,907 for 2023-01-01 -> 2024-12-31": "735,907 du 2023-01-01 au 2024-12-31",
+        "735,907 for 2023-01-01 -> 2024-12-31": "735,907 du 1er janvier 2023 au 31 décembre 2024",
         "43 (735,907 / 17,037 orders)": "43 (735,907 / 17,037 commandes)",
         "+10.4% (30 days to 2024-12-31 vs previous 30)":
-            "+10.4% (30 jours jusqu'au 2024-12-31 vs les 30 précédents)",
+            "+10.4% (30 jours jusqu'au 31 décembre 2024 vs les 30 précédents)",
         "drop on 2023-06-14 -> 2023-06-16: 74 vs 1,735 expected (-96%)":
-            "baisse du 2023-06-14 au 2023-06-16 : 74 vs 1,735 attendus (-96%)",
+            "baisse du 14 juin 2023 au 16 juin 2023 : 74 vs 1,735 attendus (-96%)",
         "spike on 2024-03-08: 3,962 vs 1,265 expected (+213%)":
-            "pic le 2024-03-08 : 3,962 vs 1,265 attendus (+213%)",
+            "pic le 8 mars 2024 : 3,962 vs 1,265 attendus (+213%)",
         "45,871 for 2025-01-01 -> 2025-01-30 (-9.3% vs previous 30d)":
-            "45,871 du 2025-01-01 au 2025-01-30 (-9.3% vs les 30 jours précédents)",
+            "45,871 du 1er janvier 2025 au 30 janvier 2025 (-9.3% vs les 30 jours précédents)",
         "down, YoY n/a, last 3 months -4.0%": "baisse, sur un an n.d., 3 derniers mois -4.0%",
         "flat, last 3 months n/a": "stable, 3 derniers mois n.d.",
         "84 customers, 60.3% of revenue": "84 clients, 60.3% du chiffre d'affaires",

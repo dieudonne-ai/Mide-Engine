@@ -16,7 +16,7 @@ from mide.config import Config, load_config
 from mide.connectors.sources import list_sources
 from mide.hardware.profiler import HardwareReport, profile_hardware
 from mide.llm.downloader import list_models
-from mide.utils.french import FRENCH_MONTHS, french_spacing
+from mide.utils.french import FRENCH_MONTHS, french_date, french_spacing
 
 if TYPE_CHECKING:  # Styler needs jinja2, altair comes with Streamlit (dashboard-only)
     import altair as alt
@@ -349,7 +349,10 @@ def num(value: float, language: str, spec: str = "") -> str:
 
 def anomaly_text(anomaly: insights.Anomaly, language: str) -> str:
     """Dashboard line of an anomaly; in English it equals ``anomaly.describe()``."""
-    start, end = anomaly.start.date(), anomaly.end.date()
+    def day(ts: pd.Timestamp) -> str:
+        return str(ts.date()) if language == "en" else french_date(ts.date())
+
+    start, end = day(anomaly.start), day(anomaly.end)
     period = (ui_text("anomaly_day", language, day=start) if anomaly.start == anomaly.end
               else ui_text("anomaly_period", language, start=start, end=end))
     kind_key = f"anomaly_{anomaly.kind}"

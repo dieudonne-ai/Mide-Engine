@@ -317,7 +317,7 @@ def test_french_report_has_no_english_fact_values(tables):
         for phrase in ("customers at high risk", "% of revenue", "vs previous", " for 20",
                        "est. extra revenue", "returns diminish", "YoY", "last 3 months"):
             assert phrase not in text
-        assert "clients à risque élevé" in text and "du 2025-01-01 au" in text
+        assert "clients à risque élevé" in text and "du 1er janvier 2025 au" in text
     # The English report keeps the original wording.
     assert "customers at high risk" in render_markdown(build_report(tables, "en"))
 
@@ -343,3 +343,17 @@ def test_report_date_long_in_french_iso_in_english(tables):
     assert "_Generated on 2026-11-01_" in render_markdown(build_report(tables, "en", today=day))
     stale = [a for a in fr.alerts if a.startswith("données anciennes")]
     assert stale and not re.search(r"\d{4}-\d{2}-\d{2}", stale[0])
+
+
+def test_french_report_anomaly_lines_have_no_iso_dates(tables):
+    import re
+    from datetime import date
+
+    iso = re.compile(r"\d{4}-\d{2}-\d{2}")
+    fr = build_report(tables, "fr", today=date(2025, 1, 10))
+    assert fr.alerts and not any(iso.search(a) for a in fr.alerts)
+    for text in (render_markdown(fr), render_html(fr)):
+        assert not iso.search(text)
+    # The English report keeps ISO dates (its anomaly lines equal Anomaly.describe()).
+    en = build_report(tables, "en", today=date(2025, 1, 10))
+    assert any(iso.search(a) for a in en.alerts)

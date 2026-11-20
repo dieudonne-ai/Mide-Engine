@@ -5,7 +5,7 @@ import pytest
 
 from mide import cli
 from mide.utils.errors import MESSAGES, friendly_message
-from mide.utils.french import NBSP, french_date, french_spacing
+from mide.utils.french import NBSP, french_date, french_dates, french_spacing
 
 _PLAIN_SPACE_BEFORE_SIGN = re.compile(r" [:;?!](?:\s|$|[\"'`)])")
 
@@ -88,3 +88,15 @@ def test_cli_french_output_has_no_plain_space_before_sign(tmp_path, monkeypatch)
 ])
 def test_french_date(day, expected):
     assert french_date(day) == expected
+
+
+@pytest.mark.parametrize(("text", "expected"), [
+    ("baisse le 2024-10-02 : 74", "baisse le 2 octobre 2024 : 74"),
+    ("du 2024-10-01 au 2024-12-31", "du 1er octobre 2024 au 31 décembre 2024"),
+    ("hausse (2024-01 -> 2024-12)", "hausse (2024-01 -> 2024-12)"),  # year-months kept
+    ("code 2024-13-40", "code 2024-13-40"),  # not a real date
+    ("ref 12024-10-02 or 2024-10-02-1", "ref 12024-10-02 or 2024-10-02-1"),  # not standalone
+    ("aucun", "aucun"),
+])
+def test_french_dates_spells_out_iso_dates(text: str, expected: str) -> None:
+    assert french_dates(text) == expected
