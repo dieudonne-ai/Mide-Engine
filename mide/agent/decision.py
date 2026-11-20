@@ -377,12 +377,24 @@ _LABELS = {
 }
 
 
+def _prompt_key(key: str, language: str) -> str:
+    """Fact key as sent to the LLM: RFM segment names in the answer language.
+
+    Other keys stay as they are; translating the segment name keeps a French answer
+    from quoting "At risk" or "Hibernating" in English.
+    """
+    if key.startswith("segment "):
+        return "segment " + customers.segment_label(key[len("segment "):], language)
+    return key
+
+
 def build_decision_prompt(question: str, findings: Sequence[Finding],
                           passages: Sequence[Passage] = (), language: str = "fr") -> str:
     """Prompt asking the LLM for recommendations grounded in the figures."""
     lang = language if language in _SYSTEM else "fr"
     figures, excerpts, q, answer = _LABELS[lang]
-    facts = "\n".join(f"[{f.module}] {k}: {v}" for f in findings for k, v in f.facts.items())
+    facts = "\n".join(f"[{f.module}] {_prompt_key(k, lang)}: {v}"
+                      for f in findings for k, v in f.facts.items())
     parts = [_SYSTEM[lang], f"{figures}:\n{facts or '-'}"]
     if passages:
         parts.append(f"{excerpts}:\n{format_passages(passages)}")

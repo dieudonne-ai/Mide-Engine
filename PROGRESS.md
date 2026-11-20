@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-20 — Maintenance: French RFM segment names in the LLM prompt (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #127 was already merged; suite green at start (493 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Picked the debt left by #127: the French decision prompt still listed "segment At risk", "segment Hibernating", … so a French answer could quote the segment names in English. In French the prompt now lists "segment À risque", "segment En sommeil", "segment À surveiller", "segment Nouveaux / prometteurs", "segment Fidèles" (same table as the dashboard and "Données utilisées"). The English prompt is unchanged.
+- **Fichiers principaux :** `mide/agent/decision.py`, `tests/test_agent.py`
+- **Tests :** 495 passed, 0 skipped. 2 new: the French prompt on the demo data has no English segment name left, the English prompt is unchanged, and the finding keys stay English (fails without the fix); unknown language and non-segment keys stay as they are. `ruff check .` OK; `mypy mide` OK.
+- **PR :** task/maint-fr-segment-prompt -> main
+- **Décisions techniques :** only the segment name in the prompt **key** is translated (new `decision._prompt_key`, reusing `customers.segment_label`). `Finding.facts` keys stay English, so the dashboard, `fact_label` and the existing tests are unaffected. The fact values in the prompt stay English ("44 customers, 9.1% of revenue"), as before: the model handles them fine and translating them would change every prompt test.
+- **Problèmes / dette technique :** chart axes and `st.dataframe` tables still use Streamlit's number format. The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-20 — Maintenance: French RFM segment names in `mide ask` / `mide chat` (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #126 was already merged; suite green at start (490 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Running `scripts/demo.sh` showed English RFM segment names inside the French "Données utilisées" block: "segment Needs attention", "segment At risk", "segment Hibernating", "segment New / promising", "segment Loyal". They now read "segment À surveiller", "À risque", "En sommeil", "Nouveaux / prometteurs", "Fidèles" (same names as the dashboard). English output is unchanged.
 - **Fichiers principaux :** `mide/business/customers.py`, `mide/agent/decision.py`, `mide/dashboard_data.py`, `tests/test_agent.py`, `tests/test_customers.py`
