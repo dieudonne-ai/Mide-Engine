@@ -75,7 +75,9 @@ def test_recent_anomaly_alerts_keeps_recent_and_counts_older():
     assert recent_anomaly_alerts(items, last, fr=False) == [
         items[1], items[2], "1 older anomaly (before 2024-10-02) not listed"]
     assert recent_anomaly_alerts(items[:1] * 2, last, fr=True) == [
-        "2 anomalie(s) plus ancienne(s) (avant le 2024-10-02) non listée(s)"]
+        "2 anomalies plus anciennes (avant le 2024-10-02) non listées"]
+    assert recent_anomaly_alerts(items[:1], last, fr=True) == [
+        "1 anomalie plus ancienne (avant le 2024-10-02) non listée"]
     assert recent_anomaly_alerts(items, None, fr=False) == items
     assert recent_anomaly_alerts(["odd text"], last, fr=False) == ["odd text"]
 

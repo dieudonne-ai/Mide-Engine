@@ -81,7 +81,8 @@ def forecast_sales(df: pd.DataFrame, horizons: tuple[int, ...] = DEFAULT_HORIZON
         keep = np.abs(resid) <= 3 * sigma
         beta = np.linalg.lstsq(x[keep], y[keep], rcond=None)[0]
     if (~keep).any():
-        notes.append(f"{int((~keep).sum())} anomalous day(s) excluded from the fit.")
+        excluded = int((~keep).sum())
+        notes.append(f"{excluded} anomalous day{'' if excluded == 1 else 's'} excluded from the fit.")
 
     horizon_max = max(horizons)
     future_idx = pd.date_range(series.index[-1] + pd.Timedelta(days=1),
