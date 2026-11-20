@@ -6,6 +6,7 @@ import streamlit as st
 
 from mide import __version__
 from mide import dashboard_data as dd
+from mide.agent.decision import fact_sep
 from mide.config import ConfigError
 from mide.connectors.sources import add_source, remove_source
 
@@ -31,11 +32,11 @@ def page_home(data: dd.DashboardData, lang: str) -> None:
         return
     k = report.kpis
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric(dd.ui_text("revenue", lang), f"{k.total_revenue:,.0f}")
-    c2.metric(dd.ui_text("orders", lang), f"{k.orders:,}")
-    c3.metric(dd.ui_text("avg_order", lang), f"{k.avg_order_value:,.0f}")
-    growth = None if k.growth_30d is None else f"{k.growth_30d:+.1%}"
-    c4.metric(dd.ui_text("last_30d", lang), f"{k.last_30d_revenue:,.0f}", growth)
+    c1.metric(dd.ui_text("revenue", lang), dd.num(k.total_revenue, lang, ",.0f"))
+    c2.metric(dd.ui_text("orders", lang), dd.num(k.orders, lang, ","))
+    c3.metric(dd.ui_text("avg_order", lang), dd.num(k.avg_order_value, lang, ",.0f"))
+    growth = None if k.growth_30d is None else dd.num(k.growth_30d, lang, "+.1%")
+    c4.metric(dd.ui_text("last_30d", lang), dd.num(k.last_30d_revenue, lang, ",.0f"), growth)
     st.subheader(dd.ui_text("anomalies", lang))
     if report.anomalies:
         for a in report.anomalies:
@@ -53,8 +54,8 @@ def page_sales(data: dd.DashboardData, lang: str) -> None:
     cols = st.columns(len(fc.totals))
     for col, (h, total) in zip(cols, fc.totals.items()):
         growth = fc.growth_pct.get(h)
-        col.metric(dd.ui_text("forecast", lang, h=h), f"{total:,.0f}",
-                   None if growth is None else f"{growth:+.1f}%")
+        col.metric(dd.ui_text("forecast", lang, h=h), dd.num(total, lang, ",.0f"),
+                   None if growth is None else dd.num(growth / 100, lang, "+.1%"))
     st.line_chart(dd.chart_series(view["history"].resample("W").sum(), lang))
     st.subheader(dd.ui_text("monthly_revenue", lang))
     st.bar_chart(dd.chart_series(view["trend"].monthly, lang))
@@ -78,7 +79,7 @@ def page_customers(data: dd.DashboardData, lang: str) -> None:
     st.subheader(dd.ui_text("rfm_segments", lang))
     st.dataframe(dd.display_table(view["segments"], lang))
     churn = view["churn"]
-    st.metric(dd.ui_text("revenue_at_risk", lang), f"{churn.revenue_at_risk:,.0f}")
+    st.metric(dd.ui_text("revenue_at_risk", lang), dd.num(churn.revenue_at_risk, lang, ",.0f"))
     st.write(dd.ui_text("high_risk", lang, n=len(churn.high_risk)))
     top = churn.scores.sort_values("risk", ascending=False).head(20)
     st.dataframe(dd.display_table(top, lang))
@@ -97,8 +98,8 @@ def page_marketing(data: dd.DashboardData, lang: str) -> None:
         st.success(dd.ui_text("no_reallocation", lang))
     for m in plan.moves:
         st.write(dd.ui_text("move", lang, src=m.from_channel, dst=m.to_channel,
-                            amount=f"{m.amount:,.0f}", reason=dd.move_reason(m, lang),
-                            extra=f"{m.estimated_extra_revenue:,.0f}"))
+                            amount=dd.num(m.amount, lang, ",.0f"), reason=dd.move_reason(m, lang),
+                            extra=dd.num(m.estimated_extra_revenue, lang, ",.0f")))
 
 
 def page_ask(data: dd.DashboardData, config_dir, lang: str) -> None:
@@ -142,7 +143,7 @@ def page_sources(data: dd.DashboardData, config_dir, lang: str) -> None:
             st.rerun()
     st.subheader(dd.ui_text("datasets", lang))
     for name, df in data.frames.items():
-        st.write(dd.ui_text("dataset_line", lang, name=name, rows=len(df),
+        st.write(dd.ui_text("dataset_line", lang, name=name, rows=dd.num(len(df), lang, ","),
                             cols=len(df.columns)))
 
 
@@ -150,15 +151,15 @@ def page_hardware(data: dd.DashboardData, lang: str) -> None:
     st.header(dd.ui_text("page_hardware", lang))
     view = dd.hardware_view(data.config)
     hw = view["hardware"]
-    gpu = (dd.ui_text("gpu_vram", lang, name=hw.gpu.name, vram=hw.gpu.vram_gb) if hw.gpu
+    gpu = (dd.ui_text("gpu_vram", lang, name=hw.gpu.name, vram=dd.num(hw.gpu.vram_gb, lang, ".1f")) if hw.gpu
            else dd.ui_text("gpu_none", lang))
-    st.write(dd.ui_text("hardware_line", lang, ram=hw.ram_gb, cores=hw.cpu_cores,
-                        os=hw.os_name, gpu=gpu, disk=hw.disk_free_gb))
+    st.write(dd.ui_text("hardware_line", lang, ram=dd.num(hw.ram_gb, lang, ".1f"), cores=hw.cpu_cores,
+                        os=hw.os_name, gpu=gpu, disk=dd.num(hw.disk_free_gb, lang, ".1f")))
     st.metric(dd.ui_text("profile", lang), hw.profile)
     st.subheader(dd.ui_text("llm_weights", lang))
     for m in view["llm"]:
         state = dd.ui_text("installed" if m.installed else "not_installed", lang)
-        st.write(f"{m.profile}: {m.repo}/{m.file} - {state}")
+        st.write(f"{m.profile}{fact_sep(lang)}{m.repo}/{m.file} - {state}")
     st.subheader(dd.ui_text("trained_models", lang))
     for r in view["trained"]:
         st.write(dd.ui_text("trained_line", lang, name=r.name, version=r.version,

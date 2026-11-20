@@ -8,13 +8,14 @@ from pathlib import Path
 
 import pandas as pd
 
-from mide.agent.decision import BusinessData, detect_tables
+from mide.agent.decision import BusinessData, detect_tables, french_numbers
 from mide.automl.registry import list_models as list_trained_models
 from mide.business import customers, insights, marketing, sales
 from mide.config import Config, load_config
 from mide.connectors.sources import list_sources
 from mide.hardware.profiler import HardwareReport, profile_hardware
 from mide.llm.downloader import list_models
+from mide.utils.french import french_spacing
 
 CONFIG_ENV = "MIDE_CONFIG_DIR"
 
@@ -219,9 +220,23 @@ def chart_series(series: pd.Series, language: str) -> pd.Series:
 
 
 def ui_text(key: str, language: str, **values: object) -> str:
-    """Dashboard label ``key`` in ``language`` (``fr`` when unknown), formatted with values."""
+    """Dashboard label ``key`` in ``language`` (``fr`` when unknown), formatted with values.
+
+    French templates get a non-breaking space before ':', ';', '?' and '!' (the values
+    filled in are left as they are)."""
     texts = UI_TEXT[key]
-    return texts.get(language, texts["fr"]).format(**values)
+    template = texts.get(language)
+    if template is None or language == "fr":
+        template = french_spacing(texts["fr"])
+    return template.format(**values)
+
+
+def num(value: float, language: str, spec: str = "") -> str:
+    """Format ``value`` with ``spec``; French number format unless ``language`` is en.
+
+    '1,735' -> '1 735', '42.54' -> '42,54', '-70%' -> '-70 %' (non-breaking spaces)."""
+    text = format(value, spec)
+    return text if language == "en" else french_numbers(text)
 
 
 def anomaly_text(anomaly: insights.Anomaly, language: str) -> str:
@@ -232,8 +247,9 @@ def anomaly_text(anomaly: insights.Anomaly, language: str) -> str:
     kind_key = f"anomaly_{anomaly.kind}"
     kind = ui_text(kind_key, language) if kind_key in UI_TEXT else anomaly.kind
     return ui_text("anomaly_line", language, kind=kind, period=period,
-                   actual=f"{anomaly.actual:,.0f}", expected=f"{anomaly.expected:,.0f}",
-                   change=f"{anomaly.ratio - 1:+.0%}")
+                   actual=num(anomaly.actual, language, ",.0f"),
+                   expected=num(anomaly.expected, language, ",.0f"),
+                   change=num(anomaly.ratio - 1, language, "+.0%"))
 
 
 def move_reason(move: marketing.BudgetMove, language: str) -> str:
@@ -241,8 +257,9 @@ def move_reason(move: marketing.BudgetMove, language: str) -> str:
     if move.from_roi is None or move.median_roi is None or move.to_roas is None:
         return move.reason
     return ui_text("move_reason", language, src=move.from_channel, dst=move.to_channel,
-                   roi=f"{move.from_roi:.2f}", median=f"{move.median_roi:.2f}",
-                   roas=f"{move.to_roas:.2f}")
+                   roi=num(move.from_roi, language, ".2f"),
+                   median=num(move.median_roi, language, ".2f"),
+                   roas=num(move.to_roas, language, ".2f"))
 
 
 def page_labels(language: str) -> dict[str, str]:

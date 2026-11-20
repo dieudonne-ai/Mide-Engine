@@ -235,9 +235,9 @@ def test_anomaly_text_english_matches_describe(start, end, kind):
 
 def test_anomaly_text_french():
     assert dd.anomaly_text(_anomaly("2024-03-10", "2024-03-10"), "fr") == (
-        "chute le 2024-03-10 : 1,200 au lieu de 4,000 attendus (-70%)")
+        "chute le 2024-03-10\u00a0: 1\u00a0200 au lieu de 4\u00a0000 attendus (-70\u00a0%)")
     assert dd.anomaly_text(_anomaly("2024-03-10", "2024-03-12", "spike"), "fr") == (
-        "pic du 2024-03-10 au 2024-03-12 : 1,200 au lieu de 4,000 attendus (-70%)")
+        "pic du 2024-03-10 au 2024-03-12\u00a0: 1\u00a0200 au lieu de 4\u00a0000 attendus (-70\u00a0%)")
 
 
 def test_anomaly_text_unknown_kind_kept():
@@ -280,7 +280,7 @@ def test_move_reason_english_matches_marketing_reason(demo_data):
 def test_move_reason_french():
     move = _move(from_roi=-0.2, median_roi=1.5, to_roas=4.0)
     assert dd.move_reason(move, "fr") == (
-        "ROI de radio -0.20 contre une médiane de 1.50 ; whatsapp rapporte 4.00 "
+        "ROI de radio -0,20 contre une médiane de 1,50\u00a0; whatsapp rapporte 4,00 "
         "de chiffre d'affaires par unité dépensée")
 
 
@@ -492,3 +492,66 @@ def test_leak_warning_for_flagged_models_only():
     assert fr.startswith("Attention\u00a0: score presque parfait")
     assert "amount, unit_price" in fr and "'quantity'" in fr
     assert dd.leak_warning(meta, "en").startswith("Warning: near-perfect score")
+
+
+NBSP = "\u00a0"
+
+
+def _placeholders(text: str) -> set[str]:
+    import string
+
+    return {name for _, name, _, _ in string.Formatter().parse(text) if name}
+
+
+def test_ui_text_french_spacing_before_signs():
+    for key, texts in dd.UI_TEXT.items():
+        fr = dd.ui_text(key, "fr", **{k: "x" for k in _placeholders(texts["fr"])})
+        for sign in ":;?!":
+            assert " " + sign + " " not in fr + " ", (key, fr)
+    assert dd.ui_text("trend", "fr", value="hausse") == "Tendance" + NBSP + ": hausse"
+    assert dd.ui_text("trend", "en", value="up") == "Trend: up"
+    assert dd.ui_text("trend", "sw", value="hausse") == "Tendance" + NBSP + ": hausse"
+
+
+def test_ui_text_french_spacing_leaves_values_untouched():
+    text = dd.ui_text("move", "fr", src="a", dst="b", amount="1", reason="x : y", extra="2")
+    assert "x : y" in text
+
+
+@pytest.mark.parametrize(("value", "spec", "fr", "en"), [
+    (17037, ",", "17" + NBSP + "037", "17,037"),
+    (1234567.4, ",.0f", "1" + NBSP + "234" + NBSP + "567", "1,234,567"),
+    (15.73, ".1f", "15,7", "15.7"),
+    (0.123, "+.1%", "+12,3" + NBSP + "%", "+12.3%"),
+    (-0.2, ".2f", "-0,20", "-0.20"),
+])
+def test_num_french_and_english(value, spec, fr, en):
+    assert dd.num(value, "fr", spec) == fr
+    assert dd.num(value, "en", spec) == en
+    assert dd.num(value, "sw", spec) == fr
+
+
+@pytest.mark.parametrize("language", ["fr", "en"])
+def test_dashboard_metrics_follow_language(cfg_dir, monkeypatch, language):
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    default = cfg_dir / "default.yaml"
+    text = default.read_text(encoding="utf-8") if default.exists() else ""
+    lines = [line for line in text.splitlines() if not line.startswith("language:")]
+    default.write_text("\n".join([*lines, f"language: {language}"]) + "\n", encoding="utf-8")
+    monkeypatch.setenv(dd.CONFIG_ENV, str(cfg_dir))
+    at = AppTest.from_file(str(APP), default_timeout=120).run()
+    assert not at.exception, at.exception
+    values = [m.value for m in at.metric]
+    at.sidebar.radio[0].set_value("sales").run()
+    values += [m.value for m in at.metric]
+    assert values
+    big = [v for v in values if any(c.isdigit() for c in v) and len(v) > 4]
+    assert big
+    if language == "fr":
+        assert all("," not in v for v in values), values
+        assert any(NBSP in v for v in big), values
+    else:
+        assert all(NBSP not in v for v in values), values
+        assert any("," in v for v in big), values
