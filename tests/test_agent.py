@@ -602,3 +602,26 @@ def test_data_used_french_segment_names_on_demo(data):
     english_only = [s for s, t in SEGMENT_LABELS.items() if t["fr"] != s]
     assert english_only and not any(f"segment {s}" in fr for s in english_only), fr
     assert "- [customers] segment At risk: 44 customers, 9.1% of revenue" in en
+
+
+def test_prompt_french_segment_names_on_demo(data):
+    from mide.business.customers import SEGMENT_LABELS
+
+    findings = run_modules(["customers"], data)
+    fr = build_decision_prompt("q", findings, language="fr")
+    en = build_decision_prompt("q", findings, language="en")
+    assert "[customers] segment À risque: 44 customers, 9.1% of revenue" in fr
+    english_only = [s for s, t in SEGMENT_LABELS.items() if t["fr"] != s]
+    assert not any(f"segment {s}:" in fr for s in english_only), fr
+    assert "[customers] segment At risk: 44 customers, 9.1% of revenue" in en
+    # Fact keys stored on the findings stay English (the dashboard and tests rely on them).
+    assert "segment At risk" in findings[0].facts
+
+
+def test_prompt_unknown_language_and_other_keys():
+    from mide.agent.decision import Finding
+
+    findings = [Finding("customers", {"segment Unknown": "1", "churn": "2"})]
+    prompt = build_decision_prompt("q", findings, language="xx")
+    assert "[customers] segment Unknown: 1" in prompt
+    assert "[customers] churn: 2" in prompt
