@@ -18,6 +18,7 @@ from mide.agent.decision import (
     list_sep,
     run_modules,
 )
+from mide.utils.french import french_date
 
 _ACTION_LIMIT = 3
 STALE_AFTER_DAYS = 30  # older sales data gets a warning at the top of the alerts
@@ -145,7 +146,7 @@ def stale_data_alert(data: BusinessData, today: date, fr: bool) -> str | None:
     if age <= STALE_AFTER_DAYS:
         return None
     if fr:
-        return (f"données anciennes\u00a0: dernière vente le {last.isoformat()}, {age} jours avant ce "
+        return (f"données anciennes\u00a0: dernière vente le {french_date(last)}, {age} jours avant ce "
                 "rapport\u00a0; les chiffres décrivent cette période, pas aujourd'hui")
     return (f"stale data: last sale on {last.isoformat()}, {age} days before this report; "
             "figures describe that period, not today")
@@ -188,7 +189,7 @@ def recent_anomaly_alerts(anomalies: list[str], last_day: date | None, fr: bool)
     if older:
         recent.append(
             f"{older} anomalie{'' if older == 1 else 's'} plus ancienne{'' if older == 1 else 's'} "
-            f"(avant le {cutoff.isoformat()}) non listée{'' if older == 1 else 's'}"
+            f"(avant le {french_date(cutoff)}) non listée{'' if older == 1 else 's'}"
             if fr else f"{older} older anomal{'y' if older == 1 else 'ies'} "
             f"(before {cutoff.isoformat()}) not listed")
     return recent
@@ -222,9 +223,14 @@ def build_report(data: BusinessData, language: str = "fr", today: date | None = 
     return report
 
 
+def _report_day(report: Report) -> str:
+    """Report date: long form in French ("20 novembre 2026"), ISO in English."""
+    return french_date(report.generated) if report.language == "fr" else report.generated.isoformat()
+
+
 def render_markdown(report: Report) -> str:
     t = _T[report.language]
-    lines = [f"# {t['title']}", "", f"_{t['generated']} {report.generated.isoformat()}_", ""]
+    lines = [f"# {t['title']}", "", f"_{t['generated']} {_report_day(report)}_", ""]
     if report.empty:
         return "\n".join(lines + [t["nodata"], ""])
     def items(facts: dict[str, str]) -> list[str]:
@@ -248,7 +254,7 @@ def render_html(report: Report) -> str:
         body = "".join(f"<li>{i}</li>" for i in items) or f"<li>{e(t['none'])}</li>"
         return f"<{tag}>{body}</{tag}>"
 
-    body = [f"<h1>{e(t['title'])}</h1>", f"<p><em>{e(t['generated'])} {report.generated}</em></p>"]
+    body = [f"<h1>{e(t['title'])}</h1>", f"<p><em>{e(t['generated'])} {e(_report_day(report))}</em></p>"]
     if report.empty:
         body.append(f"<p>{e(t['nodata'])}</p>")
     else:

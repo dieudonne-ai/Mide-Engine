@@ -1,10 +1,11 @@
 import re
+from datetime import date
 
 import pytest
 
 from mide import cli
 from mide.utils.errors import MESSAGES, friendly_message
-from mide.utils.french import NBSP, french_spacing
+from mide.utils.french import NBSP, french_date, french_spacing
 
 _PLAIN_SPACE_BEFORE_SIGN = re.compile(r" [:;?!](?:\s|$|[\"'`)])")
 
@@ -77,3 +78,13 @@ def test_cli_french_output_has_no_plain_space_before_sign(tmp_path, monkeypatch)
         else:
             assert "\u00a0" not in text, text
             assert "Authorized sources:" in text and "Error:" in text
+
+
+@pytest.mark.parametrize(("day", "expected"), [
+    (date(2024, 10, 2), "2 octobre 2024"),
+    (date(2024, 10, 1), "1er octobre 2024"),
+    (date(2026, 2, 28), "28 février 2026"),
+    (date(2025, 8, 15), "15 août 2025"),
+])
+def test_french_date(day, expected):
+    assert french_date(day) == expected
