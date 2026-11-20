@@ -237,14 +237,14 @@ def test_anomaly_text_english_matches_describe(start, end, kind):
 
 def test_anomaly_text_french():
     assert dd.anomaly_text(_anomaly("2024-03-10", "2024-03-10"), "fr") == (
-        "chute le 2024-03-10\u00a0: 1\u00a0200 au lieu de 4\u00a0000 attendus (-70\u00a0%)")
+        "chute le 10 mars 2024\u00a0: 1\u00a0200 au lieu de 4\u00a0000 attendus (-70\u00a0%)")
     assert dd.anomaly_text(_anomaly("2024-03-10", "2024-03-12", "spike"), "fr") == (
-        "pic du 2024-03-10 au 2024-03-12\u00a0: 1\u00a0200 au lieu de 4\u00a0000 attendus (-70\u00a0%)")
+        "pic du 10 mars 2024 au 12 mars 2024\u00a0: 1\u00a0200 au lieu de 4\u00a0000 attendus (-70\u00a0%)")
 
 
 def test_anomaly_text_unknown_kind_kept():
     assert dd.anomaly_text(_anomaly("2024-03-10", "2024-03-10", "other"), "fr").startswith(
-        "other le 2024-03-10")
+        "other le 10 mars 2024")
 
 
 @pytest.mark.parametrize(("language", "word"), [("fr", "attendus"), ("en", "expected")])
