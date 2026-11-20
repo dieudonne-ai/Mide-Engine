@@ -77,6 +77,7 @@ def save_model(
         "baseline_metrics": trained.baseline_metrics,
         "beats_baseline": trained.beats_baseline,
         "top_features": dict(list(trained.feature_importance.items())[:10]),
+        "leakage_suspects": list(trained.leakage_suspects),
         **(extra or {}),
     }
     (path / META_FILE).write_text(json.dumps(metadata, indent=2, ensure_ascii=False), "utf-8")

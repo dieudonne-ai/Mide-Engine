@@ -14,6 +14,11 @@ from mide.hardware.profiler import Profile
 ID_UNIQUE_RATIO = 0.9  # text columns with this share of unique values are treated as identifiers
 MAX_CATEGORIES = 50  # text columns with more distinct values are dropped
 DATE_PARTS = ("year", "month", "day_of_week", "day_of_year", "day")
+LEAK_ACCURACY = 0.99  # a classifier at least this accurate in CV is suspiciously perfect
+LEAK_ERROR_RATIO = 0.05  # a regressor whose CV error is below this share of the baseline's
+LEAK_CORRELATION = 0.99  # a numeric feature this correlated with a numeric target is a suspect
+LEAK_IMPORTANCE = 0.6  # suspects: top source columns covering this share of the importance
+LEAK_MAX_SUSPECTS = 3
 
 
 class TrainingError(ValueError):
@@ -121,6 +126,7 @@ class TrainedModel:
     seed: int
     profile: str
     feature_importance: dict[str, float]
+    leakage_suspects: list[str] = field(default_factory=list)
 
     def predict(self, df: pd.DataFrame) -> np.ndarray:
         """Predict for rows of ``df`` (class labels for classification)."""
@@ -192,6 +198,66 @@ def _score(task: TaskType, y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, 
             "f1_macro": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
         }
     return {"mae": float(mean_absolute_error(y_true, y_pred))}
+
+
+def _source_column(feature: str, prep: FeaturePrep) -> str:
+    """The raw column a model feature comes from (date parts map back to their date column)."""
+    for col in prep.dates:
+        if feature.startswith(f"{col}_"):
+            return col
+    return feature
+
+
+def _too_perfect(task: TaskType, metrics: dict[str, float], baseline: dict[str, float]) -> bool:
+    if task is TaskType.TIME_SERIES:
+        return False
+    if task is TaskType.CLASSIFICATION:
+        return metrics["accuracy"] >= LEAK_ACCURACY
+    return baseline["mae"] > 0 and metrics["mae"] <= LEAK_ERROR_RATIO * baseline["mae"]
+
+
+def leakage_suspects(
+    task: TaskType,
+    metrics: dict[str, float],
+    baseline: dict[str, float],
+    importance: dict[str, float],
+    prep: FeaturePrep,
+    correlated: list[str] | None = None,
+) -> list[str]:
+    """Columns that probably leak the target, or ``[]`` when nothing looks suspicious.
+
+    A near-perfect cross-validated score on business data usually means a feature is
+    computed from the target (e.g. ``amount`` = ``quantity`` x ``unit_price``) or only
+    known after it. The suspects are the ``correlated`` columns (almost a linear function
+    of the target), then, when the score is too perfect, the most important source columns.
+    """
+    suspects: list[str] = list(correlated or [])
+    if not _too_perfect(task, metrics, baseline):
+        return suspects
+    covered = 0.0
+    for feature, share in importance.items():
+        col = _source_column(feature, prep)
+        if col not in suspects:
+            suspects.append(col)
+        covered += share
+        if covered >= LEAK_IMPORTANCE or len(suspects) >= LEAK_MAX_SUSPECTS:
+            break
+    return suspects
+
+
+def _correlated_features(work: pd.DataFrame, prep: FeaturePrep, task: TaskType) -> list[str]:
+    """Numeric features almost perfectly correlated with a continuous target."""
+    if task is not TaskType.REGRESSION:
+        return []
+    y = pd.to_numeric(work[prep.target], errors="coerce")
+    found = []
+    for col in prep.numeric:
+        x = pd.to_numeric(work[col], errors="coerce").astype(float)
+        with np.errstate(all="ignore"):
+            r = x.corr(y)
+        if pd.notna(r) and abs(r) >= LEAK_CORRELATION:
+            found.append((abs(r), col))
+    return [col for _, col in sorted(found, key=lambda t: -t[0])]
 
 
 def _mean(rows: list[dict[str, float]]) -> dict[str, float]:
@@ -285,4 +351,8 @@ def train(
         baseline_metrics=baseline, primary_metric=primary, beats_baseline=bool(beats),
         n_rows=len(work), n_features=len(prep.columns), seed=seed, profile=str(profile),
         feature_importance=importance,
+        leakage_suspects=leakage_suspects(
+            info.task, metrics, baseline, importance, prep,
+            _correlated_features(work, prep, info.task),
+        ),
     )

@@ -400,3 +400,42 @@ def test_train_model_name_is_the_same_whatever_the_dataset_spelling(tmp_path, mo
         assert result.exit_code == 0, result.output
         assert f"sales-amount v{version}" in result.output
     assert [p.name for p in (tmp_path / "home" / "models_trained").iterdir()] == ["sales-amount"]
+
+
+def test_train_warns_about_target_leakage(tmp_path, monkeypatch) -> None:
+    # total = 3 x price: the near-perfect score triggers a FR/EN warning naming price,
+    # and the suspects are stored in the model metadata. A plausible model has no warning.
+    import json
+
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    folder = tmp_path / "data"
+    folder.mkdir()
+    lines = ["price,total"] + [f"{i},{3 * i}" for i in range(60)]
+    (folder / "orders.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    lines = ["x,amount"] + [f"{i % 5},{10 * (i % 5) + (i * 7) % 11}" for i in range(60)]
+    (plain / "sales.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    args = ["--config-dir", str(cfg)]
+    for source in (folder, plain):
+        assert runner.invoke(app, ["sources", "add", str(source), *args]).exit_code == 0
+    expected = {
+        "fr": "Attention : score presque parfait, fuite de la cible probable. Vérifiez que price",
+        "en": "Warning: near-perfect score, likely target leakage. Check that price",
+    }
+    for language, text in expected.items():
+        (cfg / "default.yaml").write_text(f"language: {language}\n", encoding="utf-8")
+        result = runner.invoke(app, ["train", "--dataset", "orders", "--target", "total", *args])
+        assert result.exit_code == 0, result.output
+        assert text in result.output
+        assert "'total'" in result.output
+    meta = json.loads(
+        (tmp_path / "home" / "models_trained" / "orders-total" / "v1" / "metadata.json")
+        .read_text(encoding="utf-8"))
+    assert meta["leakage_suspects"] == ["price"]
+
+    result = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amount", *args])
+    assert result.exit_code == 0, result.output
+    assert "leakage" not in result.output

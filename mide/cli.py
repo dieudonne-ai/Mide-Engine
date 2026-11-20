@@ -141,6 +141,14 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "Le modèle ne bat PAS la référence.",
         "en": "The model does NOT beat the baseline.",
     },
+    "train_leak": {
+        "fr": ("Attention : score presque parfait, fuite de la cible probable. Vérifiez que "
+               "{columns} ne sont pas calculées à partir de '{target}' ni connues après lui ; "
+               "sinon retirez-les des données avant d'entraîner."),
+        "en": ("Warning: near-perfect score, likely target leakage. Check that {columns} "
+               "are not computed from '{target}' or only known after it; if so, remove "
+               "them from the data before training."),
+    },
     "train_top": {"fr": "Variables principales : {value}", "en": "Top features: {value}"},
     "doctor_ram": {"fr": "RAM : {value} Go", "en": "RAM: {value} GB"},
     "doctor_cpu": {"fr": "Cœurs CPU : {value}", "en": "CPU cores: {value}"},
@@ -726,6 +734,11 @@ def train_command(
                             language))
     top = ", ".join(f"{k} ({v:.0%})" for k, v in list(result.feature_importance.items())[:5])
     typer.echo(_sources_msg("train_top", language, value=top))
+    if result.leakage_suspects:
+        typer.echo(_sources_msg(
+            "train_leak", language, target=target,
+            columns=", ".join(result.leakage_suspects),
+        ))
 
 
 def _get_llm(cfg: Config) -> LLM:
