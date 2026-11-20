@@ -502,7 +502,8 @@ def test_chart_french_locale_and_titles(kind):
     spec = dd.chart(monthly, "fr", kind).to_dict()
     assert spec["mark"]["type"] == kind
     enc = spec["encoding"]
-    assert enc["x"]["title"] == "Date" and enc["x"]["type"] == "temporal"
+    assert enc["x"]["title"] == "Date"
+    assert enc["x"]["type"] == ("ordinal" if kind == "bar" else "temporal")
     assert enc["y"]["title"] == "Chiffre d'affaires"
     assert _vega_field_ok(enc["x"]["field"]) and _vega_field_ok(enc["y"]["field"])
     number = spec["config"]["locale"]["number"]
@@ -511,6 +512,38 @@ def test_chart_french_locale_and_titles(kind):
     data = next(iter(spec["datasets"].values()))
     assert [row["y"] for row in data] == [12000.5, 900.0]
     assert monthly.name == "amount", "input is not modified"
+
+
+def test_monthly_bar_chart_has_one_band_per_month():
+    pytest.importorskip("altair")
+    import pandas as pd
+
+    # Month-end dates, as produced by the sales trend (resample("ME")).
+    monthly = pd.Series([10.0, 20.0, 30.0],
+                        index=pd.DatetimeIndex(["2024-01-31", "2024-02-29", "2024-03-31"],
+                                               name="date"), name="amount")
+    for language in ("fr", "en"):
+        enc = dd.chart(monthly, language, "bar").to_dict()["encoding"]
+        assert enc["x"]["type"] == "ordinal", "bands, not thin bars on a time axis"
+        assert enc["x"]["timeUnit"] == "yearmonth"
+        assert enc["x"]["axis"]["format"] == "%b %Y"
+        tip = enc["tooltip"][0]
+        assert tip["timeUnit"] == "yearmonth" and tip["format"] == "%B %Y"
+    # Line charts and bars with several points in a month keep the time axis.
+    assert dd.chart(monthly, "fr", "line").to_dict()["encoding"]["x"]["type"] == "temporal"
+    daily = pd.Series([1.0, 2.0],
+                      index=pd.DatetimeIndex(["2024-01-01", "2024-01-02"], name="date"),
+                      name="amount")
+    enc = dd.chart(daily, "fr", "bar").to_dict()["encoding"]
+    assert enc["x"]["type"] == "temporal" and "timeUnit" not in enc["x"]
+
+
+def test_demo_monthly_revenue_chart_uses_month_bands(cfg_dir):
+    pytest.importorskip("altair")
+    data = dd.load_dashboard_data(cfg_dir)
+    monthly = dd.sales_view(data.tables.sales, data.tables.products)["trend"].monthly
+    enc = dd.chart(monthly, "fr", "bar").to_dict()["encoding"]
+    assert enc["x"]["type"] == "ordinal" and enc["x"]["timeUnit"] == "yearmonth"
 
 
 def test_chart_english_keeps_vega_default_locale():

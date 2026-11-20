@@ -280,12 +280,20 @@ def season_label(name: str, language: str) -> str:
     return name
 
 
+def _one_point_per_month(dates: pd.Series) -> bool:
+    """True if no two ``dates`` fall in the same calendar month."""
+    months = dates.dt.to_period("M")
+    return bool(months.is_unique)
+
+
 def chart(series: pd.Series, language: str, kind: str = "line") -> alt.Chart:
     """Altair line or bar chart of ``series`` for ``st.altair_chart``.
 
     Axis titles come from ``chart_series``. Any language other than ``en`` gets the
     French Vega locale, so axes and tooltips read "12 000", "1,5" and "janv." instead
-    of "12,000", "1.5" and "Jan". Needs altair (installed with Streamlit).
+    of "12,000", "1.5" and "Jan". A bar chart of monthly dates gets one band per
+    month ("janv. 2024") instead of thin bars on a time axis. Needs altair (installed
+    with Streamlit).
     """
     import altair as alt
 
@@ -295,14 +303,23 @@ def chart(series: pd.Series, language: str, kind: str = "line") -> alt.Chart:
     # d'affaires") as access-path syntax and fails; the labels go in the titles.
     df = pd.DataFrame({"x": labelled.index, "y": labelled.to_numpy()})
     temporal = pd.api.types.is_datetime64_any_dtype(df["x"])
-    x_type: Literal["temporal", "nominal"] = "temporal" if temporal else "nominal"
-    x_format = "%d %b %Y" if temporal else ""
     base = alt.Chart(df)
     marked = base.mark_bar() if kind == "bar" else base.mark_line()
+    if kind == "bar" and temporal and _one_point_per_month(df["x"]):
+        # One band per month: on a temporal axis each bar is only a few pixels wide.
+        x = alt.X(field="x", type="ordinal", timeUnit="yearmonth", title=x_title,
+                  axis=alt.Axis(format="%b %Y", labelAngle=0))
+        x_tip = alt.Tooltip(field="x", type="ordinal", timeUnit="yearmonth",
+                            title=x_title, format="%B %Y")
+    else:
+        x_type: Literal["temporal", "nominal"] = "temporal" if temporal else "nominal"
+        x = alt.X(field="x", type=x_type, sort=None, title=x_title)
+        x_tip = alt.Tooltip(field="x", type=x_type, title=x_title,
+                            format="%d %b %Y" if temporal else "")
     out = marked.encode(
-        x=alt.X(field="x", type=x_type, sort=None, title=x_title),
+        x=x,
         y=alt.Y(field="y", type="quantitative", title=y_title),
-        tooltip=[alt.Tooltip(field="x", type=x_type, title=x_title, format=x_format),
+        tooltip=[x_tip,
                  alt.Tooltip(field="y", type="quantitative", title=y_title,
                              format=",.2~f")],
     )
