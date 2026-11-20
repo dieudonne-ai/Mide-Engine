@@ -304,8 +304,9 @@ def _marketing_finding(df: pd.DataFrame, sales_df: pd.DataFrame | None = None) -
     channels = marketing.channel_performance(df)
     plan = marketing.suggest_reallocation(channels)
     # Cite the totals behind each ratio, so "ROI 41.54" cannot be read as 41.54%.
-    facts = {f"channel {c}": (f"spend {_money(r.spend)}, revenue {_money(r.revenue)}: "
-                              f"ROI {_ratio(r.roi)}, ROAS {_ratio(r.roas)}")
+    # Ratios first, totals in parentheses: one colon per line ("channel X: ROI ..."), not two.
+    facts = {f"channel {c}": (f"ROI {_ratio(r.roi)}, ROAS {_ratio(r.roas)} "
+                              f"(spend {_money(r.spend)}, revenue {_money(r.revenue)})")
              for c, r in channels.iterrows()}
     facts["underperforming"] = ", ".join(plan.underperforming) or "none"
     facts["best channel"] = plan.best_channel

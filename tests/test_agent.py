@@ -248,7 +248,7 @@ def test_reallocation_estimate_is_flagged_as_upper_bound(data):
     moves = [v for k, v in facts.items() if k.startswith("move ")]
     assert moves
     best = facts["best channel"]
-    roas = facts[f"channel {best}"].split("ROAS ")[1]
+    roas = facts[f"channel {best}"].split("ROAS ")[1].split(" (")[0]
     for move in moves:
         assert "est. extra revenue up to " in move
         assert f"linear, at {best} ROAS {roas}" in move
@@ -323,16 +323,29 @@ def test_channel_figures_cite_spend_and_revenue(data):
     assert len(channels) > 1
     for name, row in channels.iterrows():
         assert facts[f"channel {name}"] == (
-            f"spend {row.spend:,.0f}, revenue {row.revenue:,.0f}: "
-            f"ROI {row.roi:.2f}, ROAS {row.roas:.2f}")
+            f"ROI {row.roi:.2f}, ROAS {row.roas:.2f} "
+            f"(spend {row.spend:,.0f}, revenue {row.revenue:,.0f})")
+
+
+def test_channel_lines_have_a_single_colon(data):
+    # "channel Email: spend 16,089, revenue 684,450: ROI ..." read as two labels in a row.
+    from mide.agent.decision import Recommendation
+
+    rec = Recommendation("t", run_modules(["marketing"], data))
+    for language, prefix in (("en", "- [marketing] channel "), ("fr", "- [marketing] canal ")):
+        lines = [ln for ln in rec.data_used(language).splitlines() if ln.startswith(prefix)]
+        assert len(lines) > 1
+        for line in lines:
+            assert line.count(":") == 1, line
+            assert "(" in line and ("spend " in line or "dépenses " in line)
 
 
 def test_channel_figure_with_zero_spend_stays_readable():
     df = pd.DataFrame({"channel": ["Email", "Radio"], "spend": [100.0, 0.0],
                        "revenue": [500.0, 50.0], "conversions": [5, 1]})
     facts = run_modules(["marketing"], detect_tables({"campaigns": df}))[0].facts
-    assert facts["channel Email"] == "spend 100, revenue 500: ROI 4.00, ROAS 5.00"
-    assert facts["channel Radio"] == "spend 0, revenue 50: ROI n/a, ROAS n/a"
+    assert facts["channel Email"] == "ROI 4.00, ROAS 5.00 (spend 100, revenue 500)"
+    assert facts["channel Radio"] == "ROI n/a, ROAS n/a (spend 0, revenue 50)"
 
 
 def test_product_figures_cite_revenue_and_share_basis(data):
@@ -478,8 +491,8 @@ def test_fact_value_translates_english_phrases_to_french():
         "(0.3% of revenue; 9 of 400 customers)":
             "9 clients à risque élevé (principaux : C1, C2, C3, +6 autres), 2,344 de chiffre "
             "d'affaires passé à risque (0.3% du chiffre d'affaires; 9 clients sur 400)",
-        "spend 13,680, revenue 11,250: ROI -0.18, ROAS 0.82":
-            "dépenses 13,680, revenus 11,250: ROI -0.18, ROAS 0.82",
+        "ROI -0.18, ROAS 0.82 (spend 13,680, revenue 11,250)":
+            "ROI -0.18, ROAS 0.82 (dépenses 13,680, revenus 11,250)",
         "6,840 to Google Ads, est. extra revenue up to 285,353 (linear, at Google Ads ROAS "
         "5.52; returns diminish)":
             "6,840 vers Google Ads, revenu supplémentaire estimé jusqu'à 285,353 (linéaire, "
