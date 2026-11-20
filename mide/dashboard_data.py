@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 
@@ -18,7 +18,8 @@ from mide.hardware.profiler import HardwareReport, profile_hardware
 from mide.llm.downloader import list_models
 from mide.utils.french import french_spacing
 
-if TYPE_CHECKING:  # Styler needs jinja2, a dashboard-only dependency
+if TYPE_CHECKING:  # Styler needs jinja2, altair comes with Streamlit (dashboard-only)
+    import altair as alt
     from pandas.io.formats.style import Styler
 
 CONFIG_ENV = "MIDE_CONFIG_DIR"
@@ -235,6 +236,62 @@ def chart_series(series: pd.Series, language: str) -> pd.Series:
     out = series.rename(column_label(series.name, language))
     out.index = out.index.rename(column_label(series.index.name, language))
     return out
+
+
+# Vega (d3-format / d3-time-format) locale for French charts: "12 000", "1,5", "janv. 2024".
+FRENCH_CHART_LOCALE: dict[str, dict[str, object]] = {
+    "number": {
+        "decimal": ",",
+        "thousands": "\u00a0",
+        "grouping": [3],
+        "currency": ["", "\u00a0€"],
+        "percent": "\u00a0%",
+        "minus": "-",
+    },
+    "time": {
+        "dateTime": "%A %e %B %Y à %X",
+        "date": "%d/%m/%Y",
+        "time": "%H:%M:%S",
+        "periods": ["AM", "PM"],
+        "days": ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"],
+        "shortDays": ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."],
+        "months": ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+                   "août", "septembre", "octobre", "novembre", "décembre"],
+        "shortMonths": ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.",
+                        "août", "sept.", "oct.", "nov.", "déc."],
+    },
+}
+
+
+def chart(series: pd.Series, language: str, kind: str = "line") -> alt.Chart:
+    """Altair line or bar chart of ``series`` for ``st.altair_chart``.
+
+    Axis titles come from ``chart_series``. Any language other than ``en`` gets the
+    French Vega locale, so axes and tooltips read "12 000", "1,5" and "janv." instead
+    of "12,000", "1.5" and "Jan". Needs altair (installed with Streamlit).
+    """
+    import altair as alt
+
+    labelled = chart_series(series, language)
+    x_title, y_title = str(labelled.index.name), str(labelled.name)
+    # Neutral field names: Vega reads quotes and dots in a field name ("Chiffre
+    # d'affaires") as access-path syntax and fails; the labels go in the titles.
+    df = pd.DataFrame({"x": labelled.index, "y": labelled.to_numpy()})
+    temporal = pd.api.types.is_datetime64_any_dtype(df["x"])
+    x_type: Literal["temporal", "nominal"] = "temporal" if temporal else "nominal"
+    x_format = "%d %b %Y" if temporal else ""
+    base = alt.Chart(df)
+    marked = base.mark_bar() if kind == "bar" else base.mark_line()
+    out = marked.encode(
+        x=alt.X(field="x", type=x_type, sort=None, title=x_title),
+        y=alt.Y(field="y", type="quantitative", title=y_title),
+        tooltip=[alt.Tooltip(field="x", type=x_type, title=x_title, format=x_format),
+                 alt.Tooltip(field="y", type="quantitative", title=y_title,
+                             format=",.2~f")],
+    )
+    if language == "en":
+        return out
+    return out.configure(locale=FRENCH_CHART_LOCALE)
 
 
 def ui_text(key: str, language: str, **values: object) -> str:
