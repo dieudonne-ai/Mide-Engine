@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 import pandas as pd
 
@@ -261,6 +261,23 @@ FRENCH_CHART_LOCALE: dict[str, dict[str, object]] = {
                         "août", "sept.", "oct.", "nov.", "déc."],
     },
 }
+
+
+def season_label(name: str, language: str) -> str:
+    """French full name of a ``sales`` month/weekday abbreviation ("Dec" -> "décembre").
+
+    English (and any unknown name) is returned unchanged.
+    """
+    if language == "en":
+        return name
+    time = FRENCH_CHART_LOCALE["time"]
+    if name in sales.MONTH_NAMES:
+        months = cast(list[str], time["months"])
+        return months[sales.MONTH_NAMES.index(name)]
+    if name in sales.WEEKDAY_NAMES:
+        days = cast(list[str], time["days"])  # Vega order starts on Sunday
+        return days[(sales.WEEKDAY_NAMES.index(name) + 1) % 7]
+    return name
 
 
 def chart(series: pd.Series, language: str, kind: str = "line") -> alt.Chart:
