@@ -36,6 +36,16 @@ def test_forecast_horizons_and_sanity(sales):
     assert any("anomalous" in n for n in fc.notes)
 
 
+def test_forecast_note_uses_proper_plural(sales):
+    import re
+
+    [note] = [n for n in forecast_sales(sales).notes if "anomalous" in n]
+    assert "(s)" not in note
+    count = int(note.split()[0])
+    assert re.fullmatch(rf"{count} anomalous days? excluded from the fit\.", note)
+    assert note.startswith(f"{count} anomalous day{'' if count == 1 else 's'} ")
+
+
 def test_forecast_needs_history(sales):
     with pytest.raises(ValueError):
         forecast_sales(sales.head(20))

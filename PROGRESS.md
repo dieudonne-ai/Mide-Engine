@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-20 — Maintenance: proper plurals instead of "(s)" in report and forecast notes (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #132 was already merged; suite green at start (512 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The French weekly report on the demo data read "4 anomalie(s) plus ancienne(s) (avant le 2024-10-02) non listée(s)". It now reads "4 anomalies plus anciennes … non listées" ("1 anomalie plus ancienne … non listée" for one). The sales forecast note "N anomalous day(s) excluded from the fit." now uses "day"/"days" too. These were the last "(s)" plurals in `mide/` and `app/`.
+- **Fichiers principaux :** `mide/report.py`, `mide/business/sales.py`, `tests/test_report.py`, `tests/test_sales.py`
+- **Tests :** 513 passed, 0 skipped. 1 new: the forecast note on the demo data has no "(s)" and the right singular/plural. 1 existing assertion updated (`test_recent_anomaly_alerts_keeps_recent_and_counts_older` now expects the French plural, plus a new singular case). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-y6wzgx -> main
+- **Décisions techniques :** inline singular/plural choice (same style as the English branch already used); no plural helper, since only two strings needed it.
+- **Problèmes / dette technique :** while checking by hand, `mide sources add` run from the repo directory writes into the repo's `config/sources.yaml` (expected: it is the project config), which then fails `test_packaged_defaults_match_repo_config`; reverted before commit. Dates in the French report stay ISO (`2024-10-02`). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-20 — Maintenance: one wide bar per month in the monthly revenue chart (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #131 was already merged; suite green at start (510 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Picked the debt left by #130/#131: the "Chiffre d'affaires mensuel" bars were a few pixels wide because they sat on a continuous time axis. Monthly bar charts now have one band per month, labelled "janv. 2024" in French ("Jan 2024" in English), tooltip "janvier 2024". Checked in a real browser (Streamlit + Chromium) on the demo data: 24 wide bars with French month labels.
 - **Fichiers principaux :** `mide/dashboard_data.py`, `tests/test_dashboard.py`

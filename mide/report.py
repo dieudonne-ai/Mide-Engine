@@ -187,7 +187,8 @@ def recent_anomaly_alerts(anomalies: list[str], last_day: date | None, fr: bool)
     older = len(anomalies) - len(recent)
     if older:
         recent.append(
-            f"{older} anomalie(s) plus ancienne(s) (avant le {cutoff.isoformat()}) non listée(s)"
+            f"{older} anomalie{'' if older == 1 else 's'} plus ancienne{'' if older == 1 else 's'} "
+            f"(avant le {cutoff.isoformat()}) non listée{'' if older == 1 else 's'}"
             if fr else f"{older} older anomal{'y' if older == 1 else 'ies'} "
             f"(before {cutoff.isoformat()}) not listed")
     return recent
