@@ -211,11 +211,16 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
     "auto_model": {"fr": "Modèle {name} : {status}", "en": "Model {name}: {status}"},
     "auto_unchanged": {"fr": "inchangé", "en": "unchanged"},
     "auto_kept": {"fr": "conservé", "en": "kept"},
+    "auto_kept_leak": {"fr": "conservé", "en": "kept"},
     "auto_promoted": {"fr": "remplacé", "en": "promoted"},
     "auto_skipped": {"fr": "ignoré", "en": "skipped"},
     "auto_error": {"fr": "erreur", "en": "error"},
     "auto_detail_promoted": {"fr": "le nouveau modèle est meilleur", "en": "new model is better"},
     "auto_detail_kept": {"fr": "l'ancien modèle est conservé", "en": "previous model kept"},
+    "auto_detail_kept_leak": {
+        "fr": "fuite de la cible probable dans le nouveau modèle, l'ancien est conservé",
+        "en": "likely target leakage in the new model, previous model kept",
+    },
     "auto_detail_skipped": {
         "fr": "le jeu de données n'est plus disponible",
         "en": "dataset no longer available",

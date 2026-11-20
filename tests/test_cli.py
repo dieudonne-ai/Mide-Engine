@@ -494,3 +494,18 @@ def test_train_warns_about_target_leakage(tmp_path, monkeypatch) -> None:
     result = runner.invoke(app, ["train", "--dataset", "sales", "--target", "amount", *args])
     assert result.exit_code == 0, result.output
     assert "leakage" not in result.output
+
+
+def test_auto_outcome_line_explains_leak_blocked_model() -> None:
+    # A candidate refused for target leakage is reported as kept, with the reason, in FR/EN.
+    from mide.automl.auto import ModelOutcome
+    from mide.cli import _auto_outcome_line
+
+    outcome = ModelOutcome("sales-amount", "kept_leak", "candidate suspected of target leakage",
+                           5.0, 0.1, target="amount", leakage_suspects=["amount_ttc"])
+    assert _auto_outcome_line(outcome, "fr") == (
+        "Modèle sales-amount : conservé (5 -> 0.1) fuite de la cible probable dans le "
+        "nouveau modèle, l'ancien est conservé")
+    assert _auto_outcome_line(outcome, "en") == (
+        "Model sales-amount: kept (5 -> 0.1) likely target leakage in the new model, "
+        "previous model kept")

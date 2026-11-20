@@ -25,7 +25,7 @@ class ModelOutcome:
     """What happened to one registered model during an auto run."""
 
     name: str
-    status: str  # unchanged | kept | promoted | skipped | error
+    status: str  # unchanged | kept | kept_leak | promoted | skipped | error
     detail: str = ""
     old_score: float | None = None
     new_score: float | None = None
@@ -43,7 +43,7 @@ class AutoReport:
 
     @property
     def retrained(self) -> list[ModelOutcome]:
-        return [o for o in self.outcomes if o.status in ("promoted", "kept")]
+        return [o for o in self.outcomes if o.status in ("promoted", "kept", "kept_leak")]
 
 
 def fingerprint(df: pd.DataFrame) -> str:
@@ -101,6 +101,8 @@ def retrain_if_changed(
 
     The previous version stays the latest one unless the candidate beats it, so an
     unchanged dataset never triggers any training and a worse model is never saved.
+    A candidate suspected of target leakage never replaces a model that was not
+    (status ``kept_leak``): its better score is most likely not a real improvement.
     """
     state = _load_state(state_path)
     latest: dict[str, dict] = {}
@@ -128,7 +130,13 @@ def retrain_if_changed(
                 date_column=meta.get("date_column"),
             )
             new_score = candidate.metrics.get(old_primary)
-            if _is_better(candidate, old_score, old_primary):
+            if candidate.leakage_suspects and not meta.get("leakage_suspects"):
+                outcomes.append(ModelOutcome(
+                    name, "kept_leak", "candidate suspected of target leakage, previous model kept",
+                    old_score, new_score,
+                    target=meta["target"], leakage_suspects=list(candidate.leakage_suspects),
+                ))
+            elif _is_better(candidate, old_score, old_primary):
                 extra = {"evaluation": evaluate(candidate, df), "dataset": dataset, "data_hash": digest,
                          **({"item": meta["item"]} if meta.get("item") else {})}
                 save_model(candidate, registry_dir, name, extra)
