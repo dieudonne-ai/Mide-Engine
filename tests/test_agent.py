@@ -419,7 +419,7 @@ def test_data_used_labels_follow_language():
     assert "- [sales] meilleurs produits: P001" in fr
     assert "- [marketing] canal SMS: ROI -0.58" in fr
     assert "- [marketing] transfert depuis Radio: 6,840" in fr
-    assert "- [insights] anomalie 2: spike" in fr
+    assert "- [insights] anomalie 2: pic" in fr
     assert "- [insights] custom key: x" in fr
     en = rec.data_used("en")
     assert "- [sales] forecast 30d: 45,871" in en and "- [marketing] channel SMS" in en
@@ -451,3 +451,53 @@ def test_ask_without_llama_cpp_shows_figures_in_language(tmp_path, monkeypatch, 
                                            "--config-dir", str(cfg_dir)])
         assert res.exit_code == 0, res.output
         assert note in res.output and used in res.output
+
+
+def test_fact_value_translates_english_phrases_to_french():
+    from mide.agent.decision import fact_value
+
+    cases = {
+        "735,907 for 2023-01-01 -> 2024-12-31": "735,907 du 2023-01-01 au 2024-12-31",
+        "43 (735,907 / 17,037 orders)": "43 (735,907 / 17,037 commandes)",
+        "+10.4% (30 days to 2024-12-31 vs previous 30)":
+            "+10.4% (30 jours jusqu'au 2024-12-31 vs les 30 précédents)",
+        "drop on 2023-06-14 -> 2023-06-16: 74 vs 1,735 expected (-96%)":
+            "baisse du 2023-06-14 au 2023-06-16 : 74 vs 1,735 attendus (-96%)",
+        "spike on 2024-03-08: 3,962 vs 1,265 expected (+213%)":
+            "pic le 2024-03-08 : 3,962 vs 1,265 attendus (+213%)",
+        "45,871 for 2025-01-01 -> 2025-01-30 (-9.3% vs previous 30d)":
+            "45,871 du 2025-01-01 au 2025-01-30 (-9.3% vs les 30 jours précédents)",
+        "down, YoY n/a, last 3 months -4.0%": "baisse, sur un an n.d., 3 derniers mois -4.0%",
+        "flat, last 3 months n/a": "stable, 3 derniers mois n.d.",
+        "84 customers, 60.3% of revenue": "84 clients, 60.3% du chiffre d'affaires",
+        "9 customers at high risk (top: C1, C2, C3, +6 more), 2,344 past revenue at risk "
+        "(0.3% of revenue; 9 of 400 customers)":
+            "9 clients à risque élevé (principaux : C1, C2, C3, +6 autres), 2,344 de chiffre "
+            "d'affaires passé à risque (0.3% du chiffre d'affaires; 9 clients sur 400)",
+        "spend 13,680, revenue 11,250: ROI -0.18, ROAS 0.82":
+            "dépenses 13,680, revenus 11,250: ROI -0.18, ROAS 0.82",
+        "6,840 to Google Ads, est. extra revenue up to 285,353 (linear, at Google Ads ROAS "
+        "5.52; returns diminish)":
+            "6,840 vers Google Ads, revenu supplémentaire estimé jusqu'à 285,353 (linéaire, "
+            "au ROAS Google Ads de 5.52; rendements décroissants)",
+        "none": "aucun",
+        "Radio, SMS": "Radio, SMS",
+    }
+    for english, french in cases.items():
+        assert fact_value(english, "fr") == french
+        assert fact_value(english, "en") == english
+
+
+def test_data_used_values_follow_the_language(demo_data):
+    import pandas as pd
+
+    from mide.agent.decision import Recommendation, detect_tables, run_modules
+
+    data = detect_tables({"s": pd.read_csv(demo_data["sales"]),
+                          "c": pd.read_csv(demo_data["campaigns"])})
+    rec = Recommendation("x", run_modules(["insights", "sales", "customers", "marketing"], data))
+    fr, en = rec.data_used("fr"), rec.data_used("en")
+    for phrase in ("customers at high risk", "% of revenue", "expected", "vs previous",
+                   "est. extra revenue", "returns diminish", "channels report"):
+        assert phrase not in fr and phrase in en
+    assert "clients à risque élevé" in fr and "rendements décroissants" in fr
