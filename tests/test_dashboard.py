@@ -1,5 +1,7 @@
+import re
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from mide import dashboard_data as dd
@@ -555,3 +557,38 @@ def test_dashboard_metrics_follow_language(cfg_dir, monkeypatch, language):
     else:
         assert all(NBSP not in v for v in values), values
         assert any("," in v for v in big), values
+
+
+def test_number_cell_formats_numbers_by_language():
+    assert dd.number_cell(1735.5, "fr") == "1 735,50"
+    assert dd.number_cell(1735.5, "en") == "1,735.50"
+    assert dd.number_cell(12000, "fr") == "12 000"
+    assert dd.number_cell(3.0, "fr") == "3"
+    assert dd.number_cell(float("nan"), "fr") == "nan"
+    assert dd.number_cell("C0012", "fr") == "C0012"
+    assert dd.number_cell(True, "fr") == "True"
+
+
+def test_table_view_french_numbers_keep_numeric_values():
+    pytest.importorskip("jinja2")
+    df = pd.DataFrame({"spend": [12000.0, 350.25], "roi": [1.5, -0.7]},
+                      index=pd.Index(["Facebook", "Radio"], name="channel"))
+    styled = dd.table_view(df, "fr")
+    html = styled.to_html()
+    assert "12 000" in html and "350,25" in html and "-0,70" in html
+    assert "12000.0" not in html and "350.25" not in html
+    # the underlying data stays numeric (sorting in st.dataframe sorts by value)
+    assert styled.data.equals(dd.display_table(df, "fr"))
+    assert dd.table_view(df, "en").equals(dd.display_table(df, "en"))
+
+
+def test_table_view_covers_dashboard_tables(cfg_dir):
+    pytest.importorskip("jinja2")
+    data = dd.load_dashboard_data(cfg_dir)
+    sv = dd.sales_view(data.tables.sales, data.tables.products)
+    cv = dd.customers_view(data.tables.sales)
+    tables = [sv["products"]["top"], cv["segments"], cv["churn"].scores,
+              dd.marketing_view(data.tables.campaigns)["channels"]]
+    for table in tables:
+        html = dd.table_view(table, "fr").to_html()
+        assert not re.search(r">-?\d+\.\d+<", html), "English decimal point left"

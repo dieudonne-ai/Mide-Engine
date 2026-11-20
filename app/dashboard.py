@@ -66,9 +66,9 @@ def page_sales(data: dd.DashboardData, lang: str) -> None:
                         weekday=s.peak_weekday))
     left, right = st.columns(2)
     left.subheader(dd.ui_text("top_products", lang))
-    left.dataframe(dd.display_table(view["products"]["top"], lang))
+    left.dataframe(dd.table_view(view["products"]["top"], lang))
     right.subheader(dd.ui_text("flop_products", lang))
-    right.dataframe(dd.display_table(view["products"]["flop"], lang))
+    right.dataframe(dd.table_view(view["products"]["flop"], lang))
 
 
 def page_customers(data: dd.DashboardData, lang: str) -> None:
@@ -77,12 +77,12 @@ def page_customers(data: dd.DashboardData, lang: str) -> None:
         return
     view = dd.customers_view(data.tables.sales)
     st.subheader(dd.ui_text("rfm_segments", lang))
-    st.dataframe(dd.display_table(view["segments"], lang))
+    st.dataframe(dd.table_view(view["segments"], lang))
     churn = view["churn"]
     st.metric(dd.ui_text("revenue_at_risk", lang), dd.num(churn.revenue_at_risk, lang, ",.0f"))
     st.write(dd.ui_text("high_risk", lang, n=len(churn.high_risk)))
     top = churn.scores.sort_values("risk", ascending=False).head(20)
-    st.dataframe(dd.display_table(top, lang))
+    st.dataframe(dd.table_view(top, lang))
 
 
 def page_marketing(data: dd.DashboardData, lang: str) -> None:
@@ -90,7 +90,7 @@ def page_marketing(data: dd.DashboardData, lang: str) -> None:
     if not _need(data.has_campaigns, "marketing", lang):
         return
     view = dd.marketing_view(data.tables.campaigns)
-    st.dataframe(dd.display_table(view["channels"], lang))
+    st.dataframe(dd.table_view(view["channels"], lang))
     st.bar_chart(dd.chart_series(view["channels"]["roi"], lang))
     plan = view["plan"]
     st.subheader(dd.ui_text("reallocation", lang))

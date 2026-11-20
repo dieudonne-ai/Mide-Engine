@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -16,6 +17,9 @@ from mide.connectors.sources import list_sources
 from mide.hardware.profiler import HardwareReport, profile_hardware
 from mide.llm.downloader import list_models
 from mide.utils.french import french_spacing
+
+if TYPE_CHECKING:  # Styler needs jinja2, a dashboard-only dependency
+    from pandas.io.formats.style import Styler
 
 CONFIG_ENV = "MIDE_CONFIG_DIR"
 
@@ -200,6 +204,27 @@ def display_table(df: pd.DataFrame, language: str) -> pd.DataFrame:
     out = out.rename(columns=lambda c: column_label(c, language))
     out.index = out.index.rename(column_label(df.index.name, language))
     return out
+
+
+def number_cell(value: object, language: str) -> str:
+    """One table cell as text: thousands separator, 2 decimals for floats, French format."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or pd.isna(value):
+        return str(value)
+    spec = ",.2f" if isinstance(value, float) and not float(value).is_integer() else ",.0f"
+    return num(float(value), language, spec)
+
+
+def table_view(df: pd.DataFrame, language: str) -> pd.DataFrame | Styler:
+    """``display_table`` ready for ``st.dataframe``: in French, numbers read '1 735,50'.
+
+    The cell values stay numeric (a Styler only changes their text), so sorting a
+    column in the dashboard still sorts by value. English keeps Streamlit's format."""
+    out = display_table(df, language)
+    if language == "en":
+        return out
+    numeric = [c for c in out.columns if pd.api.types.is_numeric_dtype(out[c])
+               and not pd.api.types.is_bool_dtype(out[c])]
+    return out.style.format(lambda v: number_cell(v, language), subset=numeric)
 
 
 def chart_series(series: pd.Series, language: str) -> pd.Series:
