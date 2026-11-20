@@ -371,3 +371,10 @@ def test_french_report_trend_has_no_iso_year_months(tables):
     assert re.search(r"\w+ \d{4} à \w+ \d{4} vs ", render_markdown(fr))
     en = build_report(tables, "en", today=date(2025, 1, 10))
     assert re.search(r"\d{4}-\d{2} -> \d{4}-\d{2}", render_markdown(en))
+
+
+def test_french_report_attribution_check_spells_out_multiplier(tables):
+    md = render_markdown(build_report(tables, "fr"))
+    assert "fois le total des ventes (" in md
+    assert not re.search(r"\d,\d+x\b", md)
+    assert re.search(r"\d\.\d+x total sales", render_markdown(build_report(tables, "en")))

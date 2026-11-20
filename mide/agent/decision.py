@@ -76,8 +76,8 @@ _FR_VALUE_PHRASES: list[tuple[re.Pattern[str], str]] = [(re.compile(p), r) for p
       r"channels rather than as absolute returns"),
      ("la même vente est probablement comptée par plusieurs canaux : comparez le ROI/ROAS "
       "entre canaux plutôt qu'en valeur absolue")),
-    (r"channels report (\S+) revenue, (\S+) total sales (\S+)",
-     r"les canaux déclarent \1 de revenus, \2 le total des ventes \3"),
+    (r"channels report (\S+) revenue, (\S+)x total sales (\S+?);",
+     r"les canaux déclarent \1 de revenus, soit \2 fois le total des ventes (\3) ;"),
     (r"est\. extra revenue up to", "revenu supplémentaire estimé jusqu'à"),
     (r"\(linear, at (.+?) ROAS ", r"(linéaire, au ROAS \1 de "),
     (r"returns diminish", "rendements décroissants"),
