@@ -12,7 +12,7 @@ from mide.business import customers, insights, marketing, sales
 from mide.llm.prompts import format_passages
 from mide.llm.runtime import LLM
 from mide.rag.retriever import Passage
-from mide.utils.french import french_dates
+from mide.utils.french import french_dates, french_year_months
 
 
 @dataclass
@@ -147,7 +147,7 @@ def fact_value(value: str, language: str) -> str:
         return value
     for pattern, replacement in _FR_VALUE_PHRASES:
         value = pattern.sub(replacement, value)
-    return french_punctuation(french_numbers(french_dates(value)))
+    return french_punctuation(french_numbers(french_year_months(french_dates(value))))
 
 
 @dataclass
