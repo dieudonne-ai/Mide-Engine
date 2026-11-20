@@ -77,9 +77,10 @@ def test_recorded_item_is_matched_exactly(tmp_path):
     assert [o.status for o in out] == ["unchanged"]
 
 
-def test_promoted_outcome_reports_target_leakage(tmp_path):
-    # New data adds a column computed from the target: the retrained model is better
-    # (so promoted) but the outcome names the leaking column and the target.
+def test_leaky_candidate_does_not_replace_clean_model(tmp_path):
+    # New data adds a column computed from the target: the candidate scores better but is
+    # suspected of leakage, so the clean model stays the latest one and the outcome names
+    # the leaking column and the target.
     rows = range(120)
     df = pd.DataFrame({"x": [i % 10 for i in rows],
                        "amount": [10.0 * (i % 10) + (i * 7) % 23 for i in rows]})
@@ -89,10 +90,37 @@ def test_promoted_outcome_reports_target_leakage(tmp_path):
     save_model(plain, reg, "sales-amount", {"dataset": "sales", "data_hash": auto.fingerprint(df)})
     leaky = df.assign(amount_ttc=df.amount * 1.18)
     out = auto.retrain_if_changed({"sales.csv": leaky}, reg, state, profile="tiny")
-    assert out[0].status == "promoted"
+    assert out[0].status == "kept_leak"
+    assert out[0].new_score is not None and out[0].old_score is not None
     assert out[0].target == "amount"
     assert out[0].leakage_suspects[0] == "amount_ttc"
-    assert list_models(reg)[-1].metadata["leakage_suspects"][0] == "amount_ttc"
-    # Nothing is reported for an unchanged dataset.
+    models = list_models(reg)
+    assert len(models) == 1 and models[0].metadata["leakage_suspects"] == []
+    # The fingerprint is recorded: the same data is not retrained again.
     again = auto.retrain_if_changed({"sales.csv": leaky}, reg, state, profile="tiny")
     assert again[0].status == "unchanged" and again[0].leakage_suspects == []
+
+
+def test_leaky_candidate_replaces_already_leaky_model(tmp_path):
+    # When the registered model was already flagged, scores compare like with like:
+    # a better candidate is promoted, and the outcome still carries the warning.
+    rows = range(120)
+    base = pd.DataFrame({"x": [i % 10 for i in rows],
+                         "amount": [10.0 * (i % 10) + (i * 7) % 23 for i in rows]})
+    df = base.assign(amount_ttc=base.amount * 1.18)
+    reg, state = tmp_path / "reg", tmp_path / "state.json"
+    old = train(df, "amount", profile="tiny", seed=1)
+    assert old.leakage_suspects
+    old.metrics = {k: v * 10 + 100 for k, v in old.metrics.items()}  # much worse old model
+    save_model(old, reg, "sales-amount", {"dataset": "sales", "data_hash": auto.fingerprint(df)})
+    more = df.assign(x=df.x + 1)
+    out = auto.retrain_if_changed({"sales.csv": more}, reg, state, profile="tiny")
+    assert out[0].status == "promoted"
+    assert out[0].leakage_suspects[0] == "amount_ttc"
+    assert len(list_models(reg)) == 2
+
+
+def test_report_counts_leak_blocked_model_as_retrained():
+    report = auto.AutoReport(outcomes=[auto.ModelOutcome("a", "kept_leak"),
+                                       auto.ModelOutcome("b", "unchanged")])
+    assert [o.name for o in report.retrained] == ["a"]

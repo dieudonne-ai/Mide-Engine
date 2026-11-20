@@ -68,7 +68,7 @@ Authorized sources are stored in `config/sources.yaml`. Nothing outside this lis
 | `mide ask "question"` | Answer from documents, business modules, or both |
 | `mide chat` | Interactive conversation |
 | `mide report [--format md\|html] [-o file]` | Weekly report |
-| `mide auto` | Scan, index, retrain changed models (kept only if better), report |
+| `mide auto` | Scan, index, retrain changed models (kept only if better and not suspected of target leakage), report |
 | `mide ui [--port N]` | Streamlit dashboard |
 | `mide finetune` | Optional LoRA fine-tuning (GPU only) |
 | `mide privacy` | Show what is read, what is stored, and the network policy |
