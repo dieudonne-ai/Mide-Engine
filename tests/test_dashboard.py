@@ -447,9 +447,9 @@ def test_chart_series_labels_cover_dashboard_charts(cfg_dir):
 
 
 def _spec_fields(spec: object) -> set[str]:
-    """Every ``field`` name used anywhere in a Vega-Lite spec (layers included)."""
+    """Every ``field`` name and ``title`` used anywhere in a Vega-Lite spec."""
     if isinstance(spec, dict):
-        found = {spec["field"]} if isinstance(spec.get("field"), str) else set()
+        found = {spec[k] for k in ("field", "title") if isinstance(spec.get(k), str)}
         return found.union(*(_spec_fields(v) for v in spec.values()))
     if isinstance(spec, list):
         return set().union(*(_spec_fields(v) for v in spec))
@@ -484,6 +484,47 @@ def test_dashboard_chart_labels_follow_language(cfg_dir, monkeypatch, language, 
     fields = _chart_fields(at)
     assert expected <= fields
     assert not fields & {"amount", "date", "roi", "channel"}
+
+
+def _vega_field_ok(name: str) -> bool:
+    """True if Vega reads ``name`` as one plain field (no quote, dot or bracket)."""
+    return not set(name) & set("'\".[]\\")
+
+
+@pytest.mark.parametrize("kind", ["line", "bar"])
+def test_chart_french_locale_and_titles(kind):
+    pytest.importorskip("altair")
+    import pandas as pd
+
+    monthly = pd.Series([12000.5, 900.0],
+                        index=pd.DatetimeIndex(["2024-01-01", "2024-02-01"], name="date"),
+                        name="amount")
+    spec = dd.chart(monthly, "fr", kind).to_dict()
+    assert spec["mark"]["type"] == kind
+    enc = spec["encoding"]
+    assert enc["x"]["title"] == "Date" and enc["x"]["type"] == "temporal"
+    assert enc["y"]["title"] == "Chiffre d'affaires"
+    assert _vega_field_ok(enc["x"]["field"]) and _vega_field_ok(enc["y"]["field"])
+    number = spec["config"]["locale"]["number"]
+    assert number["decimal"] == "," and number["thousands"] == NBSP
+    assert spec["config"]["locale"]["time"]["shortMonths"][0] == "janv."
+    data = next(iter(spec["datasets"].values()))
+    assert [row["y"] for row in data] == [12000.5, 900.0]
+    assert monthly.name == "amount", "input is not modified"
+
+
+def test_chart_english_keeps_vega_default_locale():
+    pytest.importorskip("altair")
+    import pandas as pd
+
+    roi = pd.Series([1.5, -0.2], index=pd.Index(["whatsapp", "radio"], name="channel"),
+                    name="roi")
+    spec = dd.chart(roi, "en", "bar").to_dict()
+    assert "locale" not in spec.get("config", {})
+    assert spec["encoding"]["x"]["title"] == "Channel"
+    assert spec["encoding"]["x"]["type"] == "nominal"
+    assert spec["encoding"]["x"]["sort"] is None, "keeps the series order"
+    assert dd.chart(roi, "fr", "bar").to_dict()["config"]["locale"]["number"]["decimal"] == ","
 
 
 def test_leak_warning_for_flagged_models_only():
