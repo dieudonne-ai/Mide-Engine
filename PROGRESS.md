@@ -40,6 +40,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-20 — Maintenance: spelled-out dates in the French report (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #133 was already merged; suite green at start (513 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Picked the debt left by #133: the French weekly report showed ISO dates. It now reads "Généré le 20 novembre 2026", "dernière vente le 31 décembre 2024" and "(avant le 2 octobre 2024)", with "1er" for the first of the month, in both Markdown and HTML. The English report keeps ISO dates.
+- **Fichiers principaux :** `mide/utils/french.py` (new `FRENCH_MONTHS`, `french_date()`), `mide/report.py`, `mide/dashboard_data.py` (chart locale reuses `FRENCH_MONTHS`), `tests/test_french.py`, `tests/test_report.py`
+- **Tests :** 518 passed, 0 skipped. 5 new: `french_date` cases (1er, février, août) and the report header/stale alert in FR vs EN. 2 existing assertions updated to the French long date (`test_recent_anomaly_alerts_keeps_recent_and_counts_older`, `test_stale_data_alert`). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-lf5eit -> main
+- **Décisions techniques :** the anomaly descriptions from `insights` keep their ISO dates, because `report._ANOMALY_END` parses them to filter old anomalies; only text that the report writes itself is spelled out. One month list in `mide/utils/french.py`, shared with the dashboard chart locale.
+- **Problèmes / dette technique :** anomaly lines in the French report still show ISO dates (see above). The report still ranks churn first whatever its size (left for Dieudonné). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-20 — Maintenance: proper plurals instead of "(s)" in report and forecast notes (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #132 was already merged; suite green at start (512 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The French weekly report on the demo data read "4 anomalie(s) plus ancienne(s) (avant le 2024-10-02) non listée(s)". It now reads "4 anomalies plus anciennes … non listées" ("1 anomalie plus ancienne … non listée" for one). The sales forecast note "N anomalous day(s) excluded from the fit." now uses "day"/"days" too. These were the last "(s)" plurals in `mide/` and `app/`.
 - **Fichiers principaux :** `mide/report.py`, `mide/business/sales.py`, `tests/test_report.py`, `tests/test_sales.py`

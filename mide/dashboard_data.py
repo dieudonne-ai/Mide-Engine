@@ -16,7 +16,7 @@ from mide.config import Config, load_config
 from mide.connectors.sources import list_sources
 from mide.hardware.profiler import HardwareReport, profile_hardware
 from mide.llm.downloader import list_models
-from mide.utils.french import french_spacing
+from mide.utils.french import FRENCH_MONTHS, french_spacing
 
 if TYPE_CHECKING:  # Styler needs jinja2, altair comes with Streamlit (dashboard-only)
     import altair as alt
@@ -255,8 +255,7 @@ FRENCH_CHART_LOCALE: dict[str, dict[str, object]] = {
         "periods": ["AM", "PM"],
         "days": ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"],
         "shortDays": ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."],
-        "months": ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
-                   "août", "septembre", "octobre", "novembre", "décembre"],
+        "months": list(FRENCH_MONTHS),
         "shortMonths": ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.",
                         "août", "sept.", "oct.", "nov.", "déc."],
     },

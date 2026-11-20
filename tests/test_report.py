@@ -1,3 +1,6 @@
+import re
+from datetime import date
+
 import pytest
 from typer.testing import CliRunner
 
@@ -75,9 +78,9 @@ def test_recent_anomaly_alerts_keeps_recent_and_counts_older():
     assert recent_anomaly_alerts(items, last, fr=False) == [
         items[1], items[2], "1 older anomaly (before 2024-10-02) not listed"]
     assert recent_anomaly_alerts(items[:1] * 2, last, fr=True) == [
-        "2 anomalies plus anciennes (avant le 2024-10-02) non listées"]
+        "2 anomalies plus anciennes (avant le 2 octobre 2024) non listées"]
     assert recent_anomaly_alerts(items[:1], last, fr=True) == [
-        "1 anomalie plus ancienne (avant le 2024-10-02) non listée"]
+        "1 anomalie plus ancienne (avant le 2 octobre 2024) non listée"]
     assert recent_anomaly_alerts(items, None, fr=False) == items
     assert recent_anomaly_alerts(["odd text"], last, fr=False) == ["odd text"]
 
@@ -159,7 +162,7 @@ def test_stale_data_alert():
     en = stale_data_alert(data, date(2025, 3, 1), fr=False)
     assert en == ("stale data: last sale on 2024-12-31, 60 days before this report; "
                   "figures describe that period, not today")
-    assert "dernière vente le 2024-12-31, 60 jours" in stale_data_alert(data, date(2025, 3, 1), True)
+    assert "dernière vente le 31 décembre 2024, 60 jours" in stale_data_alert(data, date(2025, 3, 1), True)
     assert stale_data_alert(data, date(2025, 1, 30), fr=False) is None  # 30 days: still fresh
     assert stale_data_alert(BusinessData(), date(2025, 3, 1), fr=False) is None
 
@@ -329,3 +332,14 @@ def test_french_report_uses_french_number_format(tables):
         assert not english_number.search(text), english_number.search(text)
         assert " %" in text
     assert english_number.search(render_markdown(build_report(tables, "en")))
+
+
+def test_report_date_long_in_french_iso_in_english(tables):
+    """The French report spells the date out; the English one keeps ISO."""
+    day = date(2026, 11, 1)
+    fr = build_report(tables, "fr", today=day)
+    assert "_Généré le 1er novembre 2026_" in render_markdown(fr)
+    assert "Généré le 1er novembre 2026</em>" in render_html(fr)
+    assert "_Generated on 2026-11-01_" in render_markdown(build_report(tables, "en", today=day))
+    stale = [a for a in fr.alerts if a.startswith("données anciennes")]
+    assert stale and not re.search(r"\d{4}-\d{2}-\d{2}", stale[0])
