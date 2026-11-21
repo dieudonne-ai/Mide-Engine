@@ -217,7 +217,7 @@ def test_budget_action_carries_attribution_check(tables):
     # Demo channels claim ~1.96x total sales: the ROAS-based action must say so.
     action = next(a for a in build_report(tables, "en").actions
                   if a.text.startswith("Reallocate budget from"))
-    assert action.text == "Reallocate budget from Radio, SMS"
+    assert action.text == "Reallocate budget from Radio and SMS"
     assert action.evidence == (
         "move Radio: 6,840 to Email, est. extra revenue up to 285,353 (linear, at Email ROAS 42.54; "
         "returns diminish); move SMS: 6,396 to Email, est. extra revenue up to 269,460 (linear, at "
@@ -234,7 +234,8 @@ def test_budget_action_with_several_moves_names_each_direction():
                                               "move SMS": "300 to Email",
                                               "best channel": "Email"})}
     en = _actions(mkt, fr=False)[0]
-    assert en.text == "Reallocate budget from Radio, SMS"
+    assert en.text == "Reallocate budget from Radio and SMS"
+    assert _actions(mkt, fr=True)[0].text == "Réallouer le budget depuis Radio et SMS"
     assert en.evidence == "move Radio: 500 to Email; move SMS: 300 to Email; best channel: Email"
     fr = _actions(mkt, fr=True)[0].evidence.replace("\u00a0", "~")
     assert fr == ("transfert depuis Radio~: 500 vers Email~; transfert depuis SMS~: 300 vers Email"
@@ -474,3 +475,16 @@ def test_english_trend_month_ranges_read_to(tables):
     fr = render_markdown(build_report(tables, "fr", today=date(2025, 1, 5)))
     assert "(octobre 2024 à décembre 2024 contre juillet 2024 à septembre 2024)" in fr
     assert not re.search(r"\d{4}-\d{2} vers ", fr)
+
+
+@pytest.mark.parametrize(("names", "fr", "expected"), [
+    ([], False, ""),
+    (["Radio"], False, "Radio"),
+    (["Radio", "SMS"], False, "Radio and SMS"),
+    (["Radio", "SMS", "TV"], False, "Radio, SMS and TV"),
+    (["Radio", "SMS", "TV"], True, "Radio, SMS et TV"),
+])
+def test_join_names_reads_as_a_sentence(names, fr, expected):
+    from mide.report import _join_names
+
+    assert _join_names(names, fr) == expected

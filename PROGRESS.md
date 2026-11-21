@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: "Radio and SMS" in the budget action title (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #145 was already merged; suite green at start (549 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The weekly report titled the budget action "Reallocate budget from Radio, SMS", like a raw list. It now reads "Reallocate budget from Radio and SMS" ("Radio, SMS and TV" for three channels), and in French "Réallouer le budget depuis Radio et SMS". A single channel is unchanged ("Reallocate budget from Radio"). The evidence text is unchanged.
+- **Fichiers principaux :** `mide/report.py` (new `_join_names`, used by `_actions`), `tests/test_report.py`
+- **Tests :** 554 passed, 0 skipped. 5 new: `test_join_names_reads_as_a_sentence` (0, 1, 2 and 3 names, English and French). Expectations updated in `test_budget_action_carries_attribution_check` and `test_budget_action_with_several_moves_names_each_direction` (now also checks the French title; both fail without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-iyrmkx -> main
+- **Décisions techniques :** only the action title changed; the "marketing underperforming: Radio, SMS" alert keeps its comma list, since it is a fact label/value pair like the other alerts.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: "move X" label on each budget move in the report (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #144 was already merged; suite green at start (548 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). When the weekly report suggested several budget moves, it dropped the "move" label and read "Radio: 6,840 to Email, …; SMS: 6,396 to Email, …", which does not say whether the money leaves Radio or goes to it. Each move now keeps its label: "move Radio: 6,840 to Email, …; move SMS: 6,396 to Email, …", and in French "transfert depuis Radio : 6 840 vers Email, … ; transfert depuis SMS : …". A single move is unchanged ("500 to Email" under the title "Reallocate budget from Radio").
 - **Fichiers principaux :** `mide/report.py` (`_actions`, budget action), `tests/test_report.py`

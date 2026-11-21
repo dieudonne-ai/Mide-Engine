@@ -65,6 +65,13 @@ def _by_module(findings: list[Finding]) -> dict[str, Finding]:
     return {f.module: f for f in findings}
 
 
+def _join_names(names: list[str], fr: bool) -> str:
+    """Join names as a sentence would: "A", "A and B", "A, B and C" ("et" in French)."""
+    if len(names) < 2:
+        return "".join(names)
+    return f"{', '.join(names[:-1])} {'et' if fr else 'and'} {names[-1]}"
+
+
 def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> list[Action]:
     """Rank candidate actions: churn, marketing budget, anomalies, sales trend.
 
@@ -99,7 +106,7 @@ def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> l
             # so the action must not silently drop all but the first one. With several
             # moves, keep the "move X" label: "Radio: 6,840 to Email" alone does not
             # say which way the budget goes.
-            sources = ", ".join(k[5:] for k, _ in moves)
+            sources = _join_names([k[5:] for k, _ in moves], fr)
             detail = (val(moves[0][1]) if len(moves) == 1
                       else ls.join(f"{label(k)}{sep}{val(v)}" for k, v in moves))
             out.append(Action(
