@@ -27,6 +27,7 @@ from mide.automl.trainer import train as train_model
 from mide.config import Config, ConfigError, load_config
 from mide.connectors.base import is_url
 from mide.connectors.sources import (
+    EmptySource,
     SourceCovered,
     add_source,
     list_sources,
@@ -85,6 +86,10 @@ SOURCES_MESSAGES: dict[str, dict[str, str]] = {
     "not_listed": {
         "fr": "Erreur : source non listée : {value}. {hint}",
         "en": "Error: source not listed: {value}. {hint}",
+    },
+    "empty_source": {
+        "fr": "Erreur : la source est vide ; indiquez un dossier, un fichier ou une URL SQL.",
+        "en": "Error: the source is empty; give a folder, a file or a SQL URL.",
     },
     "missing_path": {
         "fr": "Erreur : le chemin n'existe pas : {value}",
@@ -411,8 +416,11 @@ def sources_add(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> Non
     except ConfigError as exc:
         _echo_error(exc, language)
         raise typer.Exit(1) from exc
+    except EmptySource as exc:
+        typer.echo(_sources_msg("empty_source", language), err=True)
+        raise typer.Exit(1) from exc
     except FileNotFoundError as exc:
-        typer.echo(_sources_msg("missing_path", language, value=source), err=True)
+        typer.echo(_sources_msg("missing_path", language, value=source.strip()), err=True)
         raise typer.Exit(1) from exc
     except SourceCovered as exc:
         typer.echo(_sources_msg("covered", language, value=exc.path, folder=exc.folder))
@@ -451,7 +459,7 @@ def sources_remove(source: str, config_dir: Path | None = CONFIG_DIR_OPTION) -> 
         )
         typer.echo(_sources_msg("not_listed", language, value=source, hint=hint), err=True)
         raise typer.Exit(1)
-    typer.echo(_sources_msg("removed", language, value=source))
+    typer.echo(_sources_msg("removed", language, value=source.strip()))
 
 
 @app.command()

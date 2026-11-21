@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: a blank source no longer authorizes the current folder; `mide sources add/remove` ignore stray spaces (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #152 was already merged; suite green at start (560 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Consent bug (principle 1): `mide sources add ""` (e.g. `mide sources add "$DATA_DIR"` with the variable unset), or a blank value typed in the dashboard, silently authorized the **current folder**, because `Path("")` resolves to it. A blank source is now refused with a clear FR/EN error and exit code 1; a blank `remove` never revokes anything. Also, `mide sources add " /path/data "` (copy-paste) failed with "path does not exist", and `remove` with "source not listed". Both now use the exact value first, then the trimmed one; SQL URLs are stored trimmed.
+- **Fichiers principaux :** `mide/connectors/sources.py` (new `EmptySource`, `_clean_source`, `add_source`, `remove_source`), `mide/cli.py` (`sources_add`, `sources_remove`, message `empty_source`), `tests/test_connectors_base.py`
+- **Tests :** 563 passed, 0 skipped. 3 new: `test_blank_source_never_authorizes_current_folder` and `test_sources_add_and_remove_ignore_stray_spaces` (both fail without the fix), `test_exact_path_with_spaces_still_wins`. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-5ostdk -> main
+- **Décisions techniques :** the guard is in `add_source`/`remove_source`, not only the CLI, so the dashboard gets it too. An exact path that really starts or ends with a space still wins. `EmptySource` subclasses `ValueError` but is caught before the "password in URL" handler.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: `mide ask/chat --source` ignores stray spaces (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #151 was already merged; suite green at start (559 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `mide ask "..." --source " /path/meeting.txt "` (typical of copy-paste) failed with "Source not indexed", although the item is indexed. `_check_source` now returns the matched item: exact value first, then the trimmed one. A blank `--source` means "no filter". Same for `mide chat`. Unknown sources still exit with code 1 and list the indexed ones.
 - **Fichiers principaux :** `mide/cli.py` (`_check_source`, `ask_answer`, `chat_command`), `tests/test_retriever.py`

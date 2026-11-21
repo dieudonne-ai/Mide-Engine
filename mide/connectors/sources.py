@@ -19,6 +19,28 @@ class SourceCovered(Exception):
         self.folder = folder
 
 
+class EmptySource(ValueError):
+    """The source is blank; it would otherwise resolve to the current folder."""
+
+    def __init__(self) -> None:
+        super().__init__("The source is empty: give a folder, a file or a SQL URL.")
+
+
+def _clean_source(source: str) -> str:
+    """Return ``source`` without stray surrounding spaces (copy-paste).
+
+    The exact value wins when it names an existing path, so a real path that
+    starts or ends with a space still works. A blank value raises ``EmptySource``:
+    ``Path("")`` is the current folder, which the user never chose to authorize.
+    """
+    stripped = source.strip()
+    if not stripped:
+        raise EmptySource()
+    if stripped == source or Path(source).expanduser().exists():
+        return source
+    return stripped
+
+
 HEADER = "# Authorized data sources. Nothing outside this list is ever read.\n"
 
 
@@ -51,6 +73,7 @@ def _save(sources: list[str], config_dir: Path | None) -> None:
 
 def add_source(source: str, config_dir: Path | None = None) -> str:
     """Authorize a path or SQL URL. Returns the stored (normalized) value."""
+    source = _clean_source(source)
     if is_url(source):
         from urllib.parse import urlsplit
 
@@ -78,10 +101,17 @@ def add_source(source: str, config_dir: Path | None = None) -> str:
 
 
 def remove_source(source: str, config_dir: Path | None = None) -> bool:
-    """Revoke a source. Returns False if it was not listed."""
-    value = normalize_source(source)
+    """Revoke a source. Returns False if it was not listed.
+
+    The exact value is tried first, then the value without surrounding spaces.
+    A blank value never matches (it would resolve to the current folder).
+    """
+    if not source.strip():
+        return False
     sources = list_sources(config_dir)
-    if value not in sources:
+    candidates = (normalize_source(source), normalize_source(source.strip()))
+    value = next((c for c in candidates if c in sources), None)
+    if value is None:
         return False
     sources.remove(value)
     _save(sources, config_dir)
