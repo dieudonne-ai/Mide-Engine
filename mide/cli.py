@@ -706,6 +706,14 @@ def _load_dataset(dataset: str, sources: list[str], language: str = "fr"):
     raise ValueError(_sources_msg("dataset_not_found", lang, dataset=dataset, hint=hint))
 
 
+def _match_column(df, column: str | None) -> str | None:
+    """``column`` as spelled in ``df``: exact name first, then without stray spaces."""
+    if column is None or column in df.columns:
+        return column
+    stripped = column.strip()
+    return stripped if stripped in df.columns else column
+
+
 def _check_columns(df, target: str, date_column: str | None, language: str) -> None:
     """Raise a ``ValueError`` in ``language`` when ``target`` or ``date_column`` is missing."""
     lang = _language_of(language)
@@ -731,7 +739,9 @@ def train_command(
     """Train a model on an authorized dataset and save it in the registry."""
     try:
         cfg = load_config(config_dir)
-        item, label, df = _load_dataset(dataset, list_sources(config_dir), cfg.language)
+        item, label, df = _load_dataset(dataset.strip(), list_sources(config_dir), cfg.language)
+        target = _match_column(df, target) or target
+        date_column = _match_column(df, date_column) or None
         _check_columns(df, target, date_column, cfg.language)
         result = train_model(
             df, target, profile=profile_hardware().profile, seed=seed, date_column=date_column

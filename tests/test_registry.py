@@ -334,3 +334,19 @@ def test_trained_line_handles_missing_score():
     meta = {"task": "regression", "target": "y", "primary_metric": "mae",
             "metrics": {}, "beats_baseline": False}
     assert _trained_line("m", 2, meta, "fr") == "m v2 [régression] cible=y mae=? bat_reference=non"
+
+
+def test_cli_train_ignores_stray_spaces(demo_data, tmp_path, monkeypatch):
+    # Copy-pasted names with stray spaces still match the dataset and its columns.
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    runner = CliRunner()
+    opt = ["--config-dir", str(cfg)]
+    runner.invoke(app, ["sources", "add", str(demo_data["sales"]), *opt])
+    res = runner.invoke(app, ["train", "--dataset", " sales ", "--target", "amount ",
+                              "--date-column", " date", *opt])
+    assert res.exit_code == 0, res.output
+    assert "Modèle enregistré : sales-amount v1" in res.output
+    bad = runner.invoke(app, ["train", "--dataset", "sales", "--target", " amout ", *opt])
+    assert bad.exit_code == 1
+    assert "Colonnes disponibles :" in bad.output
