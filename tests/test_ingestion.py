@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 from typer.testing import CliRunner
 
 from mide.cli import app
@@ -191,3 +192,27 @@ def test_catalog_lists_a_file_once_when_sources_overlap(tmp_path: Path) -> None:
             _sales_df().to_sql("orders", con, index=False)
         urls.append(f"sqlite:///{tmp_path / name}")
     assert [e.item for e in build_catalog(urls)] == ["orders", "orders"]
+
+
+def test_catalog_unreadable_sql_table_reports_only_that_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mide.connectors.sql import SQLConnector
+
+    db = tmp_path / "shop.db"
+    with closing(sqlite3.connect(db)) as con:
+        _sales_df().to_sql("orders", con, index=False)
+        _sales_df().to_sql("secret", con, index=False)
+    original = SQLConnector.metadata
+
+    def metadata(self: SQLConnector, item: str) -> dict:
+        if item == "secret":  # e.g. PostgreSQL "permission denied for table"
+            raise PermissionError("permission denied")
+        return original(self, item)
+
+    monkeypatch.setattr(SQLConnector, "metadata", metadata)
+    url = f"sqlite:///{db}"
+    entries = {e.item: e for e in build_catalog([url])}
+    assert entries["orders"].error is None and entries["orders"].rows == 60
+    assert entries["secret"].kind == "sql"
+    assert entries["secret"].error == "PermissionError"
