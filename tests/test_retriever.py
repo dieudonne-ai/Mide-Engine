@@ -120,3 +120,28 @@ def test_ask_and_chat_reject_unknown_source(tmp_path, monkeypatch, fake_embedder
                                   "--config-dir", str(cfg_dir)])
     assert res.exit_code == 0, res.output
     assert "meeting.txt" in res.output and "rice" not in llm.prompts[0]
+
+
+def test_ask_and_chat_source_ignores_stray_spaces(tmp_path, monkeypatch, fake_embedder):
+    src, _ = _indexed(tmp_path, fake_embedder)
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(cli, "_get_embedder", lambda cfg: fake_embedder)
+    llm = FakeLLM("Budget goes up [1].")
+    monkeypatch.setattr(cli, "_get_llm", lambda cfg: llm)
+    cfg_dir = tmp_path / "cfg"
+    cfg_dir.mkdir()
+    (cfg_dir / "sources.yaml").write_text(f"sources:\n  - {src}\n")
+    runner = CliRunner()
+    assert runner.invoke(cli.app, ["index", "--config-dir", str(cfg_dir)]).exit_code == 0
+    item = next(i for i in VectorStore(tmp_path / "home" / "index").items() if i.endswith("meeting.txt"))
+    res = runner.invoke(cli.app, ["ask", "marketing budget", "--source", f"  {item} ",
+                                  "--config-dir", str(cfg_dir)])
+    assert res.exit_code == 0, res.output
+    assert "meeting.txt" in res.output and "rice" not in llm.prompts[-1]
+    res = runner.invoke(cli.app, ["chat", "--source", f"{item}  ", "--config-dir", str(cfg_dir)],
+                        input="marketing budget\nexit\n")
+    assert res.exit_code == 0, res.output
+    assert "rice" not in llm.prompts[-1]
+    res = runner.invoke(cli.app, ["ask", "rice stock", "--source", "  ", "--config-dir", str(cfg_dir)])
+    assert res.exit_code == 0, res.output
+    assert "rice" in llm.prompts[-1]

@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: `mide ask/chat --source` ignores stray spaces (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #151 was already merged; suite green at start (559 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `mide ask "..." --source " /path/meeting.txt "` (typical of copy-paste) failed with "Source not indexed", although the item is indexed. `_check_source` now returns the matched item: exact value first, then the trimmed one. A blank `--source` means "no filter". Same for `mide chat`. Unknown sources still exit with code 1 and list the indexed ones.
+- **Fichiers principaux :** `mide/cli.py` (`_check_source`, `ask_answer`, `chat_command`), `tests/test_retriever.py`
+- **Tests :** 560 passed, 0 skipped. 1 new: `test_ask_and_chat_source_ignores_stray_spaces` (fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-4bbma1 -> main
+- **Décisions techniques :** same rule as the `mide train` fix: an exact match always wins, so an item whose path really has surrounding spaces still works; matching stays case-sensitive (paths on Linux are).
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: `mide train` ignores stray spaces in names (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #150 was already merged; suite green at start (558 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `mide train --dataset " sales " --target "amount "` (typical of copy-paste) failed with "dataset not found" / "target column not found", although both exist. The dataset name is now trimmed; `--target` and `--date-column` use the exact column name first, then the trimmed one. A blank `--date-column` means "no override". Unknown columns still exit with code 1 and list the available ones.
 - **Fichiers principaux :** `mide/cli.py` (`_match_column`, `train_command`), `tests/test_registry.py`
