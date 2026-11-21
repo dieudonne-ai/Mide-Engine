@@ -26,7 +26,8 @@ DTYPE_SAMPLE_ROWS = 10_000
 
 def detect_encoding(path: Path) -> str:
     """Return ``utf-8-sig`` if the file decodes as UTF-8 (BOM-safe), else ``latin-1``."""
-    raw = path.read_bytes()[:_SAMPLE_BYTES]
+    with path.open("rb") as fh:  # read only the sample, never the whole file
+        raw = fh.read(_SAMPLE_BYTES)
     try:
         raw.decode("utf-8")
     except UnicodeDecodeError as exc:
