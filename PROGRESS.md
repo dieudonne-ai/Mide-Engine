@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: total sales in parentheses in the English attribution check (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #140 was already merged; suite green at start (539 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The English marketing attribution check read "channels report 1,443,825 revenue, 1.96x total sales 735,907; …", with the total glued to its label, while French already reads "… soit 1,96 fois le total des ventes (735 907) ; …". English now reads "1.96x total sales (735,907); …". This shows in the weekly report (budget action), `mide ask` "Data used", the LLM prompt and the dashboard. French output is unchanged.
+- **Fichiers principaux :** `mide/agent/decision.py` (`_attribution_check`, matching `_FR_VALUE_PHRASES` regex), `tests/test_agent.py`, `tests/test_report.py`
+- **Tests :** 540 passed, 0 skipped. 1 new: the English demo report cites total sales in parentheses and never as "total sales <number>" (fails without the fix). Expectations updated in `test_marketing_flags_attribution_above_total_sales`, `test_budget_action_carries_attribution_check` and one case of `test_fact_value_translates_english_phrases_to_french`. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-yqcxy5 -> main
+- **Décisions techniques :** the English fact itself changed (as in #138), and the French regex now expects the parentheses, so the French text stays the same.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-20 — Maintenance: "no anomaly since …" when every anomaly is old (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #139 was already merged; suite green at start (538 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). On the demo data the report alerts said "4 anomalies plus anciennes (avant le 2 octobre 2024) non listées" ("4 older anomalies (before 2024-10-02) not listed") with no recent anomaly above it, so "older" had nothing to compare against. When none is recent, the alert now reads "aucune anomalie depuis le 2 octobre 2024 (4 plus anciennes non listées)" / "no anomaly since 2024-10-02 (4 older ones not listed)". When some recent anomalies are listed, the old wording stays.
 - **Fichiers principaux :** `mide/report.py` (`recent_anomaly_alerts`), `tests/test_report.py`
