@@ -295,7 +295,7 @@ def test_forecast_fact_cites_the_period_it_covers(data):
     start = (pd.to_datetime(data.sales["date"]).max() + pd.Timedelta(days=1)).date()
     for h in (30, 60, 90):
         end = start + pd.Timedelta(days=h - 1)
-        assert f"for {start} -> {end} (" in facts[f"forecast {h}d"]
+        assert f"from {start} to {end} (" in facts[f"forecast {h}d"]
         assert facts[f"forecast {h}d"].endswith(f"vs previous {h}d)")
 
 
@@ -304,7 +304,7 @@ def test_insights_revenue_and_growth_cite_their_period(data):
     facts = run_modules(["insights"], data)[0].facts
     dates = pd.to_datetime(data.sales["date"])
     first, last = dates.min().date(), dates.max().date()
-    assert facts["revenue"].endswith(f" for {first} -> {last}")
+    assert facts["revenue"].endswith(f" from {first} to {last}")
     assert facts["30d growth"].endswith(f" (30 days to {last} vs previous 30)")
 
 
@@ -472,7 +472,7 @@ def test_fact_value_translates_english_phrases_to_french():
     from mide.agent.decision import fact_value, french_numbers, french_punctuation
 
     cases = {
-        "735,907 for 2023-01-01 -> 2024-12-31": "735,907 du 1er janvier 2023 au 31 décembre 2024",
+        "735,907 from 2023-01-01 to 2024-12-31": "735,907 du 1er janvier 2023 au 31 décembre 2024",
         "43 (735,907 / 17,037 orders)": "43 (735,907 / 17,037 commandes)",
         "+10.4% (30 days to 2024-12-31 vs previous 30)":
             "+10.4% (30 jours jusqu'au 31 décembre 2024, contre les 30 précédents)",
@@ -480,7 +480,7 @@ def test_fact_value_translates_english_phrases_to_french():
             "baisse du 14 juin 2023 au 16 juin 2023 : 74 au lieu de 1,735 attendus (-96%)",
         "spike on 2024-03-08: 3,962 vs 1,265 expected (+213%)":
             "pic le 8 mars 2024 : 3,962 au lieu de 1,265 attendus (+213%)",
-        "45,871 for 2025-01-01 -> 2025-01-30 (-9.3% vs previous 30d)":
+        "45,871 from 2025-01-01 to 2025-01-30 (-9.3% vs previous 30d)":
             "45,871 du 1er janvier 2025 au 30 janvier 2025 (-9.3% par rapport aux 30 jours précédents)",
         "up, YoY +20.7% (2024-01 -> 2024-12 vs 2023-01 -> 2023-12)":
             "hausse, sur un an +20.7% (janvier 2024 à décembre 2024 contre janvier 2023 à décembre 2023)",

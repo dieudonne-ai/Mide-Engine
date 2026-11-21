@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: "from … to …" periods in English facts (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #141 was already merged; suite green at start (540 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). English periods read like arrows in a log: "revenue: 735,907 for 2023-01-01 -> 2024-12-31", "forecast 30d: 45,871 for 2025-01-01 -> 2025-01-30 (…)". They now read "735,907 from 2023-01-01 to 2024-12-31" and "45,871 from 2025-01-01 to 2025-01-30 (…)". This shows in the weekly report (KPIs, forecasts, trend action), `mide ask` "Data used", the LLM prompt and the dashboard. French output is unchanged ("du 1er janvier 2023 au 31 décembre 2024").
+- **Fichiers principaux :** `mide/agent/decision.py` (`_forecast_text`, `_insights_finding`, matching `_FR_VALUE_PHRASES` regex), `tests/test_agent.py`, `tests/test_report.py`
+- **Tests :** 541 passed, 0 skipped. 1 new: the English demo report says "from … to …" for revenue and forecasts and has no "for <date> ->", while French still says "du … au …" (fails without the fix). Expectations updated in `test_forecast_fact_cites_the_period_it_covers`, `test_insights_revenue_and_growth_cite_their_period`, `test_trend_action_cites_30d_forecast`, `test_french_report_has_no_english_fact_values` and two cases of `test_fact_value_translates_english_phrases_to_french`. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-6sljkj -> main
+- **Décisions techniques :** only the "for A -> B" day periods changed. Anomaly periods ("drop on A -> B:") are left as they are because `report._ANOMALY_END` parses them, and the month ranges in the trend ("2024-01 -> 2024-12") are left as they are because `french_year_months` matches them.
+- **Problèmes / dette technique :** anomaly and month ranges still use "->" in English. The churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: total sales in parentheses in the English attribution check (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #140 was already merged; suite green at start (539 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The English marketing attribution check read "channels report 1,443,825 revenue, 1.96x total sales 735,907; …", with the total glued to its label, while French already reads "… soit 1,96 fois le total des ventes (735 907) ; …". English now reads "1.96x total sales (735,907); …". This shows in the weekly report (budget action), `mide ask` "Data used", the LLM prompt and the dashboard. French output is unchanged.
 - **Fichiers principaux :** `mide/agent/decision.py` (`_attribution_check`, matching `_FR_VALUE_PHRASES` regex), `tests/test_agent.py`, `tests/test_report.py`
