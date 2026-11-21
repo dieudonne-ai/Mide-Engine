@@ -142,12 +142,12 @@ def test_report_labels_follow_language(tables):
     nb = "\u00a0"
     for label in (f"**chiffre d'affaires**{nb}:", f"**commandes**{nb}:", f"**panier moyen**{nb}:",
                   f"**croissance sur 30 jours**{nb}:", f"**prévision à 30 jours**{nb}:",
-                  f"- risque de départ{nb}: ", f"- canaux marketing sous-performants{nb}: Radio, SMS"):
+                  f"- risque de départ{nb}: ", f"- canaux marketing sous-performants{nb}: Radio (ROI -0,18), SMS (ROI -0,58)"):
         assert label in fr, label
     assert "**revenue**" not in fr and "- churn:" not in fr and "marketing underperforming" not in fr
     en = render_markdown(build_report(tables, "en"))
     for label in ("**revenue**:", "**average order value**:", "**forecast 90d**:", "- churn: ",
-                  "- marketing underperforming: Radio, SMS"):
+                  "- marketing underperforming: Radio (ROI -0.18), SMS (ROI -0.58)"):
         assert label in en, label
     assert "<b>prévision à 60 jours</b>" in render_html(build_report(tables, "fr"))
     assert fact_label("unknown key", "fr") == "unknown key"
@@ -488,3 +488,14 @@ def test_join_names_reads_as_a_sentence(names, fr, expected):
     from mide.report import _join_names
 
     assert _join_names(names, fr) == expected
+
+
+def test_underperforming_alert_cites_each_channel_roi():
+    from mide.report import underperforming_with_roi
+
+    facts = {"underperforming": "Radio, SMS, TV",
+             "channel Radio": "ROI -0.18, ROAS 0.82 (spend 13,680, revenue 11,250)",
+             "channel SMS": "ROI 0.40, ROAS 1.40 (spend 100, revenue 140)"}
+    # TV has no channel fact: named without a figure rather than dropped.
+    assert underperforming_with_roi(facts) == "Radio (ROI -0.18), SMS (ROI 0.40), TV"
+    assert underperforming_with_roi({"underperforming": "Radio"}) == "Radio"
