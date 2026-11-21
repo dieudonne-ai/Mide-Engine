@@ -191,6 +191,20 @@ def test_cli_report(tmp_path, monkeypatch, demo_data):
     assert CliRunner().invoke(cli.app, ["report", "--format", "pdf"]).exit_code == 2
 
 
+def test_cli_report_format_is_case_insensitive(tmp_path, monkeypatch, demo_data):
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    (cfg / "sources.yaml").write_text(f"sources:\n  - {demo_data['sales']}\n")
+    out = tmp_path / "r.html"
+    res = CliRunner().invoke(cli.app, ["report", "--format", "HTML", "-o", str(out),
+                                       "--config-dir", str(cfg)])
+    assert res.exit_code == 0 and out.read_text().startswith("<!doctype html>")
+    res = CliRunner().invoke(cli.app, ["report", "--format", " Md ", "--config-dir", str(cfg)])
+    assert res.exit_code == 0 and res.output.lstrip().startswith("#")
+    assert CliRunner().invoke(cli.app, ["report", "--format", "PDF"]).exit_code == 2
+
+
 def _sales(last: str):
     import pandas as pd
 
