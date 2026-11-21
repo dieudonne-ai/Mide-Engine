@@ -827,13 +827,18 @@ class UnknownSourceError(ValueError):
     """``--source`` names no indexed item, so the search would find nothing."""
 
 
-def _check_source(store: VectorStore, source: str | None, language: str) -> None:
-    """Fail clearly when ``source`` is not an indexed item, listing the valid ones."""
-    if source is None:
-        return
+def _check_source(store: VectorStore, source: str | None, language: str) -> str | None:
+    """Return the indexed item ``source`` names, or fail clearly listing the valid ones.
+
+    An exact match wins; otherwise surrounding spaces (copy-paste) are ignored.
+    A blank ``source`` means "no filter" and returns ``None``.
+    """
+    if source is None or not source.strip():
+        return None
     items = store.items()
-    if source in items:
-        return
+    for candidate in (source, source.strip()):
+        if candidate in items:
+            return candidate
     if language == "fr":
         hint = (f"Sources indexées{NBSP}: {', '.join(items)}" if items
                 else "Index vide. Lancez `mide index`.")
@@ -861,7 +866,7 @@ def ask_answer(question: str, config_dir: Path | None = None, source: str | None
             if cfg.language == "fr"
             else "Empty question. Example: mide ask \"Which products sell best?\"")
     if source is not None:
-        _check_source(VectorStore(cfg.app_dir / "index"), source, cfg.language)
+        source = _check_source(VectorStore(cfg.app_dir / "index"), source, cfg.language)
     route = route_question(question)
     passages: list = []
     findings: list = []
@@ -1102,7 +1107,7 @@ def chat_command(
             )
             raise typer.Exit(1)
         try:
-            _check_source(store, source, cfg.language)
+            source = _check_source(store, source, cfg.language)
         except UnknownSourceError as exc:
             typer.echo(str(exc), err=True)
             raise typer.Exit(1) from exc
