@@ -31,15 +31,40 @@ def test_anomaly_action_cites_most_recent_anomaly(demo_data):
 
     from mide.agent.decision import run_modules
 
-    # Sales cut at 2024-10-01: the 2024-09-03 -> 09-04 drop is within the 90-day window.
+    # Sales cut at 2024-10-01: the 2024-09-03 to 09-04 drop is within the 90-day window.
     sales = pd.read_csv(demo_data["sales"])
     data = detect_tables({"s": sales[sales["date"] <= "2024-10-01"]})
     facts = run_modules(["insights"], data)[0].facts
     anomalies = [v for k, v in facts.items() if k.startswith("anomaly ")]
-    assert len(anomalies) >= 2 and anomalies[-1].startswith("drop on 2024-09-03")
+    assert len(anomalies) >= 2 and anomalies[-1].startswith("drop from 2024-09-03 to 2024-09-04")
     action = next(a for a in build_report(data, "en").actions
                   if "latest sales anomaly" in a.text)
     assert action.evidence == anomalies[-1]
+
+
+@pytest.mark.parametrize("text, end", [
+    ("drop on 2024-06-01: 1 vs 9 expected (-89%)", date(2024, 6, 1)),
+    ("spike from 2024-09-28 to 2024-10-03: 9 vs 1 expected (+800%)", date(2024, 10, 3)),
+    ("spike on 2024-09-28 -> 2024-10-03: 9 vs 1 expected (+800%)", date(2024, 10, 3)),  # older wording
+    ("no period here", None),
+])
+def test_anomaly_end_reads_day_and_range(text, end):
+    from mide.report import _anomaly_end
+
+    assert _anomaly_end(text) == end
+
+
+def test_english_report_anomaly_ranges_read_from_to(demo_data):
+    import pandas as pd
+
+    sales = pd.read_csv(demo_data["sales"])
+    data = detect_tables({"s": sales[sales["date"] <= "2024-10-01"]})
+    en = render_markdown(build_report(data, "en"))
+    assert "drop from 2024-09-03 to 2024-09-04:" in en
+    assert not re.search(r"\b(drop|spike) on \d{4}-\d{2}-\d{2} ->", en)
+    fr = render_markdown(build_report(data, "fr"))
+    assert "baisse du 3 septembre 2024 au 4 septembre 2024" in fr
+    assert "from 2024" not in fr
 
 
 def test_no_anomaly_action_when_all_anomalies_are_old(tables):
@@ -59,9 +84,9 @@ def test_actions_anomaly_window():
 
     ins = {"insights": Finding("insights", {
         "anomaly 1": "drop on 2024-06-01: 1 vs 9 expected (-89%)",
-        "anomaly 2": "spike on 2024-09-28 -> 2024-10-03: 9 vs 1 expected (+800%)"})}
+        "anomaly 2": "spike from 2024-09-28 to 2024-10-03: 9 vs 1 expected (+800%)"})}
     [act] = _actions(ins, fr=False, last_day=date(2024, 12, 31))
-    assert act.evidence.startswith("spike on 2024-09-28")  # a run counts by its last day
+    assert act.evidence.startswith("spike from 2024-09-28")  # a run counts by its last day
     assert _actions(ins, fr=False, last_day=date(2025, 3, 1)) == []
     assert _actions(ins, fr=False)[0].evidence.startswith("spike")  # no sales date: no filter
 
@@ -72,7 +97,7 @@ def test_recent_anomaly_alerts_keeps_recent_and_counts_older():
     from mide.report import recent_anomaly_alerts
 
     items = ["drop on 2024-06-01: 1 vs 9 expected (-89%)",
-             "spike on 2024-09-28 -> 2024-10-03: 9 vs 1 expected (+800%)",
+             "spike from 2024-09-28 to 2024-10-03: 9 vs 1 expected (+800%)",
              "drop on 2024-12-20: 1 vs 9 expected (-89%)"]
     last = date(2024, 12, 31)  # cutoff = 2024-10-02; a run counts by its last day
     assert recent_anomaly_alerts(items, last, fr=False) == [

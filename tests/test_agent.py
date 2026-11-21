@@ -476,7 +476,9 @@ def test_fact_value_translates_english_phrases_to_french():
         "43 (735,907 / 17,037 orders)": "43 (735,907 / 17,037 commandes)",
         "+10.4% (30 days to 2024-12-31 vs previous 30)":
             "+10.4% (30 jours jusqu'au 31 décembre 2024, contre les 30 précédents)",
-        "drop on 2023-06-14 -> 2023-06-16: 74 vs 1,735 expected (-96%)":
+        "drop from 2023-06-14 to 2023-06-16: 74 vs 1,735 expected (-96%)":
+            "baisse du 14 juin 2023 au 16 juin 2023 : 74 au lieu de 1,735 attendus (-96%)",
+        "drop on 2023-06-14 -> 2023-06-16: 74 vs 1,735 expected (-96%)":  # older wording
             "baisse du 14 juin 2023 au 16 juin 2023 : 74 au lieu de 1,735 attendus (-96%)",
         "spike on 2024-03-08: 3,962 vs 1,265 expected (+213%)":
             "pic le 8 mars 2024 : 3,962 au lieu de 1,265 attendus (+213%)",

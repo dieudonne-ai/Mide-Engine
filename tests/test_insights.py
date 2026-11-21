@@ -89,4 +89,4 @@ def test_describe_shows_signed_deviation_from_expected():
     drop = Anomaly(day, day + pd.Timedelta(days=2), "drop", actual=40.0, expected=1000.0,
                    ratio=0.04, score=-9.0, days=3)
     assert spike.describe() == "spike on 2024-03-08: 3,000 vs 1,000 expected (+200%)"
-    assert drop.describe() == "drop on 2024-03-08 -> 2024-03-10: 40 vs 1,000 expected (-96%)"
+    assert drop.describe() == "drop from 2024-03-08 to 2024-03-10: 40 vs 1,000 expected (-96%)"
