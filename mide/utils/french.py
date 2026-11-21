@@ -13,7 +13,7 @@ FRENCH_MONTHS = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet
 _SPACE_BEFORE_SIGN = re.compile(r" (?=[:;?!](?:\s|$|[\"'`)]))")
 _ISO_DATE = re.compile(r"(?<![\d-])(\d{4})-(\d{2})-(\d{2})(?![\d-])")
 _YM = r"(?<![\d-])(\d{4})-(\d{2})(?![\d-])"
-_YEAR_MONTH_RANGE = re.compile(_YM + r" -> " + _YM)
+_YEAR_MONTH_RANGE = re.compile(_YM + r" (?:->|to) " + _YM)
 _YEAR_MONTH = re.compile(_YM)
 
 
@@ -52,7 +52,9 @@ def french_month(year: int, month: int) -> str:
 
 
 def french_year_months(text: str) -> str:
-    """Spell out ISO year-months in ``text``: '2024-10 -> 2024-12' -> 'octobre 2024 à décembre 2024'.
+    """Spell out ISO year-months in ``text``: '2024-10 to 2024-12' -> 'octobre 2024 à décembre 2024'.
+
+    Ranges may be written 'A to B' (English facts) or 'A -> B'.
 
     A lone year-month ('2024-10') becomes 'octobre 2024'. Full dates ('2024-10-02'),
     invalid months ('2024-13') and longer digit runs are kept."""

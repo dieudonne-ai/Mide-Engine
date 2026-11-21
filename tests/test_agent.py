@@ -196,8 +196,8 @@ def test_sales_trend_cites_yoy_basis(data):
 def test_sales_trend_cites_months_compared(data):
     # Demo sales cover 2023-01-01 -> 2024-12-31: growth figures must say which months they compare.
     trend = run_modules(["sales"], data)[0].facts["trend"]
-    assert "YoY " in trend and "(2024-01 -> 2024-12 vs 2023-01 -> 2023-12)" in trend
-    assert "(2024-10 -> 2024-12 vs 2024-07 -> 2024-09)" in trend
+    assert "YoY " in trend and "(2024-01 to 2024-12 vs 2023-01 to 2023-12)" in trend
+    assert "(2024-10 to 2024-12 vs 2024-07 to 2024-09)" in trend
 
 
 def test_sales_trend_skips_partial_last_month(data):
@@ -205,14 +205,14 @@ def test_sales_trend_skips_partial_last_month(data):
     cut = data.sales[pd.to_datetime(data.sales["date"]) <= "2024-12-15"]
     trend = run_modules(["sales"], BusinessData(sales=cut))[0].facts["trend"]
     assert "2024-12" not in trend
-    assert "(2024-09 -> 2024-11 vs 2024-06 -> 2024-08)" in trend
+    assert "(2024-09 to 2024-11 vs 2024-06 to 2024-08)" in trend
 
 
 def test_months_compared_needs_enough_months():
     from mide.agent.decision import _months_compared
     monthly = pd.Series([1.0] * 5, index=pd.date_range("2024-01-01", periods=5, freq="MS"))
     assert _months_compared(monthly, 3) == ""
-    assert _months_compared(monthly, 2) == " (2024-04 -> 2024-05 vs 2024-02 -> 2024-03)"
+    assert _months_compared(monthly, 2) == " (2024-04 to 2024-05 vs 2024-02 to 2024-03)"
 
 
 def test_sales_trend_without_yoy_shows_recent_only(data):
