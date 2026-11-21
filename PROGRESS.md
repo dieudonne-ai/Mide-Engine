@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: CSV encoding detection no longer loads the whole file in RAM (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #154 was already merged; suite green at start (564 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `detect_encoding` in the CSV connector called `path.read_bytes()[:64 KB]`, which reads the **entire** file into memory before keeping only the first 64 KB. On a 4 GB machine (principle 4), a large sales export could double memory use or crash before chunked reading even started. It now reads just the 64 KB sample.
+- **Fichiers principaux :** `mide/connectors/tabular.py` (`detect_encoding`), `tests/test_tabular.py`
+- **Tests :** 565 passed, 0 skipped. 1 new: `test_encoding_detection_reads_only_a_sample` (fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-cbzse3 -> main
+- **Décisions techniques :** same sample size and same UTF-8 / latin-1 logic; only the way the sample is read changed.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: `mide chat` accepts `/clear` in any case (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #153 was already merged; suite green at start (563 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). In `mide chat`, `exit`/`quit` were already case-insensitive but `/clear` was not: typing `/Clear` or `/CLEAR` sent the text to the LLM as a question and stored it in the history, so the conversation was **not** forgotten. Chat commands now share the same case-insensitive check.
 - **Fichiers principaux :** `mide/cli.py` (`_chat_loop`), `tests/test_chat.py`

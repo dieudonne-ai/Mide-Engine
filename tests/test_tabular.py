@@ -98,3 +98,20 @@ def test_corrupt_workbook_does_not_hide_other_files(tmp_path: Path) -> None:
     assert good in items and len(c.read(good)) == 2
     with pytest.raises(zipfile.BadZipFile):
         c.read(str((folder / "bad.xlsx").resolve()))
+
+
+def test_encoding_detection_reads_only_a_sample(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A big CSV must not be loaded entirely in RAM just to guess its encoding."""
+    from mide.connectors import tabular
+
+    f = make(tmp_path) / "big.csv"
+    f.write_bytes(("produit,montant\n" + "été,1\n" * 20_000).encode("latin-1"))
+
+    def no_full_read(self: Path) -> bytes:
+        raise AssertionError("whole file read")
+
+    monkeypatch.setattr(Path, "read_bytes", no_full_read)
+    assert tabular.detect_encoding(f) == "latin-1"
+    assert conn(f.parent).read(str(f)).iloc[0]["produit"] == "été"
