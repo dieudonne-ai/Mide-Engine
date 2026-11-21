@@ -383,7 +383,7 @@ def test_marketing_flags_attribution_above_total_sales(data):
     assert attributed > total
     assert facts["attribution check"] == (
         f"channels report {attributed:,.0f} revenue, {attributed / total:.2f}x "
-        f"total sales {total:,.0f}; the same sale is likely counted by several channels, "
+        f"total sales ({total:,.0f}); the same sale is likely counted by several channels, "
         "so compare ROI/ROAS between channels rather than as absolute returns")
 
 
@@ -499,7 +499,7 @@ def test_fact_value_translates_english_phrases_to_french():
             "au ROAS Google Ads de 5.52; rendements décroissants)",
         "none": "aucun",
         "Radio, SMS": "Radio, SMS",
-        ("channels report 1,443,825 revenue, 1.96x total sales 735,907; the same sale is "
+        ("channels report 1,443,825 revenue, 1.96x total sales (735,907); the same sale is "
          "likely counted by several channels, so compare ROI/ROAS between channels rather "
          "than as absolute returns"):
             ("les canaux déclarent 1,443,825 de revenus, soit 1.96 fois le total des ventes "

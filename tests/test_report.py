@@ -197,7 +197,7 @@ def test_budget_action_carries_attribution_check(tables):
         "Radio: 6,840 to Email, est. extra revenue up to 285,353 (linear, at Email ROAS 42.54; "
         "returns diminish); SMS: 6,396 to Email, est. extra revenue up to 269,460 (linear, at "
         "Email ROAS 42.54; returns diminish); best channel: Email; attribution check: channels report "
-        "1,443,825 revenue, 1.96x total sales 735,907; the same sale is likely counted by "
+        "1,443,825 revenue, 1.96x total sales (735,907); the same sale is likely counted by "
         "several channels, so compare ROI/ROAS between channels rather than as absolute returns")
 
 
@@ -402,3 +402,10 @@ def test_french_report_attribution_check_spells_out_multiplier(tables):
     assert "fois le total des ventes (" in md
     assert not re.search(r"\d,\d+x\b", md)
     assert re.search(r"\d\.\d+x total sales", render_markdown(build_report(tables, "en")))
+
+
+def test_english_attribution_check_puts_total_sales_in_parentheses(tables):
+    # The total sales figure is cited in parentheses, like in French, not glued to the label.
+    md = render_markdown(build_report(tables, "en"))
+    assert re.search(r"\d\.\d+x total sales \(\d[\d,]*\); the same sale", md)
+    assert not re.search(r"total sales \d", md)

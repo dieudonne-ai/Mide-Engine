@@ -76,7 +76,7 @@ _FR_VALUE_PHRASES: list[tuple[re.Pattern[str], str]] = [(re.compile(p), r) for p
       r"channels rather than as absolute returns"),
      ("la même vente est probablement comptée par plusieurs canaux : comparez le ROI/ROAS "
       "entre canaux plutôt qu'en valeur absolue")),
-    (r"channels report (\S+) revenue, (\S+)x total sales (\S+?);",
+    (r"channels report (\S+) revenue, (\S+)x total sales \((\S+?)\);",
      r"les canaux déclarent \1 de revenus, soit \2 fois le total des ventes (\3) ;"),
     (r"est\. extra revenue up to", "revenu supplémentaire estimé jusqu'à"),
     (r"\(linear, at (.+?) ROAS ", r"(linéaire, au ROAS \1 de "),
@@ -296,7 +296,7 @@ def _attribution_check(channels: pd.DataFrame, sales_df: pd.DataFrame | None) ->
     if total_sales <= 0 or attributed <= total_sales:
         return None
     return (f"channels report {_money(attributed)} revenue, {attributed / total_sales:.2f}x "
-            f"total sales {_money(total_sales)}; the same sale is likely counted by several "
+            f"total sales ({_money(total_sales)}); the same sale is likely counted by several "
             "channels, so compare ROI/ROAS between channels rather than as absolute returns")
 
 
