@@ -202,3 +202,55 @@ def test_covering_folder_ignores_urls_and_files() -> None:
     assert covering_folder("sqlite:///x.db", ["/tmp"]) is None
     assert covering_folder("/tmp/a/b.csv", ["sqlite:///x.db"]) is None
     assert covering_folder("/tmp", ["/tmp"]) is None
+
+
+def test_blank_source_never_authorizes_current_folder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # `mide sources add "$UNSET_VAR"` used to authorize the current folder silently.
+    from mide.connectors.sources import EmptySource
+
+    cfg = tmp_path / "cfg"
+    monkeypatch.chdir(tmp_path)
+    for blank in ("", "   "):
+        with pytest.raises(EmptySource):
+            add_source(blank, cfg)
+        res = runner.invoke(app, ["sources", "add", blank, "--config-dir", str(cfg)])
+        assert res.exit_code == 1
+        assert "source est vide" in res.output
+    assert list_sources(cfg) == []
+    # A listed current folder is not revoked by a blank value either.
+    add_source(str(tmp_path), cfg)
+    assert remove_source("", cfg) is False
+    assert remove_source("  ", cfg) is False
+    assert list_sources(cfg) == [str(tmp_path.resolve())]
+
+
+def test_sources_add_and_remove_ignore_stray_spaces(tmp_path: Path) -> None:
+    cfg = tmp_path / "cfg"
+    data = tmp_path / "data"
+    data.mkdir()
+    args = ["--config-dir", str(cfg)]
+    res = runner.invoke(app, ["sources", "add", f" {data} ", *args])
+    assert res.exit_code == 0, res.output
+    assert list_sources(cfg) == [str(data.resolve())]
+    res = runner.invoke(app, ["sources", "remove", f"  {data}\t", *args])
+    assert res.exit_code == 0, res.output
+    assert list_sources(cfg) == []
+    # A SQL URL pasted with spaces is stored trimmed.
+    db = tmp_path / "shop.db"
+    import sqlite3
+
+    sqlite3.connect(db).close()
+    assert add_source(f" sqlite:///{db} ", cfg) == f"sqlite:///{db}"
+    assert remove_source(f"sqlite:///{db}  ", cfg) is True
+
+
+def test_exact_path_with_spaces_still_wins(tmp_path: Path) -> None:
+    cfg = tmp_path / "cfg"
+    spaced = tmp_path / " data "
+    spaced.mkdir()
+    (tmp_path / "data").mkdir()
+    assert add_source(str(spaced), cfg) == str(spaced.resolve())
+    assert remove_source(str(spaced), cfg) is True
+    assert list_sources(cfg) == []
