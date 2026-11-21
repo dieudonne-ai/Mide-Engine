@@ -218,8 +218,8 @@ def test_trend_action_cites_30d_forecast(tables):
                   if a.text == "Track the sales trend and adjust stock")
     assert action.evidence == (
         "trend: up, YoY +20.7% (2024-01 -> 2024-12 vs 2023-01 -> 2023-12), last 3 months "
-        "+70.7% (2024-10 -> 2024-12 vs 2024-07 -> 2024-09); forecast 30d: 45,871 for "
-        "2025-01-01 -> 2025-01-30 (-9.3% vs previous 30d)")
+        "+70.7% (2024-10 -> 2024-12 vs 2024-07 -> 2024-09); forecast 30d: 45,871 from "
+        "2025-01-01 to 2025-01-30 (-9.3% vs previous 30d)")
 
 
 def test_trend_action_without_forecast():
@@ -325,7 +325,7 @@ def test_french_report_has_no_english_fact_values(tables):
 
     report = build_report(tables, "fr", today=date(2025, 1, 10))
     for text in (render_markdown(report), render_html(report)):
-        for phrase in ("customers at high risk", "% of revenue", "vs previous", " for 20",
+        for phrase in ("customers at high risk", "% of revenue", "vs previous", " from 20", " for 20",
                        "est. extra revenue", "returns diminish", "YoY", "last 3 months"):
             assert phrase not in text
         assert "clients à risque élevé" in text and "du 1er janvier 2025 au" in text
@@ -409,3 +409,15 @@ def test_english_attribution_check_puts_total_sales_in_parentheses(tables):
     md = render_markdown(build_report(tables, "en"))
     assert re.search(r"\d\.\d+x total sales \(\d[\d,]*\); the same sale", md)
     assert not re.search(r"total sales \d", md)
+
+
+def test_english_report_periods_read_from_to(tables):
+    from datetime import date
+
+    text = render_markdown(build_report(tables, "en", today=date(2025, 1, 5)))
+    assert "735,907 from 2023-01-01 to 2024-12-31" in text
+    assert "45,871 from 2025-01-01 to 2025-01-30 (-9.3% vs previous 30d)" in text
+    assert not re.search(r"for \d{4}-\d{2}-\d{2} -> ", text)
+    # The French report still reads "du … au …".
+    fr = render_markdown(build_report(tables, "fr", today=date(2025, 1, 5)))
+    assert "735\u00a0907 du 1er janvier 2023 au 31 décembre 2024" in fr and " from 20" not in fr

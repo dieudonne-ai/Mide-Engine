@@ -88,7 +88,7 @@ _FR_VALUE_PHRASES: list[tuple[re.Pattern[str], str]] = [(re.compile(p), r) for p
     (r"(\S+) expected \(", r"\1 attendus ("),
     (rf"\((\d+) days to ({_D}) vs previous (\d+)\)",
      r"(\1 jours jusqu'au \2, contre les \3 précédents)"),
-    (rf"\bfor ({_D}) -> ({_D})", r"du \1 au \2"),
+    (rf"\bfrom ({_D}) to ({_D})", r"du \1 au \2"),
     (r"vs previous (\d+)d\b", r"par rapport aux \1 jours précédents"),
     (r"(\d{4}-\d{2}) vs (\d{4}-\d{2})", r"\1 contre \2"),
     (r"(\d) to (?=\S)", r"\1 vers "),
@@ -234,9 +234,9 @@ def _trend_text(trend: sales.Trend) -> str:
 def _forecast_text(forecast: sales.Forecast, horizon: int) -> str:
     """Total for one horizon, the dates it covers (it starts after the last data day) and growth."""
     days = forecast.daily.index[:horizon]
-    period = f"{days[0]:%Y-%m-%d} -> {days[-1]:%Y-%m-%d}"
+    period = f"from {days[0]:%Y-%m-%d} to {days[-1]:%Y-%m-%d}"
     growth = _pct(forecast.growth_pct[horizon])
-    return f"{_money(forecast.totals[horizon])} for {period} ({growth} vs previous {horizon}d)"
+    return f"{_money(forecast.totals[horizon])} {period} ({growth} vs previous {horizon}d)"
 
 
 def _sales_finding(df: pd.DataFrame, products: pd.DataFrame | None = None) -> Finding:
@@ -330,11 +330,11 @@ _MAX_ANOMALIES = 5
 def _insights_finding(df: pd.DataFrame) -> Finding:
     report = insights.analyze(df)
     k = report.kpis
-    period = f"{k.start.date()} -> {k.end.date()}"
+    period = f"from {k.start.date()} to {k.end.date()}"
     growth = ("n/a" if k.growth_30d is None
               else f"{k.growth_30d:+.1%} (30 days to {k.end.date()} vs previous 30)")
     facts = {
-        "revenue": f"{_money(k.total_revenue)} for {period}", "orders": f"{k.orders:,}",
+        "revenue": f"{_money(k.total_revenue)} {period}", "orders": f"{k.orders:,}",
         "average order value": (f"{_money(k.avg_order_value)} "
                                 f"({_money(k.total_revenue)} / {k.orders:,} orders)"),
         "30d growth": growth,
