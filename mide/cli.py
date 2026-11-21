@@ -1145,9 +1145,10 @@ def _chat_loop(
             question = input("> ").strip()
         except EOFError:
             break
-        if question.lower() in {"exit", "quit", "/exit", "/quit"}:
+        command = question.lower()
+        if command in {"exit", "quit", "/exit", "/quit"}:
             break
-        if question == "/clear":
+        if command == "/clear":
             history.clear()
             continue
         if not question:

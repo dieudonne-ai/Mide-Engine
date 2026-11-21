@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: `mide chat` accepts `/clear` in any case (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #153 was already merged; suite green at start (563 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). In `mide chat`, `exit`/`quit` were already case-insensitive but `/clear` was not: typing `/Clear` or `/CLEAR` sent the text to the LLM as a question and stored it in the history, so the conversation was **not** forgotten. Chat commands now share the same case-insensitive check.
+- **Fichiers principaux :** `mide/cli.py` (`_chat_loop`), `tests/test_chat.py`
+- **Tests :** 564 passed, 0 skipped. 1 new: `test_chat_clear_command_is_case_insensitive` (fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-ny4rsh -> main
+- **Décisions techniques :** only the command words are case-insensitive; questions themselves are passed unchanged to the retriever and LLM.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: a blank source no longer authorizes the current folder; `mide sources add/remove` ignore stray spaces (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #152 was already merged; suite green at start (560 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Consent bug (principle 1): `mide sources add ""` (e.g. `mide sources add "$DATA_DIR"` with the variable unset), or a blank value typed in the dashboard, silently authorized the **current folder**, because `Path("")` resolves to it. A blank source is now refused with a clear FR/EN error and exit code 1; a blank `remove` never revokes anything. Also, `mide sources add " /path/data "` (copy-paste) failed with "path does not exist", and `remove` with "source not listed". Both now use the exact value first, then the trimmed one; SQL URLs are stored trimmed.
 - **Fichiers principaux :** `mide/connectors/sources.py` (new `EmptySource`, `_clean_source`, `add_source`, `remove_source`), `mide/cli.py` (`sources_add`, `sources_remove`, message `empty_source`), `tests/test_connectors_base.py`

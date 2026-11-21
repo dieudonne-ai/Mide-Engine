@@ -102,3 +102,17 @@ def test_chat_ctrl_c_during_answer_exits_cleanly(tmp_path, monkeypatch, fake_emb
     )
     assert res.exit_code == 0, res.output
     assert res.exception is None and "Au revoir." in res.output
+
+
+def test_chat_clear_command_is_case_insensitive(tmp_path, monkeypatch, fake_embedder):
+    llm = FakeLLM("Answer one [1].")
+    cfg_dir = _chat_cfg(tmp_path, monkeypatch, fake_embedder, llm)
+    res = CliRunner().invoke(
+        cli.app, ["chat", "--config-dir", str(cfg_dir)],
+        input="marketing budget Facebook\n /Clear \nand rice stock?\nEXIT\n",
+    )
+    assert res.exit_code == 0, res.output
+    assert len(llm.prompts) == 2  # "/Clear" is a command, not a question for the LLM
+    assert "marketing budget Facebook" not in llm.prompts[1]
+    assert "Previous conversation" not in llm.prompts[1]
+    assert "Conversation précédente" not in llm.prompts[1]
