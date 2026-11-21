@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: one unreadable SQL table no longer hides the whole database from the catalog (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #156 was already merged; suite green at start (566 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). In `build_catalog`, CSV/Excel files were profiled one by one with a per-file error, but SQL tables were not: if a single table could not be read (typical case: a PostgreSQL user without SELECT right on one table), the exception escaped `_sql_entries` and the **whole database** became one "error" entry, so `mide scan` and everything using the catalog lost all its readable tables. Each table is now profiled in its own `try`; an unreadable table is reported as an `sql` entry with an error and the other tables are kept.
+- **Fichiers principaux :** `mide/ingestion/catalog.py` (`_sql_entries`), `tests/test_ingestion.py`
+- **Tests :** 567 passed, 0 skipped. 1 new: `test_catalog_unreadable_sql_table_reports_only_that_table` (fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-n9lacl -> main
+- **Décisions techniques :** the table error keeps only the exception type (e.g. `ProgrammingError`), not its message: SQLAlchemy messages embed the SQL text and server details. Connection errors (whole database unreachable) still produce a single source-level error entry, as before.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: an unreadable text file no longer stops document reading (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #155 was already merged; suite green at start (565 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). In the document connector, a TXT/MD file that cannot be opened (permission denied, or removed between listing and reading) raised a raw `PermissionError`/`FileNotFoundError`. `DocumentConnector.read_all()` only skips `DocumentReadError`, so one locked note in an authorized folder crashed the whole read, e.g. the LoRA Q/R dataset build (`llm/lora.py` `load_documents`). DOCX/PDF already handled this. Text files now raise `DocumentReadError` too, so they are skipped with a log like corrupted files (W1-06 criterion).
 - **Fichiers principaux :** `mide/connectors/files.py` (`_read_text`), `tests/test_files.py`

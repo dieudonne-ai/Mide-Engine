@@ -52,8 +52,13 @@ def _sql_entries(source: str, authorized: list[str]) -> list[CatalogEntry]:
     entries: list[CatalogEntry] = []
     with SQLConnector(source, authorized) as conn:
         for table in conn.discover():
-            meta = conn.metadata(table)
-            profile = profile_dataframe(conn.sample(table, PROFILE_SAMPLE_ROWS))
+            try:
+                meta = conn.metadata(table)
+                profile = profile_dataframe(conn.sample(table, PROFILE_SAMPLE_ROWS))
+            except Exception as exc:  # noqa: BLE001 - e.g. no SELECT right: report, keep scanning
+                logger.warning("Cannot profile table %s: %s", table, type(exc).__name__)
+                entries.append(CatalogEntry(source, table, "sql", error=type(exc).__name__))
+                continue
             entries.append(
                 CatalogEntry(source, table, "sql", meta["rows"], len(meta["columns"]), profile)
             )
