@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: "move X" label on each budget move in the report (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #144 was already merged; suite green at start (548 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). When the weekly report suggested several budget moves, it dropped the "move" label and read "Radio: 6,840 to Email, …; SMS: 6,396 to Email, …", which does not say whether the money leaves Radio or goes to it. Each move now keeps its label: "move Radio: 6,840 to Email, …; move SMS: 6,396 to Email, …", and in French "transfert depuis Radio : 6 840 vers Email, … ; transfert depuis SMS : …". A single move is unchanged ("500 to Email" under the title "Reallocate budget from Radio").
+- **Fichiers principaux :** `mide/report.py` (`_actions`, budget action), `tests/test_report.py`
+- **Tests :** 549 passed, 0 skipped. 1 new: `test_budget_action_with_several_moves_names_each_direction` checks the English and French evidence for two moves (fails without the fix). Expectation updated in `test_budget_action_carries_attribution_check`. `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-0y38xw -> main
+- **Décisions techniques :** reused the existing `fact_label("move X")` translation ("transfert depuis X") instead of adding new wording, so the report matches `mide ask` "Data used".
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: "from A to B" anomaly periods in English (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #143 was already merged; suite green at start (543 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). Following up on the debt noted in #143, multi-day anomalies were the last English facts still using arrows: "drop on 2024-09-03 -> 2024-09-04: 230 vs 1,640 expected (-86%)". They now read "drop from 2024-09-03 to 2024-09-04: …"; one-day anomalies keep "spike on 2024-03-08: …". This shows in the weekly report (alerts and anomaly action), `mide ask` "Data used", the LLM prompt and the dashboard. French output is unchanged ("baisse du 3 septembre 2024 au 4 septembre 2024").
 - **Fichiers principaux :** `mide/business/insights.py` (`Anomaly.describe`), `mide/report.py` (`_ANOMALY_END` reads "on A", "from A to B" and the older "on A -> B"), `mide/dashboard_data.py` (`anomaly_period` English text), `mide/agent/decision.py` (French phrase rule accepts both wordings), `tests/test_report.py`, `tests/test_insights.py`, `tests/test_agent.py`

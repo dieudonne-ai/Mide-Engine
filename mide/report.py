@@ -96,10 +96,12 @@ def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> l
         moves = [(k, v) for k, v in mkt.facts.items() if k.startswith("move ")]
         if moves:
             # Cite every suggested move: the alerts list all underperforming channels,
-            # so the action must not silently drop all but the first one.
+            # so the action must not silently drop all but the first one. With several
+            # moves, keep the "move X" label: "Radio: 6,840 to Email" alone does not
+            # say which way the budget goes.
             sources = ", ".join(k[5:] for k, _ in moves)
             detail = (val(moves[0][1]) if len(moves) == 1
-                      else ls.join(f"{k[5:]}{sep}{val(v)}" for k, v in moves))
+                      else ls.join(f"{label(k)}{sep}{val(v)}" for k, v in moves))
             out.append(Action(
                 (f"Réallouer le budget depuis {sources}" if fr
                  else f"Reallocate budget from {sources}"),
