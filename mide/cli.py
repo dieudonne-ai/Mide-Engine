@@ -972,6 +972,7 @@ def report_command(
     """Generate the weekly report (KPIs, forecasts, alerts, 3 priority actions)."""
     from mide.report import build_report, render_html, render_markdown
 
+    fmt = fmt.strip().lower()
     if fmt not in ("md", "html"):
         typer.echo(_sources_msg("report_format", _cli_language(config_dir)), err=True)
         raise typer.Exit(2)

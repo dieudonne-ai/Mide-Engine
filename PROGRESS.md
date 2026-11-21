@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: `mide report --format` accepts any case (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #148 was already merged; suite green at start (556 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `mide report --format HTML` (or `MD`, or a value with stray spaces) was rejected with "Format must be 'md' or 'html'", although the meaning is clear. The format is now trimmed and lower-cased before the check. Unknown formats (`pdf`, `PDF`) still exit with code 2 and the same message.
+- **Fichiers principaux :** `mide/cli.py` (`report_command`), `tests/test_report.py`
+- **Tests :** 557 passed, 0 skipped. 1 new: `test_cli_report_format_is_case_insensitive` (`HTML`, ` Md `, `PDF`; fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-e03f65 -> main
+- **Décisions techniques :** normalized in the CLI only; `render_html`/`render_markdown` are unchanged.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: HTML report readable on phones (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #147 was already merged; suite green at start (555 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `mide report --format html` produced a page with no viewport tag and no styling, so phones showed it zoomed out at desktop width with tiny text, and long evidence lines ran edge to edge on a wide screen. The page now has a `viewport` meta tag and a small inline style (system font, 48rem max width, padding, long lines wrap). It stays one offline file: no external stylesheet, font, script or URL.
 - **Fichiers principaux :** `mide/report.py` (`_HTML_VIEWPORT`, `_HTML_STYLE`, used by `render_html`), `tests/test_report.py`
