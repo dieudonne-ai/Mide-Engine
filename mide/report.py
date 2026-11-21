@@ -276,6 +276,13 @@ def render_markdown(report: Report) -> str:
     return "\n".join(lines) + "\n"
 
 
+# Phones zoom out pages without a viewport tag, so the report would be unreadable there.
+# The style is inline: the report stays a single offline file (no network, no assets).
+_HTML_VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1">'
+_HTML_STYLE = ("body{font-family:system-ui,sans-serif;line-height:150%;max-width:48rem;"
+               "margin:0 auto;padding:1rem;overflow-wrap:anywhere}")
+
+
 def render_html(report: Report) -> str:
     t = _T[report.language]
     e = html.escape
@@ -301,4 +308,5 @@ def render_html(report: Report) -> str:
             ul([f"<b>{e(a.text)}</b> — {e(a.evidence)}" for a in report.actions], "ol"),
         ]
     return (f"<!doctype html><html lang=\"{report.language}\"><head><meta charset=\"utf-8\">"
+            f"{_HTML_VIEWPORT}<style>{_HTML_STYLE}</style>"
             f"<title>{e(t['title'])}</title></head><body>{''.join(body)}</body></html>\n")

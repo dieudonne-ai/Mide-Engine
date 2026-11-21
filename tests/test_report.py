@@ -154,6 +154,15 @@ def test_report_labels_follow_language(tables):
     assert fact_label("forecast 7d", "xx") == "prévision à 7 jours"
 
 
+def test_html_report_is_readable_on_phones_and_offline(tables):
+    for r in (build_report(tables, "en"), build_report(BusinessData(), "fr")):
+        page = render_html(r)
+        head = page.split("</head>")[0]
+        assert '<meta name="viewport" content="width=device-width, initial-scale=1">' in head
+        assert "<style>" in head and "max-width" in head
+        assert "http" not in page and "<link" not in page and "<script" not in page
+
+
 def test_html_escapes():
     from mide.report import Action, Report
 

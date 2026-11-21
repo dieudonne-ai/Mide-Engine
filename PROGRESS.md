@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: HTML report readable on phones (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #147 was already merged; suite green at start (555 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `mide report --format html` produced a page with no viewport tag and no styling, so phones showed it zoomed out at desktop width with tiny text, and long evidence lines ran edge to edge on a wide screen. The page now has a `viewport` meta tag and a small inline style (system font, 48rem max width, padding, long lines wrap). It stays one offline file: no external stylesheet, font, script or URL.
+- **Fichiers principaux :** `mide/report.py` (`_HTML_VIEWPORT`, `_HTML_STYLE`, used by `render_html`), `tests/test_report.py`
+- **Tests :** 556 passed, 0 skipped. 1 new: `test_html_report_is_readable_on_phones_and_offline` (full and empty reports; fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-utaipz -> main
+- **Décisions techniques :** line height is written `150%`, not `1.5`, because `test_french_report_uses_french_number_format` rejects any `d.d` in the French page; the guard was kept as is. Markdown output is unchanged.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: ROI next to each underperforming channel in the report alert (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #146 was already merged; suite green at start (554 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The weekly report alert "marketing underperforming: Radio, SMS" named the channels without the figure that flags them, unlike every other alert (explainability principle). It now reads "marketing underperforming: Radio (ROI -0.18), SMS (ROI -0.58)", and in French "canaux marketing sous-performants : Radio (ROI -0,18), SMS (ROI -0,58)". The ROI is taken from the existing "channel X" fact, so it matches `mide ask` "Data used". A channel without that fact is still named, without a figure.
 - **Fichiers principaux :** `mide/report.py` (new `underperforming_with_roi`, used by `build_report`), `tests/test_report.py`
