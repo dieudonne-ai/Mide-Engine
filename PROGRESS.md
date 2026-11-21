@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: an unreadable text file no longer stops document reading (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #155 was already merged; suite green at start (565 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). In the document connector, a TXT/MD file that cannot be opened (permission denied, or removed between listing and reading) raised a raw `PermissionError`/`FileNotFoundError`. `DocumentConnector.read_all()` only skips `DocumentReadError`, so one locked note in an authorized folder crashed the whole read, e.g. the LoRA Q/R dataset build (`llm/lora.py` `load_documents`). DOCX/PDF already handled this. Text files now raise `DocumentReadError` too, so they are skipped with a log like corrupted files (W1-06 criterion).
+- **Fichiers principaux :** `mide/connectors/files.py` (`_read_text`), `tests/test_files.py`
+- **Tests :** 566 passed, 0 skipped. 1 new: `test_unreadable_text_file_is_skipped_with_log` (fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-e0si29 -> main
+- **Décisions techniques :** only `OSError` is wrapped; the error message keeps the path but never the file content (privacy). `mide index` already caught every error per item, so its behaviour is unchanged.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: CSV encoding detection no longer loads the whole file in RAM (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #154 was already merged; suite green at start (564 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `detect_encoding` in the CSV connector called `path.read_bytes()[:64 KB]`, which reads the **entire** file into memory before keeping only the first 64 KB. On a 4 GB machine (principle 4), a large sales export could double memory use or crash before chunked reading even started. It now reads just the 64 KB sample.
 - **Fichiers principaux :** `mide/connectors/tabular.py` (`detect_encoding`), `tests/test_tabular.py`
