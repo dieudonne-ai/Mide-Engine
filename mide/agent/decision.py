@@ -91,7 +91,7 @@ _FR_VALUE_PHRASES: list[tuple[re.Pattern[str], str]] = [(re.compile(p), r) for p
     (rf"\bfrom ({_D}) to ({_D})", r"du \1 au \2"),
     (r"vs previous (\d+)d\b", r"par rapport aux \1 jours précédents"),
     (r"(\d{4}-\d{2}) vs (\d{4}-\d{2})", r"\1 contre \2"),
-    (r"(\d) to (?=\S)", r"\1 vers "),
+    (r"(\d)(?<!\d{4}-\d{2}) to (?=\S)", r"\1 vers "),  # month ranges: french_year_months
     (r"customers at high risk", "clients à risque élevé"),
     (r"\(top: ", "(principaux : "),
     (r", \+(\d+) more\)", r", +\1 autres)"),
@@ -209,12 +209,12 @@ def _product_list(table: pd.DataFrame, names: dict[str, str]) -> str:
 
 
 def _months_compared(monthly: pd.Series, size: int) -> str:
-    """'(2024-10 -> 2024-12 vs 2024-07 -> 2024-09)': the last ``size`` months vs the ones before."""
+    """'(2024-10 to 2024-12 vs 2024-07 to 2024-09)': the last ``size`` months vs the ones before."""
     idx = monthly.index
     if len(idx) < 2 * size:
         return ""
-    recent = f"{idx[-size]:%Y-%m} -> {idx[-1]:%Y-%m}"
-    before = f"{idx[-2 * size]:%Y-%m} -> {idx[-size - 1]:%Y-%m}"
+    recent = f"{idx[-size]:%Y-%m} to {idx[-1]:%Y-%m}"
+    before = f"{idx[-2 * size]:%Y-%m} to {idx[-size - 1]:%Y-%m}"
     return f" ({recent} vs {before})"
 
 

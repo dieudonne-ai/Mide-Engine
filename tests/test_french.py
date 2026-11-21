@@ -112,6 +112,8 @@ def test_french_dates_spells_out_iso_dates(text: str, expected: str) -> None:
 @pytest.mark.parametrize("text,expected", [
     ("(2024-10 -> 2024-12 vs 2024-07 -> 2024-09)",
      "(octobre 2024 à décembre 2024 vs juillet 2024 à septembre 2024)"),
+    ("(2024-10 to 2024-12 vs 2024-07 to 2024-09)",
+     "(octobre 2024 à décembre 2024 vs juillet 2024 à septembre 2024)"),
     ("depuis 2024-08", "depuis août 2024"),
     ("le 2 octobre 2024", "le 2 octobre 2024"),
     ("2024-10-02", "2024-10-02"),
