@@ -72,6 +72,21 @@ def _join_names(names: list[str], fr: bool) -> str:
     return f"{', '.join(names[:-1])} {'et' if fr else 'and'} {names[-1]}"
 
 
+_CHANNEL_ROI = re.compile(r"^ROI (\S+?),")
+
+
+def underperforming_with_roi(facts: dict[str, str]) -> str:
+    """Underperforming channels with the ROI that flags them: "Radio (ROI -0.18), SMS (ROI -0.58)".
+
+    The ROI comes from the "channel X" fact; a channel without one is listed by name only.
+    """
+    out = []
+    for name in facts.get("underperforming", "").split(", "):
+        m = _CHANNEL_ROI.match(facts.get(f"channel {name}", ""))
+        out.append(f"{name} (ROI {m.group(1)})" if m else name)
+    return ", ".join(out)
+
+
 def _actions(f: dict[str, Finding], fr: bool, last_day: date | None = None) -> list[Action]:
     """Rank candidate actions: churn, marketing budget, anomalies, sales trend.
 
@@ -230,7 +245,7 @@ def build_report(data: BusinessData, language: str = "fr", today: date | None = 
     if "marketing" in findings and findings["marketing"].facts.get("underperforming", "none") != "none":
         report.alerts.append(
             f"{fact_label('underperforming', lang)}{fact_sep(lang)}"
-            f"{fact_value(findings['marketing'].facts['underperforming'], lang)}")
+            f"{fact_value(underperforming_with_roi(findings['marketing'].facts), lang)}")
     report.actions = _actions(findings, lang == "fr", _last_sale_day(data))
     stale = stale_data_alert(data, report.generated, lang == "fr")
     if stale and not report.empty:

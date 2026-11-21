@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: ROI next to each underperforming channel in the report alert (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #146 was already merged; suite green at start (554 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The weekly report alert "marketing underperforming: Radio, SMS" named the channels without the figure that flags them, unlike every other alert (explainability principle). It now reads "marketing underperforming: Radio (ROI -0.18), SMS (ROI -0.58)", and in French "canaux marketing sous-performants : Radio (ROI -0,18), SMS (ROI -0,58)". The ROI is taken from the existing "channel X" fact, so it matches `mide ask` "Data used". A channel without that fact is still named, without a figure.
+- **Fichiers principaux :** `mide/report.py` (new `underperforming_with_roi`, used by `build_report`), `tests/test_report.py`
+- **Tests :** 555 passed, 0 skipped. 1 new: `test_underperforming_alert_cites_each_channel_roi`. Expectations updated in `test_report_labels_follow_language` (English and French, fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-u2626i -> main
+- **Décisions techniques :** only the report alert changed; the agent fact `underperforming` stays a plain name list, because the budget action title and `mide ask` already show the per-channel ROI elsewhere.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: "Radio and SMS" in the budget action title (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #145 was already merged; suite green at start (549 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). The weekly report titled the budget action "Reallocate budget from Radio, SMS", like a raw list. It now reads "Reallocate budget from Radio and SMS" ("Radio, SMS and TV" for three channels), and in French "Réallouer le budget depuis Radio et SMS". A single channel is unchanged ("Reallocate budget from Radio"). The evidence text is unchanged.
 - **Fichiers principaux :** `mide/report.py` (new `_join_names`, used by `_actions`), `tests/test_report.py`
