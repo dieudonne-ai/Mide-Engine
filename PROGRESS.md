@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: `mide train` ignores stray spaces in names (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #150 was already merged; suite green at start (558 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `mide train --dataset " sales " --target "amount "` (typical of copy-paste) failed with "dataset not found" / "target column not found", although both exist. The dataset name is now trimmed; `--target` and `--date-column` use the exact column name first, then the trimmed one. A blank `--date-column` means "no override". Unknown columns still exit with code 1 and list the available ones.
+- **Fichiers principaux :** `mide/cli.py` (`_match_column`, `train_command`), `tests/test_registry.py`
+- **Tests :** 559 passed, 0 skipped. 1 new: `test_cli_train_ignores_stray_spaces` (fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-h7k694 -> main
+- **Décisions techniques :** column names stay case-sensitive (two columns may differ only by case); only surrounding spaces are tolerated, and an exact match always wins so a real column named with spaces still works.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: `mide models pull --profile` accepts any case (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #149 was already merged; suite green at start (557 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `mide models pull --profile Small` (or `TINY`, or a value with stray spaces) failed with "no model configured for profile 'Small'", although `small` is configured. The profile name is now trimmed and lower-cased before the lookup; a blank value falls back to the detected profile. Unknown profiles still exit with code 1 and list the configured ones.
 - **Fichiers principaux :** `mide/cli.py` (`models_pull`), `tests/test_downloader.py`
