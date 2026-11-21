@@ -41,6 +41,15 @@ Format de chaque entrée :
 - **Prochaine tâche :** <ID>
 -->
 
+### 2026-11-21 — Maintenance: `mide models pull --profile` accepts any case (no roadmap task left)
+- **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #149 was already merged; suite green at start (557 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `mide models pull --profile Small` (or `TINY`, or a value with stray spaces) failed with "no model configured for profile 'Small'", although `small` is configured. The profile name is now trimmed and lower-cased before the lookup; a blank value falls back to the detected profile. Unknown profiles still exit with code 1 and list the configured ones.
+- **Fichiers principaux :** `mide/cli.py` (`models_pull`), `tests/test_downloader.py`
+- **Tests :** 558 passed, 0 skipped. 1 new: `test_cli_pull_profile_is_case_insensitive` (` TINY `, `LARGE`; fails without the fix). `ruff check .` OK; `mypy mide` OK.
+- **PR :** claude/wizardly-shannon-ovuszu -> main
+- **Décisions techniques :** normalized in the CLI only; profile keys in `models.yaml` stay lowercase as in CLAUDE.md §3.
+- **Problèmes / dette technique :** the churn-first ranking question is still open (see above). The six stale PRs (#15, #17, #20, #21, #24, #26) are still open and should be closed, not merged.
+- **Prochaine tâche :** none. Waiting for Dieudonné to pick a backlog item (see questions).
+
 ### 2026-11-21 — Maintenance: `mide report --format` accepts any case (no roadmap task left)
 - **Fait :** Every ROADMAP task is checked and the backlog question is still open, so no new task was started. PR #148 was already merged; suite green at start (556 passed, `python3.13 -m pytest` after `pip install -e ".[dev,ui]"`). `mide report --format HTML` (or `MD`, or a value with stray spaces) was rejected with "Format must be 'md' or 'html'", although the meaning is clear. The format is now trimmed and lower-cased before the check. Unknown formats (`pdf`, `PDF`) still exit with code 2 and the same message.
 - **Fichiers principaux :** `mide/cli.py` (`report_command`), `tests/test_report.py`
