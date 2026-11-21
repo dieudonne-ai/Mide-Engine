@@ -19,7 +19,10 @@ class DocumentReadError(Exception):
 
 
 def _read_text(path: Path) -> str:
-    raw = path.read_bytes()
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:  # permission denied, file removed after discovery...
+        raise DocumentReadError(f"Cannot read {path}: {exc}") from exc
     try:
         return raw.decode("utf-8-sig")
     except UnicodeDecodeError:

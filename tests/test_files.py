@@ -1,6 +1,7 @@
 """Tests for the document connector."""
 
 import logging
+from pathlib import Path
 
 import pytest
 from docx import Document
@@ -65,6 +66,27 @@ def test_corrupted_files_are_skipped_with_log(docs, caplog):
     assert not any(k.endswith("broken.pdf") for k in result)
     assert any("corrupted" in r.message.lower() for r in caplog.records)
     assert any(k.endswith("report.docx") for k in result)
+
+
+def test_unreadable_text_file_is_skipped_with_log(docs, caplog, monkeypatch):
+    locked = docs / "locked.txt"
+    locked.write_text("secret", encoding="utf-8")
+    real_read_bytes = Path.read_bytes
+
+    def fake_read_bytes(self):
+        if self.name == "locked.txt":
+            raise PermissionError(13, "Permission denied")
+        return real_read_bytes(self)
+
+    monkeypatch.setattr(Path, "read_bytes", fake_read_bytes)
+    conn = DocumentConnector(str(docs), [str(docs)])
+    with pytest.raises(DocumentReadError):
+        conn.read(str(locked))
+    with caplog.at_level(logging.WARNING, logger="mide.connectors.files"):
+        result = conn.read_all()
+    assert not any(k.endswith("locked.txt") for k in result)
+    assert any(k.endswith("note.txt") for k in result)
+    assert any("locked.txt" in r.getMessage() for r in caplog.records)
 
 
 def test_unauthorized_file_refused(docs, tmp_path):
