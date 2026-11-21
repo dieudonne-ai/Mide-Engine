@@ -120,7 +120,7 @@ UI_TEXT: dict[str, dict[str, str]] = {
     "anomaly_drop": {"fr": "chute", "en": "drop"},
     "anomaly_spike": {"fr": "pic", "en": "spike"},
     "anomaly_day": {"fr": "le {day}", "en": "on {day}"},
-    "anomaly_period": {"fr": "du {start} au {end}", "en": "on {start} -> {end}"},
+    "anomaly_period": {"fr": "du {start} au {end}", "en": "from {start} to {end}"},
     "anomaly_line": {"fr": "{kind} {period} : {actual} au lieu de {expected} attendus ({change})",
                      "en": "{kind} {period}: {actual} vs {expected} expected ({change})"},
 }

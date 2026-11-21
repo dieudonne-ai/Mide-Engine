@@ -23,7 +23,7 @@ from mide.utils.french import french_date
 _ACTION_LIMIT = 3
 STALE_AFTER_DAYS = 30  # older sales data gets a warning at the top of the alerts
 RECENT_ANOMALY_DAYS = 90  # anomalies ending earlier than this before the last sale are summarized
-_ANOMALY_END = re.compile(r" on (\d{4}-\d{2}-\d{2})(?: -> (\d{4}-\d{2}-\d{2}))?:")
+_ANOMALY_END = re.compile(r" (?:on|from) (\d{4}-\d{2}-\d{2})(?: (?:->|to) (\d{4}-\d{2}-\d{2}))?:")
 
 _T = {
     "fr": {"title": "Rapport hebdomadaire MIDE", "kpis": "Indicateurs clés", "forecast": "Prévisions",
@@ -153,7 +153,7 @@ def stale_data_alert(data: BusinessData, today: date, fr: bool) -> str | None:
 
 
 def _anomaly_end(text: str) -> date | None:
-    """Last day of an anomaly from its description ("drop on A -> B: ..."), or None."""
+    """Last day of an anomaly from its description ("drop from A to B: ..." or "drop on A: ..."), or None."""
     m = _ANOMALY_END.search(text)
     if not m:
         return None

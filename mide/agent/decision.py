@@ -81,7 +81,7 @@ _FR_VALUE_PHRASES: list[tuple[re.Pattern[str], str]] = [(re.compile(p), r) for p
     (r"est\. extra revenue up to", "revenu supplémentaire estimé jusqu'à"),
     (r"\(linear, at (.+?) ROAS ", r"(linéaire, au ROAS \1 de "),
     (r"returns diminish", "rendements décroissants"),
-    (rf"\b(drop|spike) on ({_D}) -> ({_D}):", r"\1 du \2 au \3 :"),
+    (rf"\b(drop|spike) (?:on|from) ({_D}) (?:->|to) ({_D}):", r"\1 du \2 au \3 :"),
     (rf"\b(drop|spike) on ({_D}):", r"\1 le \2 :"),
     (r"\bdrop\b", "baisse"), (r"\bspike\b", "pic"),
     (r"(\S+) vs (\S+) expected \(", r"\1 au lieu de \2 attendus ("),

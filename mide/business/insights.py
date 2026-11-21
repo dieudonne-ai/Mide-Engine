@@ -56,9 +56,9 @@ class Anomaly:
     days: int = 1
 
     def describe(self) -> str:
-        period = (str(self.start.date()) if self.start == self.end
-                  else f"{self.start.date()} -> {self.end.date()}")
-        return (f"{self.kind} on {period}: {self.actual:,.0f} vs "
+        period = (f"on {self.start.date()}" if self.start == self.end
+                  else f"from {self.start.date()} to {self.end.date()}")
+        return (f"{self.kind} {period}: {self.actual:,.0f} vs "
                 f"{self.expected:,.0f} expected ({self.ratio - 1:+.0%})")
 
 
