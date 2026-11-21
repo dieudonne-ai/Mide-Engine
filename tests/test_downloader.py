@@ -180,3 +180,20 @@ def test_cli_models_list_and_pull_follow_language(
     output = before.output + pulled.output + after.output + unknown.output
     for text in expected:
         assert text in output
+
+
+def test_cli_pull_profile_is_case_insensitive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MIDE_HOME", str(tmp_path / "home"))
+    calls: list[str] = []
+    monkeypatch.setattr(downloader, "_default_opener", opener_for(DATA, calls=calls))
+    args = ["models", "pull", "--profile", " TINY ", "--yes", "--config-dir", str(_cfg(tmp_path))]
+    result = CliRunner().invoke(cli.app, args)
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "home" / "models" / "m.gguf").read_bytes() == DATA
+    unknown = ["models", "pull", "--profile", "LARGE", "--yes", "--config-dir",
+               str(tmp_path / "config")]
+    result = CliRunner().invoke(cli.app, unknown)
+    assert result.exit_code == 1
+    assert "aucun modèle configuré pour le profil 'large'" in result.output

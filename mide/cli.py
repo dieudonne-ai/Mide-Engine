@@ -560,7 +560,7 @@ def models_pull(
         _echo_error(exc, _cli_language(config_dir))
         raise typer.Exit(1) from exc
     language = _language_of(cfg.language)
-    name = profile or profile_hardware().profile
+    name = profile.strip().lower() if profile and profile.strip() else profile_hardware().profile
     models = cfg.models.profiles.get(name)  # type: ignore[call-overload]
     if models is None:
         configured = ", ".join(cfg.models.profiles) or _sources_msg("models_none", language)
